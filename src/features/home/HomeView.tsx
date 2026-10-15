@@ -1,45 +1,19 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, PhoneCall, HeartPulse, Brain, Droplets, MapPin, BookOpen, ShieldAlert, Users, CircleCheck, ExternalLink, PlayCircle } from 'lucide-react';
+import { ArrowRight, PhoneCall, MapPin, BookOpen, ShieldAlert, Users, CircleCheck, ExternalLink, PlayCircle } from 'lucide-react';
 import { REFERENCE_LEARNING_RESOURCES } from '../../content/curatedLearningCatalog';
+import { HOME_EXERCISES, HOME_HERO, HOME_PHOTO_STORIES } from '../../config/homeContent';
 import { LearningResourceCard } from '../library/LearningResourceCard';
 
 export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
   const navigate = useNavigate();
-  const exercises = [
-    { id: 'sc_ohca_01', label: 'Ép tim', icon: HeartPulse },
-    { id: 'sc_stroke_02', label: 'Đột quỵ', icon: Brain },
-    { id: 'sc_bleeding_03', label: 'Cầm máu', icon: Droplets },
-  ];
-  const photoStories = [
-    {
-      image: '/images/aed-community-installation.png',
-      alt: 'Đội ngũ cộng đồng giới thiệu tủ AED tại một không gian công cộng',
-      title: 'Một điểm AED bắt đầu từ cộng đồng',
-      source: 'Báo Khánh Hòa điện tử, bài đăng ngày 12/10/2026',
-      sourceUrl: 'https://baokhanhhoa.vn/xa-hoi/y-te-suc-khoe/202610/lap-dat-may-khu-rung-tim-tu-dong-tai-bao-tang-hai-duong-hoc-2f75342',
-    },
-    {
-      image: '/images/cpr-training-session.png',
-      alt: 'Lớp huấn luyện CPR thực hành với mannequin và AED',
-      title: 'Học bằng tay, nhớ bằng phản xạ',
-      source: 'Báo Khánh Hòa điện tử, bài đăng tháng 09/2026',
-      sourceUrl: 'https://baokhanhhoa.vn/xa-hoi/y-te-suc-khoe/202609/trung-tam-cap-cuu-115-tap-huan-ky-nang-hoi-sinh-tim-phoi-va-su-dung-may-khu-rung-tim-tu-dong-cdf28d0',
-    },
-    {
-      image: '/images/aed-public-location.png',
-      alt: 'Điểm đặt AED trong khu vực công cộng có nhân sự hỗ trợ',
-      title: 'Biết vị trí trước khi cần đến',
-      source: 'Báo Khánh Hòa điện tử, bài đăng tháng 09/2026',
-      sourceUrl: 'https://baokhanhhoa.vn/xa-hoi/y-te-suc-khoe/202609/trung-tam-cap-cuu-115-tap-huan-ky-nang-hoi-sinh-tim-phoi-va-su-dung-may-khu-rung-tim-tu-dong-cdf28d0',
-    },
-  ];
+
   return (
     <div className="bg-background pb-24 font-sans text-foreground">
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
         {/* Hero Section */}
         <section className="hero-editorial overflow-hidden rounded-[2rem] bg-[#191919] text-white">
           <div className="hero-editorial-image relative h-[16rem] overflow-hidden sm:h-[24rem]">
-            <img src="/images/aed-community-installation.png" alt="Đội ngũ cộng đồng giới thiệu tủ AED tại một không gian công cộng" className="h-full w-full object-cover object-[center_28%]" />
+            <img src={HOME_HERO.image} alt="Đội ngũ cộng đồng giới thiệu tủ AED tại một không gian công cộng" className="h-full w-full object-cover object-[center_28%]" />
             <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-sm"><CircleCheck className="size-3.5 text-[#ff6b68]" aria-hidden="true" />Báo Khánh Hòa</div>
           </div>
           <div className="relative flex flex-col gap-4 p-5 sm:p-8">
@@ -52,7 +26,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
             </div>
           </div>
         </section>
-        <p className="text-xs text-muted">Nguồn ảnh và thông tin: <a className="underline underline-offset-2" href="https://baokhanhhoa.vn/xa-hoi/y-te-suc-khoe/202610/lap-dat-may-khu-rung-tim-tu-dong-tai-bao-tang-hai-duong-hoc-2f75342" target="_blank" rel="noopener noreferrer">Báo Khánh Hòa điện tử, 12/10/2026</a></p>
+        <p className="text-xs text-muted">Nguồn ảnh và thông tin: <a className="underline underline-offset-2" href={HOME_HERO.sourceUrl} target="_blank" rel="noopener noreferrer">{HOME_HERO.sourceLabel}</a></p>
 
         {/* Emergency CTA */}
         <section aria-label="Hỗ trợ khẩn cấp" className="flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-[#e31917] to-[#b31312] p-6 text-primary-foreground shadow-lg shadow-[#e31917]/20">
@@ -73,7 +47,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
         <section className="flex flex-col gap-4" aria-labelledby="quick-scenarios">
           <h2 id="quick-scenarios" className="text-lg font-bold">Tình huống thường gặp</h2>
           <div className="grid grid-cols-3 gap-2">
-            {exercises.map(({ id, label, icon: Icon }) => (
+            {HOME_EXERCISES.map(({ id, label, icon: Icon }) => (
               <Link key={id} to={`/training?scenario=${id}`} className="flex flex-col items-center justify-center gap-2 rounded-xl border border-border bg-surface p-3 transition-colors hover:border-primary hover:bg-surface/80">
                 <Icon className="size-6 text-primary" aria-hidden="true" />
                 <span className="text-xs font-medium text-center leading-tight sm:text-sm">{label}</span>
@@ -89,7 +63,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
             <span className="text-xs text-muted">Vuốt để xem</span>
           </div>
           <div className="filmstrip -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 scrollbar-none sm:-mx-6 sm:px-6">
-            {photoStories.map((story) => (
+            {HOME_PHOTO_STORIES.map((story) => (
               <article key={story.image} className="film-card min-w-[84vw] snap-center overflow-hidden rounded-2xl border border-border bg-surface sm:min-w-[31rem]">
                 <div className="relative aspect-[4/3] overflow-hidden bg-[#e5e7eb]">
                   <img src={story.image} alt={story.alt} className="film-card-image h-full w-full object-cover object-[center_36%]" />
