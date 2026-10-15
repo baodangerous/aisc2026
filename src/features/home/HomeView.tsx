@@ -19,7 +19,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
           <p className="max-w-xl text-base leading-relaxed text-muted">Học sơ cứu từng bước. Luyện phản xạ trước khi cần đến.</p>
         </section>
 
-        <section aria-label="Hỗ trợ khẩn cấp" className="flex flex-col gap-5 rounded-3xl bg-primary p-6 text-primary-foreground sm:flex-row sm:items-center sm:justify-between">
+        <section aria-label="Hỗ trợ khẩn cấp" className="flex flex-col gap-5 rounded-3xl bg-gradient-to-br from-[#e31917] to-[#b31312] p-6 text-primary-foreground shadow-lg shadow-[#e31917]/20 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <ShieldAlert className="size-6 shrink-0" aria-hidden="true" />
             <div className="flex flex-col gap-1"><h2 className="text-xl font-semibold">Có người cần cấp cứu?</h2><p className="text-sm leading-relaxed">Gọi 115 và làm theo tổng đài.</p></div>
