@@ -1,6 +1,9 @@
 {
+  "framework": "vite",
   "buildCommand": "pnpm build",
   "outputDirectory": "dist/client",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "rewrites": [
+    { "source": "/((?!assets/|api/|healthz|readyz).*)", "destination": "/index.html" }
+  ],
   "cleanUrls": true
 }
