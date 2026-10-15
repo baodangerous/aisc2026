@@ -15,21 +15,21 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
       image: '/images/aed-community-installation.png',
       alt: 'Đội ngũ cộng đồng giới thiệu tủ AED tại một không gian công cộng',
       title: 'Một điểm AED bắt đầu từ cộng đồng',
-      source: 'Ảnh người dùng cung cấp',
+      source: 'public.blob.vercel-storage.com · chưa xác minh chủ thể phát hành',
       sourceUrl: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-lEhwS8MRtPPU0NJEl4SJGU2Ioiprc0.png',
     },
     {
       image: '/images/cpr-training-session.png',
       alt: 'Lớp huấn luyện CPR thực hành với mannequin và AED',
       title: 'Học bằng tay, nhớ bằng phản xạ',
-      source: 'Ảnh người dùng cung cấp',
+      source: 'public.blob.vercel-storage.com · chưa xác minh chủ thể phát hành',
       sourceUrl: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-UfqIJI5aBIZExSaSk90BqOclitZ40o.png',
     },
     {
       image: '/images/aed-public-location.png',
       alt: 'Điểm đặt AED trong khu vực công cộng có nhân sự hỗ trợ',
       title: 'Biết vị trí trước khi cần đến',
-      source: 'Ảnh người dùng cung cấp',
+      source: 'public.blob.vercel-storage.com · chưa xác minh chủ thể phát hành',
       sourceUrl: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-JzevJg2r9L32XBqdpm05U23fq9paPF.png',
     },
   ];
@@ -54,7 +54,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
             </div>
           </div>
         </section>
-        <p className="text-xs text-muted">Ảnh nền: người dùng cung cấp · <a className="underline underline-offset-2" href="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-lEhwS8MRtPPU0NJEl4SJGU2Ioiprc0.png" target="_blank" rel="noopener noreferrer">xem ảnh gốc</a></p>
+        <p className="text-xs text-muted">Ảnh nền: public.blob.vercel-storage.com · chủ thể phát hành chưa xác minh độc lập · <a className="underline underline-offset-2" href="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-lEhwS8MRtPPU0NJEl4SJGU2Ioiprc0.png" target="_blank" rel="noopener noreferrer">xem URL ảnh gốc</a></p>
 
         {/* Emergency CTA */}
         <section aria-label="Hỗ trợ khẩn cấp" className="flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-[#e31917] to-[#b31312] p-6 text-primary-foreground shadow-lg shadow-[#e31917]/20">
