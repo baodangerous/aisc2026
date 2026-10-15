@@ -42,7 +42,7 @@ export const App: React.FC = () => {
   return (
     <AuthProvider>
       <HashRouter>
-        <div className="min-h-screen bg-[#F9FAFB] text-[#1D2939] flex flex-col font-sans selection:bg-[#D92D20] selection:text-white">
+        <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary selection:text-primary-foreground">
           <Navigation
             onOpenCall115={() => setIsCall115Open(true)}
             onOpenLogin={() => setIsLoginOpen(true)}
