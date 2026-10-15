@@ -8,21 +8,22 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
   const navigate = useNavigate();
 
   return (
-    <div className="bg-background pb-24 font-sans text-foreground">
+    <div className="bg-background pb-36 font-sans text-foreground sm:pb-24">
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-5 sm:px-6 sm:py-10">
         {/* Hero Section */}
-        <section className="hero-editorial overflow-hidden rounded-[1.5rem] bg-[#191919] text-white shadow-[0_20px_50px_rgba(23,33,43,0.16)] sm:rounded-[2rem]">
-          <div className="hero-editorial-image relative h-[13.5rem] overflow-hidden sm:h-[24rem]">
-            <img src={HOME_HERO.image} alt="Đội ngũ cộng đồng giới thiệu tủ AED tại một không gian công cộng" className="h-full w-full object-cover object-[center_28%]" />
-            <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-sm"><CircleCheck className="size-3.5 text-[#ff6b68]" aria-hidden="true" />Báo Khánh Hòa</div>
+        <section className="hero-editorial overflow-hidden rounded-[1.5rem] border border-border bg-surface text-foreground shadow-[0_20px_50px_rgba(23,33,43,0.10)] sm:rounded-[2rem]">
+          <div className="hero-editorial-image relative overflow-hidden bg-[#f4f7f8]">
+            <img src={HOME_HERO.image} alt="Đội ngũ cộng đồng giới thiệu tủ AED tại một không gian công cộng" className="h-auto max-h-[24rem] w-full object-contain" />
+            <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-border bg-surface/95 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground shadow-sm"><CircleCheck className="size-3.5 text-primary" aria-hidden="true" />Báo Khánh Hòa</div>
           </div>
-          <div className="relative flex flex-col gap-4 p-5 sm:p-8">
-            <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/70"><span>Chuẩn bị sẵn sàng</span></div>
-            <div className="max-w-xl">
-              <p className="mb-2 text-xs font-semibold text-[#ffb4b2]">GOLDENMINUTES</p><p className="text-xs font-medium text-white/75">Cộng đồng biết cách cứu người</p>
-              <h1 className="text-balance text-3xl font-bold leading-[1.05] sm:text-6xl">Mỗi phút đều có ý nghĩa.</h1>
-              <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/80 sm:text-base">Học kỹ năng sơ cứu thật. Nhìn thấy những người đang hành động thật. Sẵn sàng trước khi tình huống khẩn cấp xảy ra.</p>
-              <Link to="/training" className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#e31917] px-5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5"><PlayCircle className="size-5" aria-hidden="true" />Bắt đầu luyện ngay</Link>
+          <div className="relative flex flex-col gap-6 bg-surface p-5 sm:gap-8 sm:p-8">
+            <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted sm:tracking-[0.18em]"><span>Chuẩn bị sẵn sàng</span></div>
+            <div className="max-w-2xl space-y-3 sm:space-y-4">
+              <p className="text-xs font-semibold text-primary">GOLDENMINUTES</p>
+              <p className="text-sm font-medium leading-5 text-muted">Cộng đồng biết cách cứu người</p>
+              <h1 className="max-w-xl text-3xl font-bold leading-tight text-foreground sm:text-6xl sm:leading-[1.08]">Mỗi phút đều có ý nghĩa.</h1>
+              <p className="max-w-xl text-sm leading-6 text-muted sm:text-base sm:leading-7">Học kỹ năng sơ cứu thật. Nhìn thấy những người đang hành động thật. Sẵn sàng trước khi tình huống khẩn cấp xảy ra.</p>
+              <Link to="/training" className="mt-2 inline-flex min-h-12 w-fit items-center gap-2 rounded-full bg-[#e31917] px-5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5"><PlayCircle className="size-5 shrink-0" aria-hidden="true" /><span className="whitespace-nowrap">Bắt đầu luyện ngay</span></Link>
             </div>
           </div>
         </section>
@@ -65,9 +66,9 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
           <div className="filmstrip -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 scrollbar-none sm:-mx-6 sm:px-6">
             {HOME_PHOTO_STORIES.map((story) => (
               <article key={story.image} className="film-card min-w-[84vw] snap-center overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_12px_28px_rgba(23,33,43,0.07)] sm:min-w-[31rem]">
-                <div className="relative aspect-[4/3] overflow-hidden bg-[#e5e7eb]">
-                  <img src={story.image} alt={story.alt} className="film-card-image h-full w-full object-cover object-[center_36%]" />
-                  <span className="absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur">Báo Khánh Hòa</span>
+                <div className="relative overflow-hidden bg-[#f4f7f8]">
+                  <img src={story.image} alt={story.alt} className="film-card-image h-auto max-h-[22rem] w-full object-contain" />
+                  <span className="absolute left-3 top-3 rounded-full border border-border bg-surface/95 px-3 py-1 text-[11px] font-semibold text-foreground shadow-sm">Báo Khánh Hòa</span>
                 </div>
                 <div className="flex flex-col gap-2 p-4"><h3 className="text-lg font-bold">{story.title}</h3><p className="text-xs text-muted">Nguồn ảnh: {story.source}</p><a href={story.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-fit items-center gap-1 text-xs font-semibold text-primary underline underline-offset-4">Xem nguồn đầy đủ <ExternalLink className="size-3" aria-hidden="true" /></a></div>
               </article>
@@ -89,7 +90,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
               <LearningResourceCard key={resource.id} resource={resource} onOpen={() => navigate(`/library?lesson=${resource.slug}`)} />
             ))}
           </div>
-          <p className="text-xs leading-relaxed text-muted">Nguồn chính thống: American Heart Association, American Stroke Association, American College of Surgeons và British Red Cross. Mỗi tài liệu mở tại trang phát hành; GoldenMinutes không sao chép hoặc nhận là đơn vị chứng nhận.</p>
+          <p className="text-xs leading-relaxed text-muted">Nguồn chính thống: American Heart Association, American Stroke Association, American College of Surgeons và British Red Cross. Mỗi tài liệu mở tại trang phát hành; GoldenMinutes không sao chép hoặc nh��n là đơn vị chứng nhận.</p>
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
             {REFERENCE_LEARNING_RESOURCES.slice(0, 4).map((resource) => <a key={resource.id} href={resource.sourcePageUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-primary underline underline-offset-4">{resource.sourceOrganization}<ExternalLink className="size-3" aria-hidden="true" /></a>)}
           </div>

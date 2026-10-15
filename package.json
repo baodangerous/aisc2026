@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build && esbuild server/standalone.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/server.js --external:firebase-admin --external:@google/genai --external:express --external:cors --external:dotenv --external:zod",
+    "build": "vite build && esbuild server/standalone.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/server.js --external:firebase-admin --external:@google/genai --external:express --external:cors --external:dotenv --external:zod --external:ai --external:@vercel/oidc",
     "start": "node dist/server.js",
     "preview": "vite preview",
     "clean": "rm -rf dist",

@@ -172,7 +172,7 @@ export function createApp(options?: AppOptions): express.Express {
           <html>
             <head><title>GoldenMinutes Server</title></head>
             <body style="font-family: sans-serif; padding: 2rem;">
-              <h2>GoldenMinutes API Backend is Running with Firebase & Cloud Firestore</h2>
+              <h2>GoldenMinutes API Backend is Running with Supabase</h2>
               <p>Health check: <a href="/api/health">/api/health</a></p>
             </body>
           </html>
