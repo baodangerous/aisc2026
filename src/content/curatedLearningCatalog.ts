@@ -22,6 +22,14 @@ export const REFERENCE_LEARNING_RESOURCES: MedicalLearningResource[] = [
     relatedScenarioIds: ['sc_ohca_01'],
   },
   {
+    ...referenceDefaults, id: 'res_cpr_aed_aha_international', slug: 'cpr-va-aed-aha-quoc-te',
+    title: 'CPR và AED cho người lớn', topic: 'cardiac_arrest',
+    description: 'Video CPR Hands-Only và CPR kết hợp AED từ AHA International. Mở tại nguồn phát hành; không sao chép media.',
+    mediaType: 'video', sourceOrganization: 'American Heart Association International',
+    sourcePageUrl: 'https://international.heart.org/en/resuscitation/hands-only-cpr',
+    relatedScenarioIds: ['sc_ohca_01'], language: 'en', durationSeconds: 60,
+  },
+  {
     ...referenceDefaults, id: 'res_stroke_fast', slug: 'nhan-dien-som-dot-quy-nao-fast',
     title: 'Dấu hiệu đột quỵ', topic: 'stroke',
     description: 'Nhận diện dấu hiệu B.E. F.A.S.T. tại nguồn gốc.',
@@ -38,12 +46,28 @@ export const REFERENCE_LEARNING_RESOURCES: MedicalLearningResource[] = [
     relatedScenarioIds: ['sc_bleeding_03'],
   },
   {
+    ...referenceDefaults, id: 'res_stop_the_bleed_videos', slug: 'video-ky-thuat-cam-mau-acs',
+    title: 'Video kỹ thuật cầm máu', topic: 'bleeding',
+    description: 'Video kỹ thuật ép trực tiếp, nhồi vết thương và garô từ ACS Stop the Bleed.',
+    mediaType: 'video', sourceOrganization: 'American College of Surgeons',
+    sourcePageUrl: 'https://www.stopthebleed.org/training/',
+    relatedScenarioIds: ['sc_bleeding_03'], language: 'en', durationSeconds: 0,
+  },
+  {
     ...referenceDefaults, id: 'res_first_aid', slug: 'ky-nang-so-cuu-red-cross',
     title: 'Kỹ năng sơ cứu', topic: 'general',
     description: 'Học sơ cứu theo tình huống với British Red Cross.',
     sourceOrganization: 'British Red Cross',
     sourcePageUrl: 'https://www.redcross.org.uk/first-aid/learn-first-aid',
     relatedScenarioIds: ['sc_ohca_01', 'sc_bleeding_03'],
+  },
+  {
+    ...referenceDefaults, id: 'res_red_cross_aed', slug: 'so-cuu-khi-co-aed-red-cross',
+    title: 'Sơ cứu khi có AED', topic: 'cardiac_arrest',
+    description: 'Hướng dẫn sơ cứu và sử dụng AED tại nguồn British Red Cross.',
+    mediaType: 'article', sourceOrganization: 'British Red Cross',
+    sourcePageUrl: 'https://www.redcross.org.uk/first-aid/learn-first-aid',
+    relatedScenarioIds: ['sc_ohca_01'], language: 'en', durationSeconds: 0,
   },
 ];
 
