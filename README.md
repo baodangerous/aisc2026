@@ -104,7 +104,7 @@ The app runs at [http://localhost:3000](http://localhost:3000).
 | `npm run build` | Build the client and bundle the server into `dist/` |
 | `npm start` | Run the production server from `dist/server.js` |
 | `npm run lint` | Type-check the project with `tsc --noEmit` |
-| `npm test` | Run the Vitest suite |
+| `pnpm test` | Run the Vitest suite |
 
 ## Configuration
 
@@ -146,17 +146,13 @@ flowchart LR
 
 ```text
 .
-├── server/                 Express app, API routes, Gemini and Supabase services
-├── src/
-│   ├── components/         Shared UI (navigation, sheets, buttons)
-│   ├── content/            Approved scenarios and the learning catalogue
-│   ├── domain/             Rule engine, metric calculators, Zod schemas
-│   ├── features/           auth, emergency, home, library, nearby, training
-│   └── services/           API client, Supabase, IndexedDB, voice input
-├── server/                 Express routes, Supabase auth, AI retrieval and APIs
+├── api/                    Vercel serverless entrypoint
+├── src/                    React UI, features, domain rules, and client services
+├── server/                 Express routes, AI services, auth, and repository
 ├── data/                   Curated sources and JSONL training dataset
+├── docs/                   Screenshots and source project documents
 ├── scripts/                Validated ingest and quality pipeline
-├── supabase/               Migrations and seed assets
+├── supabase/               Versioned migrations and seed assets
 ├── tests/                  Vitest suites for API, security, and resilience
 └── public/                 Static assets and the web app manifest
 ```
@@ -188,7 +184,7 @@ Liveness and readiness probes are available at `/healthz` and `/readyz`.
 ## Testing
 
 ```bash
-npm test
+pnpm test
 ```
 
 The suite covers API routing and content types, CORS policy, role escalation, session idempotency, Gemini failure handling, safety claims in generated text, and the production entry point.
@@ -203,7 +199,7 @@ The suite covers API routing and content types, CORS policy, role escalation, se
 
 1. Fork the repository and create a branch from `main`.
 2. Keep changes focused and add tests where behaviour changes.
-3. Run `npm run lint` and `npm test` before opening a pull request.
+3. Run `npm run lint` and `pnpm test` before opening a pull request.
 4. Any change to medical content in `src/content` must cite its source in the pull request description.
 
 ## License
