@@ -16,6 +16,8 @@ interface AuthContextType {
   isSynced: boolean;
   isFirebaseReady: boolean;
   loginWithGoogle: () => Promise<void>;
+  sendPhoneOtp: (phone: string) => Promise<void>;
+  verifyPhoneOtp: (phone: string, token: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (displayName?: string, preferredLanguage?: string, phone?: string) => Promise<ProfileUpdateResult>;
   requestDeletion: (reason?: string) => Promise<void>;
@@ -64,6 +66,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       provider: 'google',
       options: { redirectTo: window.location.origin },
     });
+    if (error) {
+      if (error.message.toLowerCase().includes('provider') && error.message.toLowerCase().includes('enabled')) {
+        throw new Error('Google chưa được bật trong Supabase Auth. Vào Authentication > Providers > Google, bật provider và thêm Client ID cùng Client Secret.');
+      }
+      throw error;
+    }
+  };
+
+  const sendPhoneOtp = async (phone: string) => {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
+    const normalized = phone.trim().replace(/\s+/g, '');
+    if (!/^\+[1-9]\d{7,14}$/.test(normalized)) throw new Error('Nhập số điện thoại theo định dạng quốc tế, ví dụ +84901234567.');
+    const { error } = await supabase.auth.signInWithOtp({ phone: normalized });
+    if (error) throw error;
+  };
+
+  const verifyPhoneOtp = async (phone: string, token: string) => {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
+    const normalized = phone.trim().replace(/\s+/g, '');
+    const { error } = await supabase.auth.verifyOtp({ phone: normalized, token: token.trim(), type: 'sms' });
     if (error) throw error;
   };
 
@@ -97,7 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAuth = authStatus === 'authenticated_synced' || authStatus === 'authenticated_offline';
-  return <AuthContext.Provider value={{ authStatus, user, profile: user, firebaseUser, isLoading: authStatus === 'initializing', isGuest: !isAuth, isAuthenticated: isAuth, isSynced: authStatus === 'authenticated_synced', isFirebaseReady: isSupabaseConfigured, loginWithGoogle, logout, updateProfile, requestDeletion }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ authStatus, user, profile: user, firebaseUser, isLoading: authStatus === 'initializing', isGuest: !isAuth, isAuthenticated: isAuth, isSynced: authStatus === 'authenticated_synced', isFirebaseReady: isSupabaseConfigured, loginWithGoogle, logout, updateProfile, requestDeletion, sendPhoneOtp, verifyPhoneOtp }}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
