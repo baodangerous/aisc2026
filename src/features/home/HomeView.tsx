@@ -15,22 +15,22 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
       image: '/images/aed-community-installation.png',
       alt: 'Đội ngũ cộng đồng giới thiệu tủ AED tại một không gian công cộng',
       title: 'Một điểm AED bắt đầu từ cộng đồng',
-      source: 'public.blob.vercel-storage.com · chưa xác minh chủ thể phát hành',
-      sourceUrl: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-lEhwS8MRtPPU0NJEl4SJGU2Ioiprc0.png',
+      source: 'Báo Khánh Hòa điện tử, bài đăng ngày 12/10/2026',
+      sourceUrl: 'https://baokhanhhoa.vn/xa-hoi/y-te-suc-khoe/202610/lap-dat-may-khu-rung-tim-tu-dong-tai-bao-tang-hai-duong-hoc-2f75342',
     },
     {
       image: '/images/cpr-training-session.png',
       alt: 'Lớp huấn luyện CPR thực hành với mannequin và AED',
       title: 'Học bằng tay, nhớ bằng phản xạ',
-      source: 'public.blob.vercel-storage.com · chưa xác minh chủ thể phát hành',
-      sourceUrl: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-UfqIJI5aBIZExSaSk90BqOclitZ40o.png',
+      source: 'Báo Khánh Hòa điện tử, bài đăng tháng 09/2026',
+      sourceUrl: 'https://baokhanhhoa.vn/xa-hoi/y-te-suc-khoe/202609/trung-tam-cap-cuu-115-tap-huan-ky-nang-hoi-sinh-tim-phoi-va-su-dung-may-khu-rung-tim-tu-dong-cdf28d0',
     },
     {
       image: '/images/aed-public-location.png',
       alt: 'Điểm đặt AED trong khu vực công cộng có nhân sự hỗ trợ',
       title: 'Biết vị trí trước khi cần đến',
-      source: 'public.blob.vercel-storage.com · chưa xác minh chủ thể phát hành',
-      sourceUrl: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-JzevJg2r9L32XBqdpm05U23fq9paPF.png',
+      source: 'Báo Khánh Hòa điện tử, bài đăng tháng 09/2026',
+      sourceUrl: 'https://baokhanhhoa.vn/xa-hoi/y-te-suc-khoe/202609/trung-tam-cap-cuu-115-tap-huan-ky-nang-hoi-sinh-tim-phoi-va-su-dung-may-khu-rung-tim-tu-dong-cdf28d0',
     },
   ];
   return (
@@ -40,19 +40,19 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
         <section className="hero-editorial overflow-hidden rounded-[2rem] bg-[#191919] text-white">
           <div className="hero-editorial-image relative h-[16rem] overflow-hidden sm:h-[24rem]">
             <img src="/images/aed-community-installation.png" alt="Đội ngũ cộng đồng giới thiệu tủ AED tại một không gian công cộng" className="h-full w-full object-cover object-[center_28%]" />
-            <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-sm"><CircleCheck className="size-3.5 text-[#ff6b68]" aria-hidden="true" />Ảnh cộng đồng thật</div>
+            <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-sm"><CircleCheck className="size-3.5 text-[#ff6b68]" aria-hidden="true" />Báo Khánh Hòa</div>
           </div>
           <div className="relative flex flex-col gap-4 p-5 sm:p-8">
-            <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/70"><span>Chuẩn bị sẵn sàng</span><span className="font-mono text-white/50">01 / 03</span></div>
+            <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/70"><span>Chuẩn bị sẵn sàng</span></div>
             <div className="max-w-xl">
-              <p className="mb-2 text-xs font-semibold text-[#ffb4b2]">GOLDENMINUTES · CỘNG ĐỒNG BIẾT CỨU NGƯỜI</p>
+              <p className="mb-2 text-xs font-semibold text-[#ffb4b2]">GOLDENMINUTES</p><p className="text-xs font-medium text-white/75">Cộng đồng biết cách cứu người</p>
               <h1 className="text-balance text-3xl font-bold leading-[1.05] sm:text-6xl">Mỗi phút đều có ý nghĩa.</h1>
               <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/80 sm:text-base">Học kỹ năng sơ cứu thật. Nhìn thấy những người đang hành động thật. Sẵn sàng trước khi tình huống khẩn cấp xảy ra.</p>
               <Link to="/training" className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#e31917] px-5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5"><PlayCircle className="size-5" aria-hidden="true" />Bắt đầu luyện ngay</Link>
             </div>
           </div>
         </section>
-        <p className="text-xs text-muted">Ảnh nền: public.blob.vercel-storage.com · chủ thể phát hành chưa xác minh độc lập · <a className="underline underline-offset-2" href="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-lEhwS8MRtPPU0NJEl4SJGU2Ioiprc0.png" target="_blank" rel="noopener noreferrer">xem URL ảnh gốc</a></p>
+        <p className="text-xs text-muted">Nguồn ảnh và thông tin: <a className="underline underline-offset-2" href="https://baokhanhhoa.vn/xa-hoi/y-te-suc-khoe/202610/lap-dat-may-khu-rung-tim-tu-dong-tai-bao-tang-hai-duong-hoc-2f75342" target="_blank" rel="noopener noreferrer">Báo Khánh Hòa điện tử, 12/10/2026</a></p>
 
         {/* Emergency CTA */}
         <section aria-label="Hỗ trợ khẩn cấp" className="flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-[#e31917] to-[#b31312] p-6 text-primary-foreground shadow-lg shadow-[#e31917]/20">
@@ -85,15 +85,15 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
         {/* Documentary filmstrip */}
         <section className="flex flex-col gap-4" aria-labelledby="stories-title">
           <div className="flex items-end justify-between gap-3">
-            <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Câu chuyện thật</p><h2 id="stories-title" className="mt-1 text-2xl font-bold">Ai cũng có thể bắt đầu</h2></div>
+            <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Từ Khánh Hòa</p><h2 id="stories-title" className="mt-1 text-2xl font-bold">Những người đang chuẩn bị</h2></div>
             <span className="text-xs text-muted">Vuốt để xem</span>
           </div>
           <div className="filmstrip -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 scrollbar-none sm:-mx-6 sm:px-6">
-            {photoStories.map((story, index) => (
+            {photoStories.map((story) => (
               <article key={story.image} className="film-card min-w-[84vw] snap-center overflow-hidden rounded-2xl border border-border bg-surface sm:min-w-[31rem]">
                 <div className="relative aspect-[4/3] overflow-hidden bg-[#e5e7eb]">
                   <img src={story.image} alt={story.alt} className="film-card-image h-full w-full object-cover object-[center_36%]" />
-                  <span className="absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur">0{index + 1} · ĐỜI THẬT</span>
+                  <span className="absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur">Báo Khánh Hòa</span>
                 </div>
                 <div className="flex flex-col gap-2 p-4"><h3 className="text-lg font-bold">{story.title}</h3><p className="text-xs text-muted">Nguồn ảnh: {story.source}</p><a href={story.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-fit items-center gap-1 text-xs font-semibold text-primary underline underline-offset-4">Xem nguồn đầy đủ <ExternalLink className="size-3" aria-hidden="true" /></a></div>
               </article>
