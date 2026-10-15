@@ -3,6 +3,12 @@ import request from 'supertest';
 import { app } from '../server/index';
 import { dataRepository } from '../server/repository';
 
+vi.mock('../server/supabaseAuth', () => ({
+  supabaseAdmin: null,
+  verifySupabaseAccessToken: vi.fn(async (token: string) => token === 'valid_applicant_token' ? { id: 'vol_user_1', email: 'vol@test.com', user_metadata: { role: 'citizen' } } : null),
+  isSupabaseAuthConfigured: () => false,
+}));
+
 describe('Volunteer Status Integrity Verification', () => {
   it('new volunteer application always receives status pending_review (never verified)', async () => {
     vi.spyOn(dataRepository, 'getUser').mockResolvedValueOnce({

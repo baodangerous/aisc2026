@@ -121,6 +121,7 @@ export class SupabaseRepository {
   listTrainingSessions(ownerUid?: string) { return this.list<TrainingSession>('trainingSessions', ownerUid); }
 
   async getFacilities(): Promise<CommunityFacility[]> {
+    if (!supabaseAdmin) return [];
     const rows = await this.list<CommunityFacility>('facilities');
     return rows.flatMap((row) => { const parsed = FacilitySchema.safeParse(row); return parsed.success ? [parsed.data] : []; });
   }
@@ -143,8 +144,8 @@ export class SupabaseRepository {
     await this.save('volunteerApplications', id, updated, current.userId); return updated;
   }
 
-  async updateVolunteerStatusByUser(userId: string, action: 'pause' | 'resume' | 'withdraw') { const application = await this.getVolunteerApplicationByUserId(userId); if (!application) return null; return this.transitionVolunteer(application.id, { pause: 'suspended', resume: 'pending_review', withdraw: 'withdrawn' }[action], 'citizen'); }
-  async listVolunteerApplications(filters?: { status?: string; province?: string; cprTrained?: boolean; search?: string }) { const list = await this.list<VolunteerApplication>('volunteerApplications'); return list.filter((item) => (!filters?.status || filters.status === 'all' || item.status === filters.status) && (!filters?.province || filters.province === 'all' || item.province === filters.province) && (filters?.cprTrained === undefined || item.cprTrained === filters.cprTrained) && (!filters?.search || item.displayName.toLocaleLowerCase('vi').includes(filters.search.toLocaleLowerCase('vi')))); }
+  async updateVolunteerStatusByUser(userId: string, action: 'pause' | 'resume' | 'withdraw') { const application = await this.getVolunteerApplicationByUserId(userId); if (!application) return null; return this.transitionVolunteer(application.id, ({ pause: 'suspended', resume: 'pending_review', withdraw: 'withdrawn' } as Record<typeof action, VolunteerStatus>)[action], 'citizen'); }
+  async listVolunteerApplications(filters?: { status?: string; province?: string; cprTrained?: boolean; search?: string }) { const list = await this.list<VolunteerApplication>('volunteerApplications'); return list.filter((item) => (!filters?.status || filters.status === 'all' || item.status === (filters.status as VolunteerStatus)) && (!filters?.province || filters.province === 'all' || item.province === filters.province) && (filters?.cprTrained === undefined || item.cprTrained === filters.cprTrained) && (!filters?.search || item.displayName.toLocaleLowerCase('vi').includes(filters.search.toLocaleLowerCase('vi')))); }
   reviewVolunteerApplication(id: string, reviewerId: string, _reviewerName: string, status: VolunteerStatus, reviewNote: string) { return this.transitionVolunteer(id, status, 'platform_admin', reviewNote, reviewerId); }
 
   async logAudit(entry: Omit<AuditLog, 'id' | 'timestamp'>): Promise<void> { const record = { ...entry, id: randomUUID(), timestamp: new Date().toISOString() }; await this.save('auditLogs', record.id, record); }

@@ -3,6 +3,12 @@ import request from 'supertest';
 import { app } from '../server/index';
 import { dataRepository } from '../server/repository';
 
+vi.mock('../server/supabaseAuth', () => ({
+  supabaseAdmin: null,
+  verifySupabaseAccessToken: vi.fn(async (token: string) => token === 'valid_token' ? { id: 'user_123', email: 'tester@test.com', user_metadata: { role: 'citizen' } } : null),
+  isSupabaseAuthConfigured: () => false,
+}));
+
 describe('Session Idempotency & Batching Verification', () => {
   it('rejects unauthenticated POST /api/sessions', async () => {
     const res = await request(app)

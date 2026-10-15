@@ -5,6 +5,16 @@ import { getEffectiveRoleFromClaims } from '../server/routes/api';
 import { dataRepository } from '../server/repository';
 import { TrainingSession } from '../src/domain/schemas';
 
+vi.mock('../server/supabaseAuth', () => ({
+  supabaseAdmin: null,
+  verifySupabaseAccessToken: vi.fn(async (token: string) => ({
+    id: token === 'valid_admin_token' ? 'user_admin' : 'user_citizen',
+    email: `${token}@test.com`,
+    app_metadata: { role: token === 'valid_admin_token' ? 'platform_admin' : 'citizen' },
+  })),
+  isSupabaseAuthConfigured: () => false,
+}));
+
 describe('Role Escalation & IDOR Protection Verification', () => {
   it('getEffectiveRoleFromClaims strictly enforces whitelist and rejects arbitrary strings', () => {
     expect(getEffectiveRoleFromClaims({ admin: true })).toBe('platform_admin');

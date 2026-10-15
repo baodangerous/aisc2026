@@ -6,6 +6,12 @@ import { SessionEventSchema, FacilitySchema } from '../src/domain/schemas/persis
 import { REFERENCE_LEARNING_RESOURCES } from '../src/content/curatedLearningCatalog';
 import type { TrainingSession, UserProfile } from '../src/domain/schemas';
 
+vi.mock('../server/supabaseAuth', () => ({
+  supabaseAdmin: null,
+  verifySupabaseAccessToken: vi.fn(async (token: string) => token === 'token' ? { id: 'owner_a', email: 'owner@test.com', user_metadata: { role: 'citizen' } } : null),
+  isSupabaseAuthConfigured: () => false,
+}));
+
 afterEach(() => vi.restoreAllMocks());
 const now = '2026-10-15T10:00:00.000Z';
 const profile: UserProfile = { uid: 'owner_a', displayName: 'User', role: 'citizen', preferredLanguage: 'vi', onboardingCompleted: true, createdAt: now, updatedAt: now };
