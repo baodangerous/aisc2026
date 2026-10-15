@@ -53,7 +53,7 @@ export const RealEmergencyView: React.FC = () => {
   return (
     <div className="min-h-[calc(100vh-var(--header-height))] bg-[#F9FAFB] text-slate-800 pb-24 md:pb-16">
       {/* Top Banner - 115 Emergency Warning */}
-      <div className="bg-rose-600 text-white px-4 py-3 shadow-xs border-b border-rose-700">
+      <div className="bg-gradient-to-r from-[#e31917] to-[#b31312] text-white px-4 py-3 shadow-lg shadow-[#e31917]/20 border-b border-[#b31312]">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           <div className="flex items-center gap-2.5">
             <AlertOctagon className="w-5 h-5 shrink-0" aria-hidden="true" />
