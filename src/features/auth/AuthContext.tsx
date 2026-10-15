@@ -65,9 +65,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogle = async () => {
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
+    const redirectTo = import.meta.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}${window.location.pathname}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo },
     });
     if (error) {
       if (error.message.toLowerCase().includes('provider') && error.message.toLowerCase().includes('enabled')) {

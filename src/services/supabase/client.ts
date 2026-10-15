@@ -16,7 +16,8 @@ export async function getSupabaseProfile(user: SupabaseUser) {
   const { data, error } = await supabase.from('profiles').select('id,display_name,role,preferred_language,onboarding_completed,created_at,updated_at,deletion_requested_at').eq('id', user.id).maybeSingle();
   if (error) throw error;
   if (data) return data;
-  const { data: created, error: createError } = await supabase.from('profiles').upsert({ id: user.id, display_name: user.user_metadata?.display_name || user.email?.split('@')[0] || 'Người dùng' }).select().single();
+  const displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.user_metadata?.display_name || user.phone || user.email?.split('@')[0] || 'Người dùng';
+  const { data: created, error: createError } = await supabase.from('profiles').upsert({ id: user.id, display_name: displayName, role: 'user', preferred_language: 'vi', onboarding_completed: false }).select('id,display_name,role,preferred_language,onboarding_completed,created_at,updated_at,deletion_requested_at').single();
   if (createError) throw createError;
   return created;
 }
