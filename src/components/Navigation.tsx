@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ShieldCheck,
   LogOut,
+  Users,
 } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
 
@@ -39,6 +40,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
     { path: '/training', label: 'Luyện 3 phút' },
     { path: '/nearby', label: 'Gần bạn' },
     { path: '/library', label: 'Thư viện' },
+    { path: '/community', label: 'Cộng đồng' },
   ];
 
   const bottomNavItems = [
@@ -260,6 +262,18 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
             {/* Route Links List */}
             <div className="space-y-1">
               <div className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Chức năng nâng cao</div>
+
+              <button
+                type="button"
+                onClick={() => handleNavigateFromSheet('/community')}
+                className="w-full p-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50 text-left transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-50 text-blue-600 border border-blue-100"><Users className="w-4 h-4" /></div>
+                  <div><div className="text-xs font-bold text-slate-900">Cộng đồng hỗ trợ</div><div className="text-xs text-slate-500">Chia sẻ và gửi cảnh báo quanh bạn</div></div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-300" />
+              </button>
 
               <button
                 type="button"
