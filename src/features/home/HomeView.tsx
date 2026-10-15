@@ -9,10 +9,10 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
 
   return (
     <div className="bg-background pb-24 font-sans text-foreground">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
+      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-5 sm:px-6 sm:py-10">
         {/* Hero Section */}
-        <section className="hero-editorial overflow-hidden rounded-[2rem] bg-[#191919] text-white">
-          <div className="hero-editorial-image relative h-[16rem] overflow-hidden sm:h-[24rem]">
+        <section className="hero-editorial overflow-hidden rounded-[1.5rem] bg-[#191919] text-white shadow-[0_20px_50px_rgba(23,33,43,0.16)] sm:rounded-[2rem]">
+          <div className="hero-editorial-image relative h-[13.5rem] overflow-hidden sm:h-[24rem]">
             <img src={HOME_HERO.image} alt="Đội ngũ cộng đồng giới thiệu tủ AED tại một không gian công cộng" className="h-full w-full object-cover object-[center_28%]" />
             <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-sm"><CircleCheck className="size-3.5 text-[#ff6b68]" aria-hidden="true" />Báo Khánh Hòa</div>
           </div>
@@ -29,7 +29,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
         <p className="text-xs text-muted">Nguồn ảnh và thông tin: <a className="underline underline-offset-2" href={HOME_HERO.sourceUrl} target="_blank" rel="noopener noreferrer">{HOME_HERO.sourceLabel}</a></p>
 
         {/* Emergency CTA */}
-        <section aria-label="Hỗ trợ khẩn cấp" className="flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-[#e31917] to-[#b31312] p-6 text-primary-foreground shadow-lg shadow-[#e31917]/20">
+        <section aria-label="Hỗ trợ khẩn cấp" className="flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-[#c92827] to-[#9f1f20] p-5 text-primary-foreground shadow-[0_16px_34px_rgba(201,40,39,0.22)] sm:p-6">
           <div className="flex items-start gap-3">
             <ShieldAlert className="size-6 shrink-0 flex-shrink-0" aria-hidden="true" />
             <div className="flex flex-col gap-1">
@@ -48,7 +48,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
           <h2 id="quick-scenarios" className="text-lg font-bold">Tình huống thường gặp</h2>
           <div className="grid grid-cols-3 gap-2">
             {HOME_EXERCISES.map(({ id, label, icon: Icon }) => (
-              <Link key={id} to={`/training?scenario=${id}`} className="flex flex-col items-center justify-center gap-2 rounded-xl border border-border bg-surface p-3 transition-colors hover:border-primary hover:bg-surface/80">
+              <Link key={id} to={`/training?scenario=${id}`} className="editorial-surface flex min-h-[6.5rem] flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center transition-transform duration-200 hover:-translate-y-0.5 hover:border-primary">
                 <Icon className="size-6 text-primary" aria-hidden="true" />
                 <span className="text-xs font-medium text-center leading-tight sm:text-sm">{label}</span>
               </Link>
@@ -64,7 +64,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
           </div>
           <div className="filmstrip -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 scrollbar-none sm:-mx-6 sm:px-6">
             {HOME_PHOTO_STORIES.map((story) => (
-              <article key={story.image} className="film-card min-w-[84vw] snap-center overflow-hidden rounded-2xl border border-border bg-surface sm:min-w-[31rem]">
+              <article key={story.image} className="film-card min-w-[84vw] snap-center overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_12px_28px_rgba(23,33,43,0.07)] sm:min-w-[31rem]">
                 <div className="relative aspect-[4/3] overflow-hidden bg-[#e5e7eb]">
                   <img src={story.image} alt={story.alt} className="film-card-image h-full w-full object-cover object-[center_36%]" />
                   <span className="absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur">Báo Khánh Hòa</span>
