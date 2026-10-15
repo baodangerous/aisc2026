@@ -54,8 +54,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
-      if (session?.user) void hydrateUser(session.user).catch(() => active && setAuthStatus('authentication_error'));
-      else { setFirebaseUser(null); setUser(null); setAuthStatus('guest'); }
+      if (session?.user) {
+        window.setTimeout(() => {
+          if (active) void hydrateUser(session.user).catch(() => active && setAuthStatus('authentication_error'));
+        }, 0);
+      } else { setFirebaseUser(null); setUser(null); setAuthStatus('guest'); }
     });
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
