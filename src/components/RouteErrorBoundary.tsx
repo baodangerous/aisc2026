@@ -33,7 +33,8 @@ export class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, Route
   private handleGoHome = (): void => {
     this.setState({ hasError: false, error: null });
     if (window.location.hash) {
-      window.location.hash = '#/';
+      const homeUrl = `${window.location.pathname}${window.location.search}`;
+      window.location.assign(homeUrl);
     } else {
       window.location.reload();
     }

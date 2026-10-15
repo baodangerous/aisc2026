@@ -12,6 +12,8 @@ import { CPRMetronome } from '../../components/CPRMetronome';
 import { Call115Modal } from '../../components/Call115Modal';
 import { MEDICAL_DISCLAIMER_VI } from '../../content/approvedScenarios';
 import { MetadataRow } from '../../components/common/MetadataSeparators';
+import { EmergencyAIAssistant } from './EmergencyAIAssistant';
+import { FirstAidChatbot } from '../ai/FirstAidChatbot';
 
 type EmergencyType = 'ohca' | 'stroke' | 'bleeding' | 'choking';
 
@@ -79,6 +81,9 @@ export const RealEmergencyView: React.FC = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
+        <EmergencyAIAssistant />
+        <FirstAidChatbot />
+
         {/* Emergency Type Selector */}
         <div>
           <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">

@@ -48,10 +48,10 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
           <h2 id="quick-scenarios" className="text-lg font-bold">Tình huống thường gặp</h2>
           <div className="grid grid-cols-3 gap-2">
             {HOME_EXERCISES.map(({ id, label, icon: Icon }) => (
-              <Link key={id} to={`/training?scenario=${id}`} className="editorial-surface flex min-h-[6.5rem] flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center transition-transform duration-200 hover:-translate-y-0.5 hover:border-primary">
+              <button key={id} type="button" onClick={() => navigate(`/training?scenario=${encodeURIComponent(id)}`)} className="editorial-surface flex min-h-[6.5rem] w-full flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center transition-transform duration-200 hover:-translate-y-0.5 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                 <Icon className="size-6 text-primary" aria-hidden="true" />
                 <span className="text-xs font-medium text-center leading-tight sm:text-sm">{label}</span>
-              </Link>
+              </button>
             ))}
           </div>
         </section>
