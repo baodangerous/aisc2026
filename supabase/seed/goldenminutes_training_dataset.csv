@@ -1,0 +1,6 @@
+scenario_id,scenario_version_id,title,category,language,source_url
+cardiac-arrest,v1,Ngừng tim - CPR và AED,cardiac_arrest,vi,https://cpr.heart.org/en/resuscitation-science/cpr-and-ecc-guidelines
+stroke,v1,Dấu hiệu đột quỵ và FAST,stroke,vi,https://www.stroke.org/en/about-stroke/stroke-symptoms
+severe-bleeding,v1,Cầm máu chảy nhiều,trauma,vi,https://www.redcross.org.uk/first-aid/learn-first-aid/bleeding
+unconsciousness,v1,Sơ cứu người bất tỉnh,first_aid,vi,https://www.redcross.org.uk/first-aid/learn-first-aid/unconsciousness
+trauma,v1,Đánh giá nạn nhân chấn thương,trauma,vi,https://www.facs.org/quality-programs/trauma/atls/

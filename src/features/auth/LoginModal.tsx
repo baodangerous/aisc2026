@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, LockKeyhole, AlertCircle, LogIn, LoaderCircle, Smartphone } from 'lucide-react';
+import { X, LockKeyhole, AlertCircle, LogIn, LoaderCircle, Smartphone, Mail } from 'lucide-react';
 import { useAuth } from './AuthContext';
 
 export function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { loginWithGoogle, sendPhoneOtp, verifyPhoneOtp, isSupabaseReady } = useAuth();
+  const { loginWithGoogle, signInWithPassword, signUpWithPassword, sendPhoneOtp, verifyPhoneOtp, isSupabaseReady } = useAuth();
   const [pending, setPending] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -19,6 +22,16 @@ export function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
     setPending(true); setError('');
     try { await loginWithGoogle(); onClose(); }
     catch (error: unknown) { setError(error instanceof Error ? error.message : 'Chưa thể hoàn tất đăng nhập. Vui lòng thử lại sau.'); }
+    finally { setPending(false); }
+  };
+  const submitEmail = async () => {
+    if (pending) return;
+    setPending(true); setError('');
+    try {
+      if (isSignUp) await signUpWithPassword(email, password);
+      else await signInWithPassword(email, password);
+      onClose();
+    } catch (error: unknown) { setError(error instanceof Error ? error.message : 'Chưa thể xác thực tài khoản.'); }
     finally { setPending(false); }
   };
   const requestOtp = async () => {
@@ -41,6 +54,13 @@ export function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         {error && <p role="alert" className="flex items-start gap-2 text-sm text-primary"><AlertCircle className="size-5 shrink-0" aria-hidden="true" />{error}</p>}
         {isSupabaseReady ? <div className="flex flex-col gap-3">
           <button type="button" disabled={pending} onClick={login} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-base font-semibold text-primary-foreground disabled:opacity-60">{pending ? <LoaderCircle className="size-5 animate-spin" aria-hidden="true" /> : <LogIn className="size-5" aria-hidden="true" />}{pending ? 'Đang đăng nhập…' : 'Tiếp tục với Google'}</button>
+          <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-border" />hoặc<span className="h-px flex-1 bg-border" /></div>
+          <label className="text-sm font-semibold" htmlFor="email-login">Email</label>
+          <input id="email-login" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="ban@example.com" className="min-h-12 rounded-xl border border-border bg-background px-3 outline-none focus:border-primary" />
+          <label className="text-sm font-semibold" htmlFor="password-login">Mật khẩu</label>
+          <input id="password-login" type="password" autoComplete={isSignUp ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Tối thiểu 8 ký tự" className="min-h-12 rounded-xl border border-border bg-background px-3 outline-none focus:border-primary" />
+          <button type="button" disabled={pending || !email || !password} onClick={submitEmail} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 font-semibold disabled:opacity-50"><Mail className="size-5" aria-hidden="true" />{isSignUp ? 'Tạo tài khoản bằng email' : 'Đăng nhập bằng email'}</button>
+          <button type="button" onClick={() => { setIsSignUp((value) => !value); setError(''); }} className="text-left text-sm font-semibold text-primary underline underline-offset-4">{isSignUp ? 'Đã có tài khoản? Đăng nhập' : 'Chưa có tài khoản? Tạo tài khoản'}</button>
           <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-border" />hoặc<span className="h-px flex-1 bg-border" /></div>
           <label className="text-sm font-semibold" htmlFor="phone-login">Số điện thoại</label>
           <input id="phone-login" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+84901234567" className="min-h-12 rounded-xl border border-border bg-background px-3 outline-none focus:border-primary" />
