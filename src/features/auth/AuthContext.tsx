@@ -66,7 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithGoogle = async () => {
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
     const redirectTo = `${window.location.origin}${window.location.pathname}`;
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },
     });
@@ -75,6 +75,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Google chưa được bật trong Supabase Auth. Vào Authentication > Providers > Google, bật provider và thêm Client ID cùng Client Secret.');
       }
       throw error;
+    }
+    if (!data.url) throw new Error('Không nhận được liên kết đăng nhập Google. Vui lòng thử lại.');
+    const isEmbeddedPreview = window.self !== window.top;
+    if (isEmbeddedPreview) {
+      const authWindow = window.open(data.url, '_blank', 'noopener,noreferrer');
+      if (!authWindow) throw new Error('Trình duyệt đã chặn cửa sổ đăng nhập. Hãy cho phép popup rồi thử lại.');
+    } else {
+      window.location.assign(data.url);
     }
   };
 
