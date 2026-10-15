@@ -130,7 +130,7 @@ export function createApp(options?: AppOptions): express.Express {
       }
       return res.status(200).json({
         status: 'ready',
-        database: 'cloud_firestore',
+        database: 'supabase_postgres',
         timestamp: new Date().toISOString(),
       });
     } catch (err: any) {

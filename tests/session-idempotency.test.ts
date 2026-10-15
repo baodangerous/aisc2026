@@ -3,20 +3,10 @@ import request from 'supertest';
 import { app } from '../server/index';
 import { dataRepository } from '../server/repository';
 
-// Mock auth token verification
-vi.mock('../server/firebaseAdmin', () => ({
-  adminAuth: {
-    verifyIdToken: vi.fn().mockImplementation(async (token: string) => {
-      if (token === 'valid_token') {
-        return { uid: 'user_123', email: 'tester@test.com' };
-      }
-      throw new Error('Invalid token');
-    }),
-  },
-  adminDb: {
-    collection: vi.fn(),
-  },
-  adminApp: {},
+vi.mock('../server/supabaseAuth', () => ({
+  supabaseAdmin: null,
+  verifySupabaseAccessToken: vi.fn(async (token: string) => token === 'valid_token' ? { id: 'user_123', email: 'tester@test.com', user_metadata: { role: 'citizen' } } : null),
+  isSupabaseAuthConfigured: () => false,
 }));
 
 describe('Session Idempotency & Batching Verification', () => {

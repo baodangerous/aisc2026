@@ -19,18 +19,22 @@
   <img alt="Vite 6" src="https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white">
   <img alt="Tailwind CSS 4" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="Express" src="https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white">
-  <img alt="Firebase" src="https://img.shields.io/badge/Firebase-12-DD2C00?logo=firebase&logoColor=white">
+  <img alt="Supabase" src="https://img.shields.io/badge/Supabase-2.118-3ECF8E?logo=supabase&logoColor=white">
   <img alt="Node 20+" src="https://img.shields.io/badge/Node-20%2B-5FA04E?logo=nodedotjs&logoColor=white">
 </p>
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/home.png" alt="Home screen with the emergency entry point and CPR reference metrics" width="260"></td>
-    <td><img src="docs/screenshots/training.png" alt="Three-minute reflex drill for an out-of-hospital cardiac arrest scenario" width="260"></td>
+    <td><img src="docs/screenshots/home.png" alt="GoldenMinutes home screen" width="240"></td>
+    <td><img src="docs/screenshots/training.png" alt="Reflex training screen" width="240"></td>
+    <td><img src="docs/screenshots/library.png" alt="First-aid learning library" width="240"></td>
+    <td><img src="docs/screenshots/nearby.png" alt="Nearby care and AED map" width="240"></td>
   </tr>
   <tr>
     <td align="center"><sub>Home</sub></td>
-    <td align="center"><sub>Reflex drill</sub></td>
+    <td align="center"><sub>Training</sub></td>
+    <td align="center"><sub>Library</sub></td>
+    <td align="center"><sub>Nearby care</sub></td>
   </tr>
 </table>
 
@@ -64,7 +68,7 @@ GoldenMinutes was built for AISC 2026 to close that gap. People rehearse short, 
 - **Client:** React 19, TypeScript, Vite 6, Tailwind CSS 4, React Router 7, TanStack Query, Motion, Recharts, Leaflet
 - **Server:** Express 4 with Zod validation, bundled with esbuild for production
 - **AI:** Google Gemini through `@google/genai`, called only from the server
-- **Data and auth:** Firebase Authentication and Cloud Firestore (optional Admin SDK on the server)
+- **Data and auth:** Supabase Auth, Postgres, Row Level Security, and curated knowledge/training datasets
 - **Testing:** Vitest
 
 ## Getting started
@@ -73,7 +77,7 @@ GoldenMinutes was built for AISC 2026 to close that gap. People rehearse short, 
 
 - Node.js 20 or newer
 - A [Gemini API key](https://aistudio.google.com/apikey)
-- A Firebase project (optional, required for sign-in and cloud sync)
+- A Supabase project (required for sign-in, profiles, cloud sync, and knowledge retrieval)
 
 ### Installation
 
@@ -100,7 +104,7 @@ The app runs at [http://localhost:3000](http://localhost:3000).
 | `npm run build` | Build the client and bundle the server into `dist/` |
 | `npm start` | Run the production server from `dist/server.js` |
 | `npm run lint` | Type-check the project with `tsc --noEmit` |
-| `npm test` | Run the Vitest suite |
+| `pnpm test` | Run the Vitest suite |
 
 ## Configuration
 
@@ -112,15 +116,10 @@ The app runs at [http://localhost:3000](http://localhost:3000).
 | `PORT` | No | Production server port |
 | `CORS_ORIGIN` | No | Comma-separated list of allowed origins |
 | `VITE_GOOGLE_MAPS_API_KEY` | No | Enables Google Maps and Places search on the Nearby screen |
-| `VITE_FIREBASE_API_KEY` | No | Firebase web config |
-| `VITE_FIREBASE_AUTH_DOMAIN` | No | Firebase web config |
-| `VITE_FIREBASE_PROJECT_ID` | No | Firebase web config |
-| `VITE_FIREBASE_STORAGE_BUCKET` | No | Firebase web config |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | No | Firebase web config |
-| `VITE_FIREBASE_APP_ID` | No | Firebase web config |
-| `VITE_FIREBASE_DATABASE_ID` | No | Firestore database ID, if not `(default)` |
-| `ENABLE_FIRESTORE_ADMIN` | No | Set to `true` to persist data through the Firebase Admin SDK |
-| `FIREBASE_PROJECT_ID` | No | Project ID used by the Admin SDK |
+| `VITE_SUPABASE_URL` | Yes | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase publishable/anonymous key |
+| `SUPABASE_URL` | Yes | Server-side Supabase URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only key for ingestion and protected jobs |
 
 Variables prefixed with `VITE_` are exposed to the browser. Never put secrets in them.
 
@@ -141,22 +140,21 @@ flowchart LR
 
   API -->|HTTPS + Zod| Routes
   Gemini --> GoogleAI[(Google Gemini)]
-  Repo --> Firestore[(Cloud Firestore)]
-  UI --> Auth[Firebase Auth]
+    Repo --> Postgres[(Supabase Postgres)]
+  UI --> Auth[Supabase Auth]
 ```
 
 ```text
 .
-├── server/                 Express app, API routes, Gemini and Firestore services
-├── src/
-│   ├── components/         Shared UI (navigation, sheets, buttons)
-│   ├── content/            Approved scenarios and the learning catalogue
-│   ├── domain/             Rule engine, metric calculators, Zod schemas
-│   ├── features/           auth, emergency, home, library, nearby, training
-│   └── services/           API client, Firebase, IndexedDB, voice input
+├── api/                    Vercel serverless entrypoint
+├── src/                    React UI, features, domain rules, and client services
+├── server/                 Express routes, AI services, auth, and repository
+├── data/                   Curated sources and JSONL training dataset
+├── docs/                   Screenshots and source project documents
+├── scripts/                Validated ingest and quality pipeline
+├── supabase/               Versioned migrations and seed assets
 ├── tests/                  Vitest suites for API, security, and resilience
-├── public/                 Static assets and the web app manifest
-└── firestore.rules         Firestore security rules
+└── public/                 Static assets and the web app manifest
 ```
 
 Scenario content in `src/content` is reviewed by hand. Gemini only extracts facts from what the user says or shows. All scoring and safety decisions are made by the deterministic rule engine in `src/domain`.
@@ -186,7 +184,7 @@ Liveness and readiness probes are available at `/healthz` and `/readyz`.
 ## Testing
 
 ```bash
-npm test
+pnpm test
 ```
 
 The suite covers API routing and content types, CORS policy, role escalation, session idempotency, Gemini failure handling, safety claims in generated text, and the production entry point.
@@ -201,7 +199,7 @@ The suite covers API routing and content types, CORS policy, role escalation, se
 
 1. Fork the repository and create a branch from `main`.
 2. Keep changes focused and add tests where behaviour changes.
-3. Run `npm run lint` and `npm test` before opening a pull request.
+3. Run `npm run lint` and `pnpm test` before opening a pull request.
 4. Any change to medical content in `src/content` must cite its source in the pull request description.
 
 ## License

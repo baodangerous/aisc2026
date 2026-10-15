@@ -104,7 +104,7 @@ export const apiClient = {
   },
 
   // Supabase Auth Helper APIs
-  async syncFirebaseUserProfile(
+  async syncUserProfile(
     displayName?: string,
     preferredLanguage?: string,
     phone?: string,

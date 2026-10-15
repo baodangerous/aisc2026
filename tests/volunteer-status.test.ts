@@ -3,25 +3,10 @@ import request from 'supertest';
 import { app } from '../server/index';
 import { dataRepository } from '../server/repository';
 
-// Mock auth token verification
-vi.mock('../server/firebaseAdmin', () => ({
-  adminAuth: {
-    verifyIdToken: vi.fn().mockImplementation(async (token: string) => {
-      if (token === 'valid_applicant_token') {
-        return { uid: 'vol_user_1', email: 'vol@test.com' };
-      }
-      throw new Error('Invalid token');
-    }),
-  },
-  adminDb: {
-    collection: vi.fn().mockReturnValue({
-      doc: vi.fn().mockReturnValue({
-        set: vi.fn().mockResolvedValue({}),
-        get: vi.fn().mockResolvedValue({ exists: false }),
-      }),
-    }),
-  },
-  adminApp: {},
+vi.mock('../server/supabaseAuth', () => ({
+  supabaseAdmin: null,
+  verifySupabaseAccessToken: vi.fn(async (token: string) => token === 'valid_applicant_token' ? { id: 'vol_user_1', email: 'vol@test.com', user_metadata: { role: 'citizen' } } : null),
+  isSupabaseAuthConfigured: () => false,
 }));
 
 describe('Volunteer Status Integrity Verification', () => {
