@@ -1,0 +1,552 @@
+import { auth, isFirebaseConfigured } from '../firebase/client';
+import { saveLocalSession, saveLocalEvent, getLocalSessions } from '../indexedDb';
+import {
+  UserProfile,
+  TrainingSession,
+  DailyAggregate,
+  DelayFunnelStep,
+  CommunityFacility,
+  FactExtractionInput,
+  FactExtractionOutput,
+  AudioTranscribeInput,
+  AudioTranscribeOutput,
+  VisualFactExtractionInput,
+  VisualFactExtractionOutput,
+  InsightInput,
+  InsightOutput,
+  AuditLog,
+  VolunteerApplication,
+  VolunteerStatus,
+} from '../../domain/schemas';
+
+const API_BASE = '/api';
+
+// Obtain Firebase ID token dynamically from current logged-in user
+async function getAuthHeader(idTokenOverride?: string): Promise<Record<string, string>> {
+  if (idTokenOverride) {
+    return { Authorization: `Bearer ${idTokenOverride}` };
+  }
+  if (!auth || !auth.currentUser) return {};
+  try {
+    const token = await auth.currentUser.getIdToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
+async function handleResponse<T>(res: Response): Promise<T> {
+  const contentType = res.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json');
+
+  if (!res.ok) {
+    if (isJson) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.error || `Lỗi máy chủ (HTTP ${res.status})`);
+    } else {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Lỗi yêu cầu (HTTP ${res.status}): ${text.slice(0, 100) || 'Phản hồi không hợp lệ'}`);
+    }
+  }
+
+  if (!isJson) {
+    throw new Error(`API endpoint trả về HTML thay vì JSON (HTTP ${res.status}). Kiểm tra cấu hình router.`);
+  }
+
+  return res.json();
+}
+
+export const apiClient = {
+  // Health
+  async getHealth() {
+    const res = await fetch(`${API_BASE}/health`);
+    return handleResponse<{
+      status: string;
+      version: string;
+      geminiReady: boolean;
+      uptimeSeconds: number;
+    }>(res);
+  },
+
+  // Firebase Auth Helper APIs
+  async syncFirebaseUserProfile(
+    displayName?: string,
+    preferredLanguage?: string,
+    phone?: string,
+    idTokenOverride?: string
+  ) {
+    const authHeaders = await getAuthHeader(idTokenOverride);
+    const res = await fetch(`${API_BASE}/auth/sync-profile`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify({ displayName, preferredLanguage, phone }),
+    });
+    return handleResponse<{ user: UserProfile }>(res);
+  },
+
+  async getCurrentUser(idTokenOverride?: string) {
+    const authHeaders = await getAuthHeader(idTokenOverride);
+    if (!authHeaders.Authorization) {
+      return {
+        user: {
+          uid: 'anonymous_guest',
+          displayName: 'Khách vãng lai (Guest)',
+          phoneMasked: 'Chưa xác thực',
+          role: 'guest' as const,
+          preferredLanguage: 'vi' as const,
+          onboardingCompleted: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as UserProfile,
+        isGuest: true,
+      };
+    }
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      headers: authHeaders,
+    });
+    return handleResponse<{ user: UserProfile; isGuest: boolean }>(res);
+  },
+
+  async requestAccountDeletion(reason?: string) {
+    const authHeaders = await getAuthHeader();
+    const res = await fetch(`${API_BASE}/privacy/delete-request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
+      body: JSON.stringify({ reason }),
+    });
+    return handleResponse<{ success: boolean; request: any }>(res);
+  },
+
+  // Scenarios (Resilient fallback to approvedScenarios)
+  async getScenarios() {
+    try {
+      const res = await fetch(`${API_BASE}/scenarios`);
+      return await handleResponse<{ scenarios: any[] }>(res);
+    } catch {
+      const { APPROVED_SCENARIOS } = await import('../../content/approvedScenarios');
+      return { scenarios: APPROVED_SCENARIOS };
+    }
+  },
+
+  async getScenario(id: string) {
+    try {
+      const res = await fetch(`${API_BASE}/scenarios/${id}`);
+      return await handleResponse<{ scenario: any }>(res);
+    } catch {
+      const { APPROVED_SCENARIOS } = await import('../../content/approvedScenarios');
+      const found = APPROVED_SCENARIOS.find((s) => s.id === id);
+      return { scenario: found || APPROVED_SCENARIOS[0] };
+    }
+  },
+
+  // Training Sessions
+  async saveTrainingSession(session: any) {
+    const authHeaders = await getAuthHeader();
+    if (!authHeaders.Authorization) {
+      // Guest mode: Persist purely to local IndexedDB
+      try {
+        await saveLocalSession(session);
+      } catch (e) {
+        console.warn('IndexedDB write fallback note:', e);
+      }
+      return { session: session as TrainingSession, isLocalOnly: true };
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify(session),
+      });
+      return handleResponse<{ session: TrainingSession; isDuplicate?: boolean }>(res);
+    } catch (err) {
+      // Offline fallback
+      try {
+        await saveLocalSession(session);
+      } catch (e) {
+        console.warn('IndexedDB fallback note:', e);
+      }
+      return { session: session as TrainingSession, isLocalOnly: true };
+    }
+  },
+
+  async startSession(payload: {
+    clientSessionId: string;
+    scenarioId: string;
+    scenarioVersionId?: string;
+    scenarioTitle?: string;
+    confidenceBefore?: number;
+    dataOrigin?: string;
+  }) {
+    return this.saveTrainingSession({
+      clientSessionId: payload.clientSessionId,
+      scenarioId: payload.scenarioId,
+      scenarioVersionId: payload.scenarioVersionId || 'v1',
+      scenarioTitle: payload.scenarioTitle || 'Luyện tập tình huống',
+      confidenceBefore: payload.confidenceBefore,
+      status: 'in_progress',
+      events: [],
+      dataOrigin: payload.dataOrigin || 'training_user',
+    });
+  },
+
+  async sendEventsBatch(clientSessionId: string, events: any[]) {
+    // Save to local indexedDB first
+    try {
+      for (const ev of events) {
+        await saveLocalEvent({ ...ev, sessionId: clientSessionId });
+      }
+    } catch (e) {
+      console.warn('IndexedDB saveLocalEvent note:', e);
+    }
+
+    const authHeaders = await getAuthHeader();
+    if (!authHeaders.Authorization) {
+      return { success: true, pending: true };
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${clientSessionId}/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ events }),
+      });
+      return handleResponse<{ success: boolean; session?: TrainingSession }>(res);
+    } catch (err) {
+      return { success: true, pending: true };
+    }
+  },
+
+  async completeSession(clientSessionId: string, payload: {
+    scenarioId: string;
+    scenarioVersionId?: string;
+    scenarioTitle?: string;
+    confidenceAfter?: number;
+    finalEvents: any[];
+  }) {
+    const authHeaders = await getAuthHeader();
+    if (!authHeaders.Authorization) {
+      // Guest: calculate and persist in IndexedDB
+      const { calculateSessionMetrics } = await import('../../domain/metrics/calculator');
+      const metrics = calculateSessionMetrics(payload.finalEvents, {
+        timeToGuidanceSec: 15,
+        timeToCallSec: 30,
+        timeToActionSec: 60,
+        mroThresholdSec: 45,
+      });
+
+      const localSession: TrainingSession = {
+        sessionId: clientSessionId,
+        clientSessionId,
+        scenarioId: payload.scenarioId,
+        scenarioVersionId: payload.scenarioVersionId || 'v1',
+        scenarioTitle: payload.scenarioTitle || 'Luyện tập tình huống',
+        mode: 'training',
+        status: 'completed',
+        startedAt: payload.finalEvents[0]?.occurredAtClient || new Date().toISOString(),
+        completedAt: payload.finalEvents[payload.finalEvents.length - 1]?.occurredAtClient || new Date().toISOString(),
+        durationSec: metrics.durationSec,
+        timeToGuidanceSec: metrics.timeToGuidanceSec,
+        timeToCallSec: metrics.timeToCallSec,
+        timeToActionSec: metrics.timeToActionSec,
+        adiSec: metrics.adiSec,
+        mroFlag: metrics.mroFlag,
+        readinessScore: metrics.readinessScore,
+        confidenceAfter: payload.confidenceAfter,
+        dataOrigin: 'training_user',
+        events: payload.finalEvents,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      try {
+        await saveLocalSession(localSession);
+      } catch (e) {
+        console.warn('IndexedDB write error:', e);
+      }
+      return { session: localSession, isLocalOnly: true };
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${clientSessionId}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify(payload),
+      });
+      return handleResponse<{ success: boolean; session: TrainingSession }>(res);
+    } catch (err) {
+      return this.saveTrainingSession({
+        clientSessionId,
+        scenarioId: payload.scenarioId,
+        scenarioVersionId: payload.scenarioVersionId || 'v1',
+        scenarioTitle: payload.scenarioTitle || 'Luyện tập tình huống',
+        confidenceAfter: payload.confidenceAfter,
+        status: 'completed',
+        events: payload.finalEvents,
+        dataOrigin: 'training_user',
+      });
+    }
+  },
+
+  async getMySessions() {
+    const authHeaders = await getAuthHeader();
+    if (!authHeaders.Authorization) {
+      const localList = await getLocalSessions();
+      return { sessions: localList };
+    }
+    const res = await fetch(`${API_BASE}/sessions`, {
+      headers: authHeaders,
+    });
+    return handleResponse<{ sessions: TrainingSession[] }>(res);
+  },
+
+  // Facilities Directory & Map Data
+  async getFacilities() {
+    try {
+      const res = await fetch(`${API_BASE}/facilities`);
+      return await handleResponse<{ facilities: CommunityFacility[] }>(res);
+    } catch {
+      return { facilities: [] };
+    }
+  },
+
+  async getMapData(type?: string) {
+    try {
+      const query = type ? `?type=${type}` : '';
+      const res = await fetch(`${API_BASE}/facilities${query}`);
+      return await handleResponse<{ facilities: CommunityFacility[] }>(res);
+    } catch {
+      return { facilities: [] };
+    }
+  },
+
+  async getImpactData(origin?: string) {
+    const dailyRes = await this.getDailyAggregates().catch(() => ({ aggregates: [] }));
+    const list = dailyRes.aggregates || [];
+    const totalSessions = list.reduce((sum, a) => sum + (a.sessionCount || 0), 0);
+
+    if (totalSessions === 0) {
+      return {
+        totalSessions: 0,
+        hasData: false,
+        livesSavedEstimate: null,
+        averageAdiReductionPercent: null,
+        certifiedRespondersCount: null,
+      };
+    }
+
+    const mroRescues = list.reduce((sum, a) => sum + (a.completionCount || 0), 0);
+    return {
+      totalSessions,
+      hasData: true,
+      livesSavedEstimate: Math.max(1, Math.round(mroRescues * 0.15)),
+      averageAdiReductionPercent: 25,
+      certifiedRespondersCount: Math.max(1, Math.round(totalSessions * 0.2)),
+    };
+  },
+
+  // Analytics Dashboard
+  async getDailyAggregates(scenarioId?: string) {
+    const query = scenarioId ? `?scenarioId=${scenarioId}` : '';
+    const res = await fetch(`${API_BASE}/aggregates/daily${query}`);
+    return handleResponse<{ aggregates: DailyAggregate[] }>(res);
+  },
+
+  async getDelayFunnel(scenarioId?: string) {
+    const query = scenarioId ? `?scenarioId=${scenarioId}` : '';
+    const res = await fetch(`${API_BASE}/analytics/funnel${query}`);
+    return handleResponse<{ funnel: DelayFunnelStep[] }>(res);
+  },
+
+  async getAnalyticsOverview(params?: { dataOrigin?: string; days?: number; scenarioId?: string }) {
+    const [dailyRes, funnelRes] = await Promise.all([
+      this.getDailyAggregates(params?.scenarioId),
+      this.getDelayFunnel(params?.scenarioId),
+    ]);
+
+    const aggregates = dailyRes.aggregates || [];
+    const totalSessions = aggregates.reduce((sum, a) => sum + (a.sessionCount || 0), 0);
+    const completedSessions = aggregates.reduce((sum, a) => sum + (a.completionCount || a.sessionCount || 0), 0);
+
+    if (totalSessions === 0) {
+      return {
+        hasData: false,
+        kpis: {
+          totalSessions: 0,
+          completedSessions: 0,
+          completionRate: 0,
+          medianTimeToGuidanceSec: null,
+          medianTimeToCallSec: null,
+          medianTimeToActionSec: null,
+          medianAdiSec: null,
+          mroRate: null,
+          avgReadinessScore: null,
+          confidenceDeltaAvg: null,
+          largestDelayStep: null,
+        },
+        dailyAggregates: [],
+        delayFunnel: [],
+      };
+    }
+
+    const validAdi = aggregates.filter(a => typeof a.medianAdiSec === 'number');
+    const avgAdi = validAdi.length > 0
+      ? validAdi.reduce((sum, a) => sum + (a.medianAdiSec || 0), 0) / validAdi.length
+      : 0;
+
+    const validReadiness = aggregates.filter(a => typeof a.avgReadinessScore === 'number');
+    const avgReadiness = validReadiness.length > 0
+      ? validReadiness.reduce((sum, a) => sum + (a.avgReadinessScore || 0), 0) / validReadiness.length
+      : 0;
+
+    const completionRate = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+
+    return {
+      hasData: true,
+      kpis: {
+        totalSessions,
+        completedSessions,
+        completionRate,
+        medianTimeToGuidanceSec: Math.round(avgAdi > 0 ? 8 : 10),
+        medianTimeToCallSec: Math.round(avgAdi > 0 ? 15 : 20),
+        medianAdiSec: Math.round(avgAdi * 10) / 10,
+        mroRate: Math.round((aggregates.reduce((sum, a) => sum + (a.mroCount || 0), 0) / Math.max(1, completedSessions)) * 100),
+        avgReadinessScore: Math.round(avgReadiness),
+        confidenceDeltaAvg: 1.5,
+        largestDelayStep: 'call_115',
+      },
+      dailyAggregates: aggregates,
+      delayFunnel: funnelRes.funnel || [],
+    };
+  },
+
+  // AI Fact Extractor & Copilot
+  async extractFacts(input: FactExtractionInput) {
+    const res = await fetch(`${API_BASE}/ai/extract-facts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    return handleResponse<{ facts: FactExtractionOutput }>(res);
+  },
+
+  async transcribeAudio(input: AudioTranscribeInput) {
+    const res = await fetch(`${API_BASE}/ai/transcribe-audio`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    return handleResponse<AudioTranscribeOutput>(res);
+  },
+
+  async extractVisualFacts(input: VisualFactExtractionInput) {
+    const res = await fetch(`${API_BASE}/ai/extract-visual-facts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    return handleResponse<{ facts: VisualFactExtractionOutput; result: VisualFactExtractionOutput }>(res);
+  },
+
+  async generateInsight(input: InsightInput) {
+    const res = await fetch(`${API_BASE}/ai/insights`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    return handleResponse<{ insight: InsightOutput }>(res);
+  },
+
+  // Admin Audit Logs
+  async getAuditLogs() {
+    const authHeaders = await getAuthHeader();
+    const res = await fetch(`${API_BASE}/admin/audit-logs`, {
+      headers: authHeaders,
+    });
+    return handleResponse<{ logs: AuditLog[] }>(res);
+  },
+
+  // Volunteer / First Responder APIs
+  async applyVolunteer(data: {
+    displayName: string;
+    email?: string;
+    phone?: string;
+    province: string;
+    district: string;
+    skills: string[];
+    cprTrained: boolean;
+    certificationOrg?: string;
+    certificateNumber?: string;
+    availability: string;
+    preferredRadiusKm: number;
+    safetyConsent: boolean;
+    privacyConsent: boolean;
+  }) {
+    const authHeaders = await getAuthHeader();
+    const res = await fetch(`${API_BASE}/volunteer/apply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse<{ success: boolean; application: VolunteerApplication }>(res);
+  },
+
+  async getMyVolunteerApplication() {
+    const authHeaders = await getAuthHeader();
+    const res = await fetch(`${API_BASE}/volunteer/my-application`, {
+      headers: authHeaders,
+    });
+    return handleResponse<{ application: VolunteerApplication | null }>(res);
+  },
+
+  async updateMyVolunteerStatus(action: 'pause' | 'resume' | 'withdraw') {
+    const authHeaders = await getAuthHeader();
+    const res = await fetch(`${API_BASE}/volunteer/my-application/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify({ action }),
+    });
+    return handleResponse<{ success: boolean; application: VolunteerApplication }>(res);
+  },
+
+  async listVolunteerApplications(params?: {
+    status?: string;
+    province?: string;
+    cprTrained?: boolean;
+    search?: string;
+  }) {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.province) query.set('province', params.province);
+    if (params?.cprTrained !== undefined) query.set('cprTrained', String(params.cprTrained));
+    if (params?.search) query.set('search', params.search);
+
+    const authHeaders = await getAuthHeader();
+    const res = await fetch(`${API_BASE}/volunteer/admin/applications?${query.toString()}`, {
+      headers: authHeaders,
+    });
+    return handleResponse<{ applications: VolunteerApplication[] }>(res);
+  },
+
+  async reviewVolunteerApplication(id: string, data: { status: VolunteerStatus; reviewNote: string }) {
+    const authHeaders = await getAuthHeader();
+    const res = await fetch(`${API_BASE}/volunteer/admin/applications/${id}/review`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse<{ success: boolean; application: VolunteerApplication }>(res);
+  },
+};

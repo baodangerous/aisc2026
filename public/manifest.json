@@ -1,0 +1,24 @@
+{
+  "name": "GoldenMinutes Response Lab",
+  "short_name": "GoldenMinutes",
+  "description": "Nền tảng huấn luyện phản xạ và phân tích sơ cấp cứu trong thời gian vàng",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F9FAFB",
+  "theme_color": "#D92D20",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192' fill='%23D92D20'><rect width='192' height='192' rx='40' fill='%23D92D20'/><path d='M96 150l-8.5-7.7C52 110.4 30 90.7 30 65.5 30 45.2 46.2 29 66.5 29c11.5 0 22.5 5.3 29.5 13.7C103 34.3 114 29 125.5 29c20.3 0 36.5 16.2 36.5 36.5 0 25.2-22 44.9-57.5 76.8L96 150z' fill='white'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' fill='%23D92D20'><rect width='512' height='512' rx='100' fill='%23D92D20'/><path d='M256 400l-22.7-20.5C138.7 294.4 80 241.9 80 174.7 80 120.5 123.2 77.3 177.3 77.3c30.7 0 60 14.1 78.7 36.5C274.7 91.4 304 77.3 334.7 77.3c54.1 0 97.3 43.2 97.3 97.4 0 67.2-58.7 119.7-153.3 204.8L256 400z' fill='white'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

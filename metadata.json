@@ -1,0 +1,12 @@
+{
+  "name": "AISC\u002726 GoldenMinutes",
+  "description": "Nền tảng huấn luyện phản xạ và phân tích sơ cấp cứu trong thời gian vàng GoldenMinutes Response Lab",
+  "requestFramePermissions": [
+    "geolocation",
+    "microphone",
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

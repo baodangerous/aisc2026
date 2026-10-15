@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile record for citizen or responder",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "phoneMasked": { "type": "string" },
+        "role": { "type": "string", "enum": ["citizen", "org_viewer", "org_admin", "clinical_reviewer", "platform_admin"] },
+        "preferredLanguage": { "type": "string", "enum": ["vi", "en"] },
+        "onboardingCompleted": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "displayName", "createdAt", "updatedAt"]
+    },
+    "TrainingSession": {
+      "title": "TrainingSession",
+      "description": "Interactive first aid emergency simulation session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "scenarioId": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "scenarioId", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User private profile document"
+    },
+    "/trainingSessions/{sessionId}": {
+      "schema": "TrainingSession",
+      "description": "Interactive training records"
+    }
+  }
+}
