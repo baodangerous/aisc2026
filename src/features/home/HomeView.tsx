@@ -66,8 +66,8 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
           <div className="filmstrip -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 scrollbar-none sm:-mx-6 sm:px-6">
             {HOME_PHOTO_STORIES.map((story) => (
               <article key={story.image} className="film-card min-w-[84vw] snap-center overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_12px_28px_rgba(23,33,43,0.07)] sm:min-w-[31rem]">
-                <div className="relative overflow-hidden bg-[#f4f7f8]">
-                  <img src={story.image} alt={story.alt} className="film-card-image h-auto max-h-[22rem] w-full object-contain" />
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#f4f7f8]">
+                  <img src={story.image} alt={story.alt} className="film-card-image h-full w-full object-cover object-center" />
                   <span className="absolute left-3 top-3 rounded-full border border-border bg-surface/95 px-3 py-1 text-[11px] font-semibold text-foreground shadow-sm">Báo Khánh Hòa</span>
                 </div>
                 <div className="flex flex-col gap-2 p-4"><h3 className="text-lg font-bold">{story.title}</h3><p className="text-xs text-muted">Nguồn ảnh: {story.source}</p><a href={story.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-fit items-center gap-1 text-xs font-semibold text-primary underline underline-offset-4">Xem nguồn đầy đủ <ExternalLink className="size-3" aria-hidden="true" /></a></div>
