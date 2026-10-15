@@ -4,7 +4,16 @@ import { supabase } from '../../services/supabase/client';
 import { useAuth } from '../auth/AuthContext';
 
 type Post = { id: string; title: string; body: string; category: string; created_at: string };
-type Alert = { id: string; title: string; description: string | null; kind: string; radius_m: number; created_at: string };
+type Alert = { id: string; title: string; description: string | null; kind: string; radius_m: number; latitude: number; longitude: number; created_at: string };
+const distanceInMeters = (from: GeolocationCoordinates, latitude: number, longitude: number) => {
+  const earthRadius = 6371000;
+  const lat1 = from.latitude * Math.PI / 180;
+  const lat2 = latitude * Math.PI / 180;
+  const deltaLat = (latitude - from.latitude) * Math.PI / 180;
+  const deltaLon = (longitude - from.longitude) * Math.PI / 180;
+  const a = Math.sin(deltaLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) ** 2;
+  return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
 const postCategories = [{ value: 'general', label: 'Chia sẻ chung' }, { value: 'training', label: 'Luyện tập' }, { value: 'community', label: 'Cộng đồng' }, { value: 'question', label: 'Câu hỏi' }];
 const alertKinds = [{ value: 'cardiac_arrest', label: 'Ngừng tim' }, { value: 'stroke', label: 'Đột quỵ' }, { value: 'bleeding', label: 'Chảy máu nặng' }, { value: 'accident', label: 'Tai nạn' }, { value: 'other', label: 'Khác' }];
 
@@ -21,21 +30,24 @@ export function CommunityView() {
   const [alertDescription, setAlertDescription] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [nearbyOnly, setNearbyOnly] = useState(false);
+  const [currentPosition, setCurrentPosition] = useState<GeolocationCoordinates | null>(null);
 
   const load = async () => {
     if (!supabase) return;
     const [{ data: postData }, { data: alertData }] = await Promise.all([
       supabase.from('forum_posts').select('id,title,body,category,created_at').order('created_at', { ascending: false }).limit(20),
-      supabase.from('community_alerts').select('id,title,description,kind,radius_m,created_at').eq('status', 'active').order('created_at', { ascending: false }).limit(20),
+      supabase.from('community_alerts').select('id,title,description,kind,radius_m,latitude,longitude,created_at').eq('status', 'active').order('created_at', { ascending: false }).limit(20),
     ]);
-    setPosts(postData || []); setAlerts(alertData || []);
+    setPosts(postData || []);
+    setAlerts((alertData || []).filter((alert) => !nearbyOnly || !currentPosition || distanceInMeters(currentPosition, alert.latitude, alert.longitude) <= alert.radius_m));
   };
   useEffect(() => {
     void load();
     if (!supabase) return;
     const channel = supabase.channel('community-live-alerts').on('postgres_changes', { event: '*', schema: 'public', table: 'community_alerts' }, () => { void load(); }).subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, []);
+  }, [nearbyOnly, currentPosition]);
 
   const createPost = async () => {
     if (!supabase || !firebaseUser) return;
@@ -44,6 +56,11 @@ export function CommunityView() {
     const { error: insertError } = await supabase.from('forum_posts').insert({ author_uid: firebaseUser.id, title: title.trim(), body: body.trim(), category });
     if (insertError) setError(insertError.message); else { setTitle(''); setBody(''); setNotice('Bài viết đã được đăng.'); await load(); }
   };
+  const enableNearbyAlerts = () => {
+    if (!navigator.geolocation) { setError('Thiết bị không hỗ trợ vị trí.'); return; }
+    navigator.geolocation.getCurrentPosition(({ coords }) => { setCurrentPosition(coords); setNearbyOnly(true); }, () => setError('Chưa lấy được vị trí để lọc cảnh báo gần bạn.'), { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+  };
+
   const respondToAlert = async (alertId: string) => {
     if (!supabase || !firebaseUser) return;
     const { error: responseError } = await supabase.from('community_alert_responses').insert({ alert_id: alertId, responder_uid: firebaseUser.id, response_type: 'called_115' });
@@ -70,7 +87,7 @@ export function CommunityView() {
     {isAuthenticated && <section className="flex flex-col gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4"><h2 className="flex items-center gap-2 font-bold"><AlertTriangle className="size-5 text-primary" aria-hidden="true" />Thông báo khẩn cấp</h2><p className="text-xs leading-relaxed text-muted">Gọi 115 trước. Ứng dụng chỉ chia sẻ cảnh báo với người dùng đã đăng nhập và không thay thế tổng đài.</p><select value={alertKind} onChange={(event) => setAlertKind(event.target.value)} className="min-h-11 rounded-xl border border-border bg-background px-3">{alertKinds.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><input value={alertTitle} onChange={(event) => setAlertTitle(event.target.value)} placeholder="Ví dụ: Cần hỗ trợ CPR" className="min-h-11 rounded-xl border border-border bg-background px-3" /><textarea value={alertDescription} onChange={(event) => setAlertDescription(event.target.value)} placeholder="Mô tả ngắn tình huống và điểm nhận biết" rows={2} className="rounded-xl border border-border bg-background p-3" /><label className="text-xs font-semibold">Bán kính chia sẻ<select value={alertRadius} onChange={(event) => setAlertRadius(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-background px-3"><option value="500">500 mét</option><option value="1000">1 km</option><option value="3000">3 km</option><option value="5000">5 km</option></select></label><button type="button" onClick={createAlert} className="min-h-11 rounded-xl bg-primary px-3 font-semibold text-primary-foreground">Gửi cảnh báo và chia sẻ vị trí</button></section>}
     {error && <p role="alert" className="text-sm text-primary">{error}</p>}
     {notice && <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300">{notice}</p>}
-    <section className="flex flex-col gap-3"><h2 className="flex items-center gap-2 text-xl font-bold"><AlertTriangle className="size-5 text-primary" aria-hidden="true" />Cảnh báo đang hoạt động</h2>{alerts.length === 0 ? <p className="rounded-xl border border-dashed border-border p-5 text-sm text-muted">Chưa có cảnh báo đang hoạt động.</p> : alerts.map((alert) => <article key={alert.id} className="rounded-2xl border border-primary/30 bg-surface p-4"><h3 className="font-bold">{alert.title}</h3><p className="mt-1 text-sm text-muted">Bán kính dự kiến {alert.radius_m} m. {alert.description}</p>{isAuthenticated && <button type="button" onClick={() => void respondToAlert(alert.id)} className="mt-3 min-h-10 rounded-lg border border-primary px-3 text-sm font-semibold text-primary">Tôi đã gọi 115</button>}</article>)}</section>
+    <section className="flex flex-col gap-3"><div className="flex items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-xl font-bold"><AlertTriangle className="size-5 text-primary" aria-hidden="true" />Cảnh báo đang hoạt động</h2><button type="button" onClick={nearbyOnly ? () => { setNearbyOnly(false); setCurrentPosition(null); } : enableNearbyAlerts} className="min-h-10 rounded-lg border border-border px-3 text-xs font-semibold">{nearbyOnly ? 'Hiện tất cả' : 'Gần tôi'}</button></div>{alerts.length === 0 ? <p className="rounded-xl border border-dashed border-border p-5 text-sm text-muted">{nearbyOnly ? 'Không có cảnh báo trong bán kính của cảnh báo gần bạn.' : 'Chưa có cảnh báo đang hoạt động.'}</p> : alerts.map((alert) => <article key={alert.id} className="rounded-2xl border border-primary/30 bg-surface p-4"><h3 className="font-bold">{alert.title}</h3><p className="mt-1 text-sm text-muted">Bán kính chia sẻ {alert.radius_m} mét. {alert.description}</p>{isAuthenticated && <button type="button" onClick={() => void respondToAlert(alert.id)} className="mt-3 min-h-10 rounded-lg border border-primary px-3 text-sm font-semibold text-primary">Tôi đã gọi 115</button>}</article>)}</section>
     <section className="flex flex-col gap-3"><h2 className="flex items-center gap-2 text-xl font-bold"><MessageCircle className="size-5" aria-hidden="true" />Bài đăng mới</h2>{posts.length === 0 ? <p className="rounded-xl border border-dashed border-border p-5 text-sm text-muted">Chưa có bài đăng. Hãy là người đầu tiên chia sẻ.</p> : posts.map((post) => <article key={post.id} className="rounded-2xl border border-border bg-surface p-4"><h3 className="font-bold">{post.title}</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">{post.body}</p></article>)}</section>
     <p className="flex items-start gap-2 border-t border-border pt-4 text-xs leading-relaxed text-muted"><Users className="size-4 shrink-0" aria-hidden="true" />Không đăng thông tin nhận diện người bệnh hoặc địa chỉ riêng tư. Cảnh báo giả sẽ bị gỡ.</p>
   </main>;
