@@ -9,7 +9,7 @@ type Post = CommunityPost;
 type Alert = CommunityAlert;
 
 export function CommunityView() {
-  const { firebaseUser, isAuthenticated } = useAuth();
+  const { authUser, isAuthenticated } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [title, setTitle] = useState('');
@@ -41,10 +41,10 @@ export function CommunityView() {
   }, [nearbyOnly, currentPosition]);
 
   const createPost = async () => {
-    if (!supabase || !firebaseUser) return;
+    if (!supabase || !authUser) return;
     if (title.trim().length < 5 || body.trim().length < 10) { setError('Tiêu đề cần ít nhất 5 ký tự và nội dung cần ít nhất 10 ký tự.'); return; }
     setError(''); setNotice('');
-    const { error: insertError } = await supabase.from(COMMUNITY_TABLES.posts).insert({ author_uid: firebaseUser.id, title: title.trim(), body: body.trim(), category });
+    const { error: insertError } = await supabase.from(COMMUNITY_TABLES.posts).insert({ author_uid: authUser.id, title: title.trim(), body: body.trim(), category });
     if (insertError) setError(insertError.message); else { setTitle(''); setBody(''); setNotice('Bài viết đã được đăng.'); await load(); }
   };
   const enableNearbyAlerts = () => {
@@ -53,20 +53,20 @@ export function CommunityView() {
   };
 
   const respondToAlert = async (alertId: string) => {
-    if (!supabase || !firebaseUser) return;
-    const { error: responseError } = await supabase.from(COMMUNITY_TABLES.responses).insert({ alert_id: alertId, responder_uid: firebaseUser.id, response_type: 'called_115' });
+    if (!supabase || !authUser) return;
+    const { error: responseError } = await supabase.from(COMMUNITY_TABLES.responses).insert({ alert_id: alertId, responder_uid: authUser.id, response_type: 'called_115' });
     if (responseError && responseError.code !== '23505') setError(responseError.message);
   };
 
   const createAlert = async () => {
-    if (!supabase || !firebaseUser || alertTitle.trim().length < 5) return;
+    if (!supabase || !authUser || alertTitle.trim().length < 5) return;
     if (!navigator.geolocation) { setError('Thiết bị không hỗ trợ vị trí. Hãy gọi 115 thay vì gửi cảnh báo cộng đồng.'); return; }
     setError('');
     const radius = Number(alertRadius);
     if (!Number.isInteger(radius) || radius < 100 || radius > 10000) { setError('Bán kính phải từ 100 đến 10.000 mét.'); return; }
     if (alertDescription.trim().length > 1000) { setError('Mô tả không được dài quá 1.000 ký tự.'); return; }
     void getCurrentPosition(defaultLocationOptions).then(async ({ coords }) => {
-      const { error: insertError } = await supabase.from(COMMUNITY_TABLES.alerts).insert({ reporter_uid: firebaseUser.id, kind: alertKind, title: alertTitle.trim(), description: alertDescription.trim() || 'Hãy gọi 115 trước và mô tả rõ tình huống.', latitude: coords.latitude, longitude: coords.longitude, radius_m: radius });
+      const { error: insertError } = await supabase.from(COMMUNITY_TABLES.alerts).insert({ reporter_uid: authUser.id, kind: alertKind, title: alertTitle.trim(), description: alertDescription.trim() || 'Hãy gọi 115 trước và mô tả rõ tình huống.', latitude: coords.latitude, longitude: coords.longitude, radius_m: radius });
       if (insertError) setError(insertError.message); else { setAlertTitle(''); setAlertDescription(''); setNotice('Cảnh báo đã được gửi trong bán kính đã chọn.'); await load(); }
     }).catch(() => setError('Chưa lấy được vị trí. Hãy cấp quyền vị trí hoặc gọi 115 trực tiếp.'));
   };

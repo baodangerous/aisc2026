@@ -3,13 +3,13 @@ import { apiClient } from '../../services/api/client';
 import { getLocalSessions, saveLocalSession } from '../../services/indexedDb';
 import { UserProfile, AuthStatus } from '../../domain/schemas';
 import { isSupabaseConfigured, mapProfile, supabase, type SupabaseUser, getSupabaseProfile } from '../../services/supabase/client';
-import type { ProfileUpdateResult } from '../../services/firebase/profileService';
+interface ProfileUpdateResult { status: 'synced' | 'offline' | 'failed'; profile: UserProfile }
 
 interface AuthContextType {
   authStatus: AuthStatus;
   user: UserProfile | null;
   profile: UserProfile | null;
-  firebaseUser: SupabaseUser | null;
+  authUser: SupabaseUser | null;
   isLoading: boolean;
   isGuest: boolean;
   isAuthenticated: boolean;
@@ -29,7 +29,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('initializing');
-  const [firebaseUser, setFirebaseUser] = useState<SupabaseUser | null>(null);
+  const [authUser, setFirebaseUser] = useState<SupabaseUser | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
 
   const hydrateUser = async (authUser: SupabaseUser) => {
@@ -130,12 +130,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateProfile = async (displayName?: string, preferredLanguage?: string, phone?: string): Promise<ProfileUpdateResult> => {
-    if (!supabase || !firebaseUser || !user) return { status: 'failed', profile: user || guestProfile() };
+    if (!supabase || !authUser || !user) return { status: 'failed', profile: user || guestProfile() };
     const { data, error } = await supabase.from('profiles').update({
       display_name: displayName || user.displayName,
       preferred_language: preferredLanguage || user.preferredLanguage,
       updated_at: new Date().toISOString(),
-    }).eq('id', firebaseUser.id).select().single();
+    }).eq('id', authUser.id).select().single();
     if (error) return { status: 'failed', profile: user };
     const next = mapProfile(data) as UserProfile;
     setUser(next);
@@ -143,15 +143,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const requestDeletion = async (reason?: string) => {
-    if (!firebaseUser || !supabase) return;
-    const { error } = await supabase.from('deletion_requests').upsert({ id: firebaseUser.id, uid: firebaseUser.id });
+    if (!authUser || !supabase) return;
+    const { error } = await supabase.from('deletion_requests').upsert({ id: authUser.id, uid: authUser.id });
     if (error) throw error;
     await apiClient.requestAccountDeletion(reason).catch(() => undefined);
     if (user) setUser({ ...user, deletionRequestedAt: new Date().toISOString() });
   };
 
   const isAuth = authStatus === 'authenticated_synced' || authStatus === 'authenticated_offline';
-  return <AuthContext.Provider value={{ authStatus, user, profile: user, firebaseUser, isLoading: authStatus === 'initializing', isGuest: !isAuth, isAuthenticated: isAuth, isSynced: authStatus === 'authenticated_synced', isSupabaseReady: isSupabaseConfigured, loginWithGoogle, signInWithPassword, signUpWithPassword, logout, updateProfile, requestDeletion, sendPhoneOtp, verifyPhoneOtp }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ authStatus, user, profile: user, authUser, isLoading: authStatus === 'initializing', isGuest: !isAuth, isAuthenticated: isAuth, isSynced: authStatus === 'authenticated_synced', isSupabaseReady: isSupabaseConfigured, loginWithGoogle, signInWithPassword, signUpWithPassword, logout, updateProfile, requestDeletion, sendPhoneOtp, verifyPhoneOtp }}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
