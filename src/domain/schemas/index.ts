@@ -454,6 +454,10 @@ export interface MedicalLearningResourceStep {
   title: string;
   detail: string;
   keyPoint?: string;
+  imageUrl?: string;
+  imageAlt?: string;
+  imageCredit?: string;
+  imageSourceUrl?: string;
 }
 
 export interface LearningResourceQuizQuestion {
@@ -476,6 +480,7 @@ export interface MedicalLearningResource {
   youtubeVideoId?: string;
   embedUrl?: string;
   thumbnailUrl: string;
+  videoChannel?: string;
   language: 'vi' | 'en';
   durationSeconds: number;
   publishedAt?: string;
