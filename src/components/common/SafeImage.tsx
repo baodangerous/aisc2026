@@ -34,7 +34,7 @@ export const SafeImage: React.FC<SafeImageProps> = ({
     return (
       <div className={`${containerClassName} flex flex-col items-center justify-center p-4 ${fallback.bg}`}>
         <FallbackIcon className={`w-8 h-8 ${fallback.text} mb-1`} aria-hidden="true" />
-        <span className={`text-[11px] font-semibold ${fallback.text} text-center line-clamp-1`}>
+        <span className={`text-xs font-semibold ${fallback.text} text-center line-clamp-1`}>
           {fallback.label}
         </span>
       </div>

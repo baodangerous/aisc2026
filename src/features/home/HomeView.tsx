@@ -25,7 +25,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
   return (
     <div className="min-h-[calc(100vh-var(--header-height))] bg-[#F9FAFB] text-slate-800 pb-24 md:pb-16">
       {/* 1. Hero Section */}
-      <section className="relative overflow-hidden pt-8 sm:pt-12 pb-10 sm:pb-14 bg-white border-b border-slate-200">
+      <section className="relative overflow-hidden pt-6 sm:pt-12 pb-8 sm:pb-14 bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-stretch">
             
@@ -35,14 +35,15 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
                 {/* Clean Editorial Kicker (Zero-Pill Compliance) */}
                 <div className="text-xs font-semibold uppercase tracking-wider text-rose-700 flex items-center gap-1.5">
                   <Heart className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
-                  <span>Thời Gian Vàng Cứu Sống · GoldenMinutes Response Lab</span>
+                  <span>Thời gian vàng cứu sống</span>
+                  <span className="hidden sm:inline">· GoldenMinutes Response Lab</span>
                 </div>
 
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-[1.18] [text-wrap:balance]">
+                <h1 className="text-[26px] sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-[1.3] sm:leading-[1.2] [text-wrap:balance]">
                   Hệ Thống Trí Tuệ Dữ Liệu Cấp Cứu Cộng Đồng
                 </h1>
 
-                <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-2xl">
+                <p className="text-[15px] sm:text-base text-slate-600 leading-relaxed max-w-2xl">
                   Rút ngắn độ trễ có thể phòng tránh (<strong>Avoidable Delay Index - ADI</strong>), ngăn ngừa nguy cơ bỏ lỡ cơ hội cứu hộ với phác đồ chuẩn y khoa và nhịp ép tim CPR 110 bpm.
                 </p>
               </div>
@@ -51,19 +52,19 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
               <div className="pt-2 flex flex-col sm:flex-row gap-3">
                 <Link
                   to="/emergency"
-                  className="min-h-[48px] py-3 px-5 bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer whitespace-nowrap focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
+                  className="min-h-[56px] py-3 px-5 bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white text-[15px] font-bold rounded-2xl flex items-center justify-center gap-2.5 shadow-lg shadow-rose-600/25 transition-all cursor-pointer whitespace-nowrap focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
                 >
-                  <ShieldAlert className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  <span>TÔI ĐANG GẶP TÌNH HUỐNG THẬT</span>
+                  <ShieldAlert className="w-5 h-5 shrink-0" aria-hidden="true" />
+                  <span>Tôi đang gặp tình huống thật</span>
                 </Link>
 
                 <button
                   type="button"
                   onClick={onOpenCall115}
-                  className="min-h-[48px] py-3 px-5 bg-white hover:bg-slate-50 active:scale-[0.98] text-slate-900 text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-2 border border-slate-200 shadow-xs transition-all cursor-pointer whitespace-nowrap focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                  className="min-h-[52px] py-3 px-5 bg-white hover:bg-slate-50 active:scale-[0.98] text-slate-900 text-[15px] font-bold rounded-2xl flex items-center justify-center gap-2 border border-slate-200 shadow-xs transition-all cursor-pointer whitespace-nowrap focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                 >
-                  <PhoneCall className="w-4 h-4 text-rose-600 shrink-0" aria-hidden="true" />
-                  <span>GỌI 115 KHẨN CẤP</span>
+                  <PhoneCall className="w-5 h-5 text-rose-600 shrink-0" aria-hidden="true" />
+                  <span>Gọi <span className="font-mono">115</span> khẩn cấp</span>
                 </button>
               </div>
 
@@ -96,7 +97,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
                     <div className="text-2xl sm:text-3xl font-bold font-mono tabular-nums text-blue-600 mt-1">
                       110 <span className="text-xs font-normal text-slate-500 font-sans">BPM</span>
                     </div>
-                    <span className="text-[11px] text-slate-500 mt-1 block">Tần số tối ưu tưới máu não</span>
+                    <span className="text-xs text-slate-500 mt-1 block">Tần số tối ưu tưới máu não</span>
                   </div>
 
                   <div className="p-4 bg-white rounded-xl border border-slate-200">
@@ -104,7 +105,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
                     <div className="text-2xl sm:text-3xl font-bold font-mono tabular-nums text-rose-600 mt-1">
                       &lt; 4 <span className="text-xs font-normal text-slate-500 font-sans">Phút</span>
                     </div>
-                    <span className="text-[11px] text-slate-500 mt-1 block">Ngăn tổn thương não không hồi phục</span>
+                    <span className="text-xs text-slate-500 mt-1 block">Ngăn tổn thương não không hồi phục</span>
                   </div>
                 </div>
               </div>
@@ -118,8 +119,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
       </section>
 
       {/* 2. Feature Quick Access Links (Map & Library) */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <Link
             to="/nearby"
             className="p-5 bg-white hover:bg-slate-50/80 border border-slate-200 hover:border-blue-500 rounded-2xl flex items-center justify-between gap-4 shadow-2xs group transition-all"
@@ -163,8 +164,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
       </section>
 
       {/* 3. Visual First Aid Essential Learning Showcase */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-7 shadow-2xs space-y-6">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+        <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-7 shadow-2xs space-y-5 sm:space-y-6 overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
             <div>
               <div className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">
@@ -185,11 +186,12 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="-mx-5 px-5 sm:mx-0 sm:px-0 flex md:grid md:grid-cols-3 gap-3 md:gap-5 overflow-x-auto md:overflow-visible snap-x snap-mandatory scroll-px-5 scrollbar-none pb-1" role="list" aria-label="Kỹ năng cấp cứu thiết yếu">
             {/* Card 1: CPR Adult */}
             <Link
               to="/library?lesson=ky-thuat-ep-tim-cpr-nguoi-lon-aha"
-              className="bg-slate-50 hover:bg-white border border-slate-200 hover:border-blue-500 rounded-xl overflow-hidden group transition-all shadow-2xs flex flex-col justify-between"
+              role="listitem"
+              className="w-[80%] shrink-0 snap-start md:w-auto bg-slate-50 hover:bg-white border border-slate-200 hover:border-blue-500 rounded-2xl overflow-hidden group transition-all shadow-2xs flex flex-col justify-between active:scale-[0.99]"
             >
               <div className="relative aspect-video w-full overflow-hidden bg-slate-900">
                 <SafeImage
@@ -199,7 +201,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                <div className="absolute bottom-2 left-2 text-[11px] font-mono font-medium text-white flex items-center gap-1">
+                <div className="absolute bottom-2 left-2 text-xs font-mono font-medium text-white flex items-center gap-1">
                   <Clock className="w-3 h-3" aria-hidden="true" />
                   <span>02:15</span>
                 </div>
@@ -208,7 +210,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
               <div className="p-4 space-y-2 flex-1">
                 <MetadataRow
                   items={['AHA 2020', 'Hội HSCC VN', 'Cơ bản']}
-                  className="text-[11px] text-slate-500"
+                  className="text-xs text-slate-500"
                 />
                 <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 leading-snug line-clamp-2">
                   Ép tim CPR Người lớn 110 bpm liên tục
@@ -229,7 +231,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
             {/* Card 2: FAST Stroke */}
             <Link
               to="/library?lesson=nhan-dien-som-dot-quy-nao-fast"
-              className="bg-slate-50 hover:bg-white border border-slate-200 hover:border-blue-500 rounded-xl overflow-hidden group transition-all shadow-2xs flex flex-col justify-between"
+              role="listitem"
+              className="w-[80%] shrink-0 snap-start md:w-auto bg-slate-50 hover:bg-white border border-slate-200 hover:border-blue-500 rounded-2xl overflow-hidden group transition-all shadow-2xs flex flex-col justify-between active:scale-[0.99]"
             >
               <div className="relative aspect-video w-full overflow-hidden bg-slate-900">
                 <SafeImage
@@ -239,7 +242,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                <div className="absolute bottom-2 left-2 text-[11px] font-mono font-medium text-white flex items-center gap-1">
+                <div className="absolute bottom-2 left-2 text-xs font-mono font-medium text-white flex items-center gap-1">
                   <Clock className="w-3 h-3" aria-hidden="true" />
                   <span>02:50</span>
                 </div>
@@ -248,7 +251,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
               <div className="p-4 space-y-2 flex-1">
                 <MetadataRow
                   items={['WHO', 'BV ĐH Y Dược', 'Cơ bản']}
-                  className="text-[11px] text-slate-500"
+                  className="text-xs text-slate-500"
                 />
                 <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 leading-snug line-clamp-2">
                   Nhận diện Đột quỵ Não theo Quy tắc FAST
@@ -269,7 +272,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
             {/* Card 3: Stop The Bleed */}
             <Link
               to="/library?lesson=ky-thuat-cam-mau-bang-ep-stop-the-bleed"
-              className="bg-slate-50 hover:bg-white border border-slate-200 hover:border-blue-500 rounded-xl overflow-hidden group transition-all shadow-2xs flex flex-col justify-between"
+              role="listitem"
+              className="w-[80%] shrink-0 snap-start md:w-auto bg-slate-50 hover:bg-white border border-slate-200 hover:border-blue-500 rounded-2xl overflow-hidden group transition-all shadow-2xs flex flex-col justify-between active:scale-[0.99]"
             >
               <div className="relative aspect-video w-full overflow-hidden bg-slate-900">
                 <SafeImage
@@ -279,7 +283,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                <div className="absolute bottom-2 left-2 text-[11px] font-mono font-medium text-white flex items-center gap-1">
+                <div className="absolute bottom-2 left-2 text-xs font-mono font-medium text-white flex items-center gap-1">
                   <Clock className="w-3 h-3" aria-hidden="true" />
                   <span>03:15</span>
                 </div>
@@ -288,7 +292,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
               <div className="p-4 space-y-2 flex-1">
                 <MetadataRow
                   items={['ACS Stop The Bleed', 'Bộ Y Tế', 'Cơ bản']}
-                  className="text-[11px] text-slate-500"
+                  className="text-xs text-slate-500"
                 />
                 <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 leading-snug line-clamp-2">
                   Cầm máu khẩn cấp &amp; Băng ép vết thương
@@ -310,7 +314,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
       </section>
 
       {/* 4. 3-Minute Reflex Scenarios Grid */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-5 sm:space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
           <div>
             <div className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">
@@ -336,7 +340,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
             return (
               <div
                 key={scenario.id}
-                className={`bg-white border rounded-2xl p-5 sm:p-6 flex flex-col justify-between transition-all group ${
+                className={`bg-white border rounded-3xl p-5 sm:p-6 flex flex-col justify-between transition-all group ${
                   isRecommended
                     ? 'border-2 border-blue-600 shadow-sm'
                     : 'border-slate-200 shadow-2xs hover:border-blue-400'
@@ -372,7 +376,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
                   </div>
 
                   <div>
-                    <span className="text-[11px] font-mono font-bold text-slate-400">{scenario.code}</span>
+                    <span className="text-xs font-mono font-bold text-slate-400">{scenario.code}</span>
                     <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors mt-0.5 leading-snug">
                       {scenario.title}
                     </h3>
@@ -396,13 +400,13 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenCall115 }) => {
 
                 <Link
                   to={`/training?scenario=${scenario.id}`}
-                  className={`mt-5 w-full min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer text-center active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                  className={`mt-5 w-full min-h-[48px] py-3 px-4 rounded-2xl text-sm font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer text-center active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-blue-600 ${
                     isRecommended
                       ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'
                       : 'bg-slate-100 hover:bg-blue-600 text-slate-700 hover:text-white'
                   }`}
                 >
-                  <span>BẮT ĐẦU BÀI LUYỆN</span>
+                  <span>Bắt đầu bài luyện</span>
                   <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
                 </Link>
               </div>

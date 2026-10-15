@@ -153,7 +153,7 @@ export const ResultsView: React.FC = () => {
                 <span className="text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight">
                   {metrics.readinessScore}
                 </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 mt-0.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mt-0.5">
                   Điểm Sẵn Sàng
                 </span>
               </div>
@@ -288,7 +288,7 @@ export const ResultsView: React.FC = () => {
                       {icon}
                       <div className="space-y-0.5">
                         <p className="text-xs font-bold leading-snug">{step.label}</p>
-                        <p className="text-[11px] opacity-90">{step.detail}</p>
+                        <p className="text-xs opacity-90">{step.detail}</p>
                       </div>
                     </div>
 
@@ -318,7 +318,7 @@ export const ResultsView: React.FC = () => {
               <span className="text-2xl sm:text-3xl font-mono tabular-nums font-bold text-blue-600">
                 {metrics.adiSec}s
               </span>
-              <span className="block text-[10px] text-slate-500 uppercase">Tổng trễ</span>
+              <span className="block text-[11px] text-slate-500 uppercase">Tổng trễ</span>
             </div>
           </div>
 
@@ -402,19 +402,19 @@ export const ResultsView: React.FC = () => {
                     <div className="space-y-1 min-w-0 flex-1">
                       <MetadataRow
                         items={[res.sourceOrganization, res.difficultyLevel]}
-                        className="text-[11px] text-slate-500"
+                        className="text-xs text-slate-500"
                       />
                       <h3 className="text-xs font-bold text-slate-900 line-clamp-1 leading-snug">
                         {res.title}
                       </h3>
-                      <p className="text-[11px] text-slate-600 line-clamp-2">
+                      <p className="text-xs text-slate-600 line-clamp-2">
                         {res.description}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                    <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+                    <span className="text-xs text-emerald-700 font-semibold flex items-center gap-1">
                       <ShieldCheck className="w-3.5 h-3.5" />
                       <span>{res.evidenceLevel.split('(')[0]}</span>
                     </span>

@@ -373,7 +373,7 @@ export const TrainingSessionView: React.FC = () => {
 
               {/* Initial Scenario Prompt */}
               <div className="p-3.5 bg-[#F9FAFB] border border-[#EAECF0] rounded-xl">
-                <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider block">
+                <span className="text-[11px] font-bold text-[#667085] uppercase tracking-wider block">
                   Tình huống giả định:
                 </span>
                 <p className="text-sm font-semibold text-[#101828] mt-1 leading-snug">
@@ -435,20 +435,20 @@ export const TrainingSessionView: React.FC = () => {
                     ) : (
                       <div className="flex items-center gap-1.5 bg-[#FEF3F2] border border-[#FEE4E2] px-2 py-1 rounded-lg">
                         <span className="w-2 h-2 rounded-full bg-[#D92D20] animate-ping" />
-                        <span className="text-[11px] font-bold text-[#D92D20] font-mono">
+                        <span className="text-xs font-bold text-[#D92D20] font-mono">
                           {Math.floor(voiceDurationSec / 60)}:{(voiceDurationSec % 60).toString().padStart(2, '0')} / 0:30
                         </span>
                         <button
                           type="button"
                           onClick={stopListening}
-                          className="px-2 py-0.5 bg-[#D92D20] text-white text-[10px] font-bold rounded hover:bg-[#B42318] cursor-pointer"
+                          className="px-2 py-0.5 bg-[#D92D20] text-white text-[11px] font-bold rounded hover:bg-[#B42318] cursor-pointer"
                         >
                           Dừng
                         </button>
                         <button
                           type="button"
                           onClick={cancelListening}
-                          className="px-1.5 py-0.5 bg-white text-[#667085] text-[10px] font-semibold rounded border border-[#D0D5DD] hover:bg-[#F2F4F7] cursor-pointer"
+                          className="px-1.5 py-0.5 bg-white text-[#667085] text-[11px] font-semibold rounded border border-[#D0D5DD] hover:bg-[#F2F4F7] cursor-pointer"
                         >
                           Hủy
                         </button>
@@ -491,7 +491,7 @@ export const TrainingSessionView: React.FC = () => {
                 )}
 
                 {voiceError && (
-                  <div className="p-2.5 bg-[#FEF3F2] border border-[#FEE4E2] rounded-xl text-[11px] text-[#B42318] flex items-center gap-2">
+                  <div className="p-2.5 bg-[#FEF3F2] border border-[#FEE4E2] rounded-xl text-xs text-[#B42318] flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 shrink-0 text-[#D92D20]" />
                     <span className="flex-1">{voiceError}</span>
                   </div>
@@ -511,7 +511,7 @@ export const TrainingSessionView: React.FC = () => {
                   />
                   
                   {interimTranscript && (
-                    <div className="text-[11px] text-[#667085] italic px-1 flex items-center gap-1">
+                    <div className="text-xs text-[#667085] italic px-1 flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#175CD3] animate-pulse" />
                       <span>Đang nhận dạng: "{interimTranscript}"</span>
                     </div>
@@ -539,19 +539,19 @@ export const TrainingSessionView: React.FC = () => {
                         <span>Dữ Kiện Trích Xuất Được (Độ tin cậy: {Math.round(aiExtractedFacts.confidence * 100)}%)</span>
                       </div>
                       {isFactsConfirmed ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-[#ECFDF3] text-[#027A48] border border-[#A6F4C5] rounded-md">
+                        <span className="text-[11px] font-bold px-2 py-0.5 bg-[#ECFDF3] text-[#027A48] border border-[#A6F4C5] rounded-md">
                           ✓ Đã xác nhận
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-[#FEF3F2] text-[#B42318] border border-[#FEE4E2] rounded-md">
+                        <span className="text-[11px] font-bold px-2 py-0.5 bg-[#FEF3F2] text-[#B42318] border border-[#FEE4E2] rounded-md">
                           Cần xác nhận
                         </span>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="p-2 bg-white rounded-lg border border-[#B2DDFF]">
-                        <span className="text-[#667085] block text-[10px]">Tri giác / Phản xạ:</span>
+                        <span className="text-[#667085] block text-[11px]">Tri giác / Phản xạ:</span>
                         <strong className="text-[#101828]">
                           {aiExtractedFacts.consciousness === 'unresponsive'
                             ? 'Bất tỉnh / Không phản ứng'
@@ -562,7 +562,7 @@ export const TrainingSessionView: React.FC = () => {
                       </div>
 
                       <div className="p-2 bg-white rounded-lg border border-[#B2DDFF]">
-                        <span className="text-[#667085] block text-[10px]">Hô hấp lồng ngực:</span>
+                        <span className="text-[#667085] block text-[11px]">Hô hấp lồng ngực:</span>
                         <strong className="text-[#101828]">
                           {aiExtractedFacts.breathing === 'not_breathing'
                             ? 'Không thở'
@@ -576,7 +576,7 @@ export const TrainingSessionView: React.FC = () => {
                     </div>
 
                     {aiExtractedFacts.extractedEvidence.length > 0 && (
-                      <div className="text-[11px] text-[#344054]">
+                      <div className="text-xs text-[#344054]">
                         <span className="font-semibold text-[#175CD3]">Bằng chứng nhận dạng:</span>
                         <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-[#475467]">
                           {aiExtractedFacts.extractedEvidence.map((ev: string, i: number) => (
@@ -596,12 +596,12 @@ export const TrainingSessionView: React.FC = () => {
                           <Check className="w-3.5 h-3.5" />
                           <span>Xác nhận thông tin triệu chứng</span>
                         </button>
-                        <span className="text-[10px] text-[#667085]">
+                        <span className="text-[11px] text-[#667085]">
                           (Xác nhận để động cơ quy tắc hỗ trợ bài luyện)
                         </span>
                       </div>
                     ) : (
-                      <p className="text-[11px] text-[#027A48] font-medium">
+                      <p className="text-xs text-[#027A48] font-medium">
                         ✓ Bạn đã xác nhận thông tin. Động cơ quy tắc sẽ cá nhân hóa bài tập cho tình huống này.
                       </p>
                     )}
@@ -615,7 +615,7 @@ export const TrainingSessionView: React.FC = () => {
                       <Camera className="w-3.5 h-3.5 text-[#12B76A]" />
                       <span>Đã kiểm tra kỹ thuật qua Camera: {visualAnalysisData.handPlacement}</span>
                     </div>
-                    <p className="text-[11px] text-[#344054]">
+                    <p className="text-xs text-[#344054]">
                       {visualAnalysisData.armAngle} • {visualAnalysisData.environmentSafety}
                     </p>
                   </div>
@@ -749,7 +749,7 @@ export const TrainingSessionView: React.FC = () => {
                             {step.title}
                           </h3>
                           {step.vitalAction && (
-                            <span className="text-[11px] uppercase font-bold text-rose-700 tracking-wider shrink-0">
+                            <span className="text-xs uppercase font-bold text-rose-700 tracking-wider shrink-0">
                               Trọng yếu
                             </span>
                           )}

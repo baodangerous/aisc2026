@@ -102,7 +102,7 @@ export const RealEmergencyView: React.FC = () => {
                   <Icon className={`w-6 h-6 mb-2 ${opt.iconColor}`} aria-hidden="true" />
                   <div>
                     <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-snug">{opt.title}</h3>
-                    <p className="text-[11px] text-slate-500 line-clamp-2 mt-1">{opt.desc}</p>
+                    <p className="text-xs text-slate-500 line-clamp-2 mt-1">{opt.desc}</p>
                   </div>
                 </button>
               );

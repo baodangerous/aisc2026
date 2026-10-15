@@ -89,7 +89,7 @@ export const Call115Modal: React.FC<Call115ModalProps> = ({
             <button
               type="button"
               onClick={handleCopyLocation}
-              className="text-[10px] text-[#175CD3] hover:underline flex items-center gap-1 font-semibold cursor-pointer"
+              className="text-[11px] text-[#175CD3] hover:underline flex items-center gap-1 font-semibold cursor-pointer"
               title="Sao chép thông tin vị trí"
             >
               {copied ? <Check className="w-3 h-3 text-[#12B76A]" /> : <Copy className="w-3 h-3" />}
@@ -103,7 +103,7 @@ export const Call115Modal: React.FC<Call115ModalProps> = ({
               <span className="font-semibold text-[#101828]">1. Vị trí chính xác:</span>{' '}
               {currentAddressHint}
               {gpsLocation && (
-                <div className="text-[11px] font-mono text-[#175CD3] mt-0.5 font-semibold">
+                <div className="text-xs font-mono text-[#175CD3] mt-0.5 font-semibold">
                   {gpsLocation}
                 </div>
               )}
