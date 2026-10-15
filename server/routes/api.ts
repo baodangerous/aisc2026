@@ -2,7 +2,6 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { dataRepository, RepositoryError } from '../repository';
 import { DocumentIdSchema, SessionEventSchema, normalizeEvents } from '../../src/domain/schemas/persistence';
-import { adminAuth } from '../firebaseAdmin';
 import { verifySupabaseAccessToken } from '../supabaseAuth';
 import {
   extractEmergencyFacts,
@@ -54,11 +53,11 @@ export function getEffectiveRoleFromClaims(claims?: Record<string, any>): ValidR
   return 'citizen';
 }
 
-// Middleware to parse and verify Firebase ID token
+// Middleware to parse and verify a Supabase access token
 export interface AuthenticatedRequest extends Request {
   user?: UserProfile;
-  firebaseUid?: string;
-  firebaseClaims?: Record<string, any>;
+  authUid?: string;
+  authClaims?: Record<string, any>;
 }
 
 export const authenticateOptional = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -68,8 +67,8 @@ export const authenticateOptional = async (req: AuthenticatedRequest, res: Respo
     try {
       const supabaseUser = await verifySupabaseAccessToken(token);
       if (supabaseUser) {
-        req.firebaseUid = supabaseUser.id;
-        req.firebaseClaims = { sub: supabaseUser.id, role: supabaseUser.app_metadata?.role || 'citizen' };
+        req.authUid = supabaseUser.id;
+        req.authClaims = { sub: supabaseUser.id, role: supabaseUser.app_metadata?.role || 'citizen' };
         let user = await dataRepository.getUser(supabaseUser.id);
         if (!user) {
           const rawPhone = supabaseUser.phone || '';
@@ -78,23 +77,13 @@ export const authenticateOptional = async (req: AuthenticatedRequest, res: Respo
             uid: supabaseUser.id,
             displayName: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Công dân Cứu sinh',
             phoneMasked,
-            role: getEffectiveRoleFromClaims(req.firebaseClaims),
+            role: getEffectiveRoleFromClaims(req.authClaims),
             preferredLanguage: 'vi',
           });
         }
-        req.user = { ...user, role: user.role || getEffectiveRoleFromClaims(req.firebaseClaims) };
+        req.user = { ...user, role: user.role || getEffectiveRoleFromClaims(req.authClaims) };
       } else {
-        // Legacy Firebase verification remains only for existing server clients during migration.
-        const decoded = await adminAuth.verifyIdToken(token, true);
-        req.firebaseUid = decoded.uid;
-        req.firebaseClaims = decoded;
-        let user = await dataRepository.getUser(decoded.uid);
-        if (!user) {
-          const rawPhone = decoded.phone_number || '';
-          const phoneMasked = rawPhone.length > 6 ? `${rawPhone.slice(0, 3)}***${rawPhone.slice(-4)}` : 'Chưa cung cấp';
-          user = await dataRepository.upsertUser({ uid: decoded.uid, displayName: decoded.name || 'Công dân Cứu sinh', phoneMasked, role: getEffectiveRoleFromClaims(decoded), preferredLanguage: 'vi' });
-        }
-        req.user = { ...user, role: getEffectiveRoleFromClaims(decoded) };
+        return res.status(401).json({ code: 'UNAUTHORIZED', message: 'Token không hợp lệ. Vui lòng đăng nhập lại.' });
       }
     } catch (err) {
       if (err instanceof RepositoryError || (err instanceof Error && err.message.includes('disabled'))) {
@@ -108,7 +97,7 @@ export const authenticateOptional = async (req: AuthenticatedRequest, res: Respo
 
 export const authenticateRequired = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   authenticateOptional(req, res, () => {
-    if (!req.user || !req.firebaseUid) {
+    if (!req.user || !req.authUid) {
       return res.status(401).json({
         code: 'UNAUTHORIZED',
         message: 'Yêu cầu đăng nhập để truy cập tài nguyên này.',
@@ -121,13 +110,13 @@ export const authenticateRequired = (req: AuthenticatedRequest, res: Response, n
 
 export const requireRole = (allowedRoles: string[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    // Strictly verify Custom Claims inside the decoded Firebase token
-    const effectiveRole = getEffectiveRoleFromClaims(req.firebaseClaims);
+    // Strictly verify roles from the Supabase access token
+    const effectiveRole = getEffectiveRoleFromClaims(req.authClaims);
 
     if (!allowedRoles.includes(effectiveRole)) {
       return res.status(403).json({
         code: 'FORBIDDEN',
-        message: 'Bạn không có quyền thực hiện thao tác này. Quyền này yêu cầu Firebase Custom Claims được cấp quyền bởi quản trị viên hệ thống.',
+        message: 'Bạn không có quyền thực hiện thao tác này. Quyền cần được cấp bởi quản trị viên hệ thống.',
         requestId: req.headers['x-request-id'] || 'req_forbidden',
       });
     }
@@ -161,7 +150,7 @@ routes.get('/health', async (req: Request, res: Response) => {
   });
 });
 
-// 2. Firebase User Profile Synchronization (after Google Sign-In or profile edit)
+// 2. Supabase user profile synchronization
 const SyncProfileSchema = z.object({
   displayName: z.string().min(1).max(100).optional(),
   preferredLanguage: z.enum(['vi', 'en']).optional(),
@@ -175,7 +164,7 @@ routes.post('/auth/sync-profile', authenticateRequired, async (req: Authenticate
   }
 
   const { displayName, preferredLanguage, phone } = parsed.data;
-  const uid = req.firebaseUid!;
+  const uid = req.authUid!;
 
   const phoneMasked = phone && phone.length > 6
     ? `${phone.slice(0, 3)}***${phone.slice(-4)}`
@@ -239,7 +228,7 @@ routes.get('/scenarios/:id', async (req: Request, res: Response) => {
   res.json({ scenario });
 });
 
-// 5. Training Sessions: Create / Sync (Requires Firebase Auth; guest stores in local IndexedDB)
+// 5. Training sessions: create and sync
 const CreateSessionSchema = z.object({
   sessionId: DocumentIdSchema.optional(), clientSessionId: DocumentIdSchema.optional(),
   scenarioId: DocumentIdSchema, scenarioVersionId: DocumentIdSchema.optional(),
@@ -270,7 +259,7 @@ routes.post('/sessions', authenticateRequired, async (req: AuthenticatedRequest,
     confidenceBefore,
     confidenceAfter,
   } = parsed.data;
-  const ownerUid = req.firebaseUid!;
+  const ownerUid = req.authUid!;
 
   const sessionId = parsed.data.sessionId || clientSessionId || `sess_${crypto.randomUUID()}`;
   const now = new Date().toISOString();
@@ -343,7 +332,7 @@ routes.post('/sessions/:id/events', authenticateRequired, async (req: Authentica
     return res.status(404).json({ code: 'SESSION_NOT_FOUND', message: 'Phiên luyện tập không tồn tại.' });
   }
 
-  if (existing.ownerUid !== req.firebaseUid) {
+  if (existing.ownerUid !== req.authUid) {
     return res.status(403).json({ code: 'FORBIDDEN', message: 'Bạn không có quyền chỉnh sửa phiên này.' });
   }
 
@@ -372,7 +361,7 @@ routes.post('/sessions/:id/complete', authenticateRequired, async (req: Authenti
     return res.status(404).json({ code: 'SESSION_NOT_FOUND', message: 'Phiên luyện tập không tồn tại.' });
   }
 
-  if (existing.ownerUid !== req.firebaseUid) {
+  if (existing.ownerUid !== req.authUid) {
     return res.status(403).json({ code: 'FORBIDDEN', message: 'Bạn không có quyền hoàn tất phiên này.' });
   }
 
@@ -394,7 +383,7 @@ routes.post('/sessions/:id/complete', authenticateRequired, async (req: Authenti
 
 // 6. List user's private sessions (Strictly own sessions only)
 routes.get('/sessions', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
-  const uid = req.firebaseUid!;
+  const uid = req.authUid!;
   const list = await dataRepository.listTrainingSessions(uid);
   res.json({ sessions: list });
 });
@@ -419,8 +408,8 @@ routes.get('/sessions/:id', authenticateRequired, async (req: AuthenticatedReque
     }
 
     // IDOR Protection: Citizens can only see their own sessions; Staff/Admin can view all via verified Custom Claims
-    const isOwner = session.ownerUid === req.firebaseUid;
-    const effectiveRole = getEffectiveRoleFromClaims(req.firebaseClaims);
+    const isOwner = session.ownerUid === req.authUid;
+    const effectiveRole = getEffectiveRoleFromClaims(req.authClaims);
     const isPrivileged = ['platform_admin'].includes(effectiveRole);
     if (!isOwner && !isPrivileged) {
       return res.status(403).json({ code: 'FORBIDDEN', message: 'Bạn không có quyền xem phiên luyện tập này.' });
@@ -434,7 +423,7 @@ routes.get('/sessions/:id', authenticateRequired, async (req: AuthenticatedReque
 
 // 7b. Self-service Account Deletion (Decree 13 / GDPR Compliance)
 routes.post('/auth/delete-account', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
-  const uid = req.firebaseUid!;
+  const uid = req.authUid!;
   try {
     const deletion = await dataRepository.createDeletionRequest({
       uid, phoneMasked: req.user?.phoneMasked || '', status: 'pending',

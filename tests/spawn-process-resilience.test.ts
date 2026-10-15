@@ -27,8 +27,7 @@ describe('Real Standalone Spawn Integration Test (Zero special env)', () => {
         NODE_ENV: 'production',
         CORS_ORIGIN: 'https://goldenminutes.org,http://localhost:3000',
         PORT: String(testPort),
-        // Explicitly ensuring no special Firestore Admin env
-        ENABLE_FIRESTORE_ADMIN: undefined,
+
       },
       stdio: ['pipe', 'pipe', 'pipe'],
     });

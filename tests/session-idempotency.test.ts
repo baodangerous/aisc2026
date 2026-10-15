@@ -3,22 +3,6 @@ import request from 'supertest';
 import { app } from '../server/index';
 import { dataRepository } from '../server/repository';
 
-// Mock auth token verification
-vi.mock('../server/firebaseAdmin', () => ({
-  adminAuth: {
-    verifyIdToken: vi.fn().mockImplementation(async (token: string) => {
-      if (token === 'valid_token') {
-        return { uid: 'user_123', email: 'tester@test.com' };
-      }
-      throw new Error('Invalid token');
-    }),
-  },
-  adminDb: {
-    collection: vi.fn(),
-  },
-  adminApp: {},
-}));
-
 describe('Session Idempotency & Batching Verification', () => {
   it('rejects unauthenticated POST /api/sessions', async () => {
     const res = await request(app)

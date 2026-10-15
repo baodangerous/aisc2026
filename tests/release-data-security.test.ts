@@ -1,16 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../server/app';
-import { dataRepository, FirestoreRepository } from '../server/repository';
+import { dataRepository, SupabaseRepository } from '../server/repository';
 import { SessionEventSchema, FacilitySchema } from '../src/domain/schemas/persistence';
 import { REFERENCE_LEARNING_RESOURCES } from '../src/content/curatedLearningCatalog';
 import type { TrainingSession, UserProfile } from '../src/domain/schemas';
 
-vi.mock('../server/firebaseAdmin', () => ({
-  isFirestoreAdminEnabled: () => false,
-  adminDb: {},
-  adminAuth: { verifyIdToken: async () => ({ uid: 'owner_a', role: 'citizen' }) },
-}));
 afterEach(() => vi.restoreAllMocks());
 const now = '2026-10-15T10:00:00.000Z';
 const profile: UserProfile = { uid: 'owner_a', displayName: 'User', role: 'citizen', preferredLanguage: 'vi', onboardingCompleted: true, createdAt: now, updatedAt: now };
@@ -19,7 +14,7 @@ const payload = { sessionId: 'session_1', scenarioId: 'sc_ohca_01', scenarioTitl
 
 describe('Release data boundaries', () => {
   it('refuses writes instead of acknowledging RAM-only persistence', async () => {
-    const repository = new FirestoreRepository();
+    const repository = new SupabaseRepository();
     await expect(repository.upsertUser(profile)).rejects.toMatchObject({ code: 'STORAGE_UNAVAILABLE', status: 503 });
     expect(await repository.probe()).toEqual({ ok: false, database: 'unavailable' });
     expect(await repository.getFacilities()).toEqual([]);

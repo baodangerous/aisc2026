@@ -5,33 +5,6 @@ import { getEffectiveRoleFromClaims } from '../server/routes/api';
 import { dataRepository } from '../server/repository';
 import { TrainingSession } from '../src/domain/schemas';
 
-// Mock auth token verification
-vi.mock('../server/firebaseAdmin', () => ({
-  adminAuth: {
-    verifyIdToken: vi.fn().mockImplementation(async (token: string) => {
-      if (token === 'valid_citizen_token') {
-        return { uid: 'user_citizen', email: 'citizen@test.com', role: 'citizen' };
-      }
-      if (token === 'valid_admin_token') {
-        return { uid: 'user_admin', email: 'admin@test.com', admin: true, role: 'platform_admin' };
-      }
-      if (token === 'forged_claim_token') {
-        return { uid: 'attacker', email: 'attacker@test.com', role: 'arbitrary_superuser_role' };
-      }
-      throw new Error('Invalid token');
-    }),
-  },
-  adminDb: {
-    collection: vi.fn().mockReturnValue({
-      doc: vi.fn().mockReturnValue({
-        set: vi.fn().mockResolvedValue({}),
-        get: vi.fn().mockResolvedValue({ exists: false }),
-      }),
-    }),
-  },
-  adminApp: {},
-}));
-
 describe('Role Escalation & IDOR Protection Verification', () => {
   it('getEffectiveRoleFromClaims strictly enforces whitelist and rejects arbitrary strings', () => {
     expect(getEffectiveRoleFromClaims({ admin: true })).toBe('platform_admin');

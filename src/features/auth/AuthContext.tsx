@@ -29,14 +29,14 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('initializing');
-  const [authUser, setFirebaseUser] = useState<SupabaseUser | null>(null);
+  const [authUser, setAuthUser] = useState<SupabaseUser | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
 
   const hydrateUser = async (authUser: SupabaseUser) => {
     if (!supabase) throw new Error('Supabase chưa được cấu hình.');
     const profileRow = await getSupabaseProfile(authUser);
     const profile = mapProfile(profileRow) as UserProfile;
-    setFirebaseUser(authUser);
+    setAuthUser(authUser);
     setUser(profile);
     setAuthStatus('authenticated_synced');
     void syncGuestSessionsToUser(profile.uid);
@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.setTimeout(() => {
           if (active) void hydrateUser(session.user).catch(() => active && setAuthStatus('authentication_error'));
         }, 0);
-      } else { setFirebaseUser(null); setUser(null); setAuthStatus('guest'); }
+      } else { setAuthUser(null); setUser(null); setAuthStatus('guest'); }
     });
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
@@ -126,7 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.auth.signOut();
       if (error) throw new Error('Chưa thể đăng xuất. Vui lòng thử lại.');
     }
-    setFirebaseUser(null); setUser(null); setAuthStatus('guest');
+    setAuthUser(null); setUser(null); setAuthStatus('guest');
   };
 
   const updateProfile = async (displayName?: string, preferredLanguage?: string, phone?: string): Promise<ProfileUpdateResult> => {

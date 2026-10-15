@@ -54,7 +54,7 @@ describe('API Routing & Content-Type Integrity', () => {
   });
 
   it('/readyz returns JSON for container readiness probe', async () => {
-    vi.spyOn(dataRepository, 'probe').mockResolvedValueOnce({ ok: true, database: 'cloud_firestore' });
+    vi.spyOn(dataRepository, 'probe').mockResolvedValueOnce({ ok: true, database: 'supabase_postgres' });
     const res = await request(app).get('/readyz');
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toMatch(/application\/json/);
