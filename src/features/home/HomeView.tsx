@@ -37,20 +37,18 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
     <div className="bg-background pb-24 font-sans text-foreground">
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
         {/* Hero Section */}
-        <section className="hero-editorial relative overflow-hidden rounded-[2rem] bg-[#191919] text-white">
-          <div className="absolute inset-0 bg-black/35">
-            <img src="/images/aed-community-installation.png" alt="" aria-hidden="true" className="h-full w-full object-cover object-[center_30%] opacity-85" />
+        <section className="hero-editorial overflow-hidden rounded-[2rem] bg-[#191919] text-white">
+          <div className="hero-editorial-image relative h-[16rem] overflow-hidden sm:h-[24rem]">
+            <img src="/images/aed-community-installation.png" alt="Đội ngũ cộng đồng giới thiệu tủ AED tại một không gian công cộng" className="h-full w-full object-cover object-[center_28%]" />
+            <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-sm"><CircleCheck className="size-3.5 text-[#ff6b68]" aria-hidden="true" />Ảnh cộng đồng thật</div>
           </div>
-          <div className="relative flex min-h-[29rem] flex-col justify-between gap-12 p-6 sm:min-h-[34rem] sm:p-10">
-            <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/80">
-              <span className="flex items-center gap-2"><CircleCheck className="size-4 text-[#ff6b68]" aria-hidden="true" />Chuẩn bị sẵn sàng</span>
-              <span className="font-mono text-white/60">01 / 03</span>
-            </div>
+          <div className="relative flex flex-col gap-4 p-5 sm:p-8">
+            <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/70"><span>Chuẩn bị sẵn sàng</span><span className="font-mono text-white/50">01 / 03</span></div>
             <div className="max-w-xl">
-              <p className="mb-3 text-sm font-semibold text-[#ffb4b2]">GOLDENMINUTES · CỘNG ĐỒNG BIẾT CỨU NGƯỜI</p>
-              <h1 className="text-balance text-4xl font-bold leading-[1.05] sm:text-6xl">Mỗi phút đều có ý nghĩa.</h1>
-              <p className="mt-5 max-w-lg text-base leading-relaxed text-white/80">Học kỹ năng sơ cứu thật. Nhìn thấy những người đang hành động thật. Sẵn sàng trước khi tình huống khẩn cấp xảy ra.</p>
-              <Link to="/training" className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#e31917] px-5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5"><PlayCircle className="size-5" aria-hidden="true" />Bắt đầu luyện ngay</Link>
+              <p className="mb-2 text-xs font-semibold text-[#ffb4b2]">GOLDENMINUTES · CỘNG ĐỒNG BIẾT CỨU NGƯỜI</p>
+              <h1 className="text-balance text-3xl font-bold leading-[1.05] sm:text-6xl">Mỗi phút đều có ý nghĩa.</h1>
+              <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/80 sm:text-base">Học kỹ năng sơ cứu thật. Nhìn thấy những người đang hành động thật. Sẵn sàng trước khi tình huống khẩn cấp xảy ra.</p>
+              <Link to="/training" className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#e31917] px-5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5"><PlayCircle className="size-5" aria-hidden="true" />Bắt đầu luyện ngay</Link>
             </div>
           </div>
         </section>
