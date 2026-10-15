@@ -16,6 +16,8 @@ interface AuthContextType {
   isSynced: boolean;
   isSupabaseReady: boolean;
   loginWithGoogle: () => Promise<void>;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
+  signUpWithPassword: (email: string, password: string) => Promise<void>;
   sendPhoneOtp: (phone: string) => Promise<void>;
   verifyPhoneOtp: (phone: string, token: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -86,6 +88,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithPassword = async (email: string, password: string) => {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^\\S+@\\S+\\.\\S+$/.test(normalizedEmail) || password.length < 8) throw new Error('Nhập email hợp lệ và mật khẩu tối thiểu 8 ký tự.');
+    const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+    if (error) throw new Error('Email hoặc mật khẩu không đúng.');
+  };
+
+  const signUpWithPassword = async (email: string, password: string) => {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^\\S+@\\S+\\.\\S+$/.test(normalizedEmail) || password.length < 8) throw new Error('Nhập email hợp lệ và mật khẩu tối thiểu 8 ký tự.');
+    const { data, error } = await supabase.auth.signUp({ email: normalizedEmail, password });
+    if (error) throw error;
+    if (!data.session) throw new Error('Đăng ký thành công. Hãy kiểm tra email để xác nhận tài khoản rồi đăng nhập.');
+  };
+
   const sendPhoneOtp = async (phone: string) => {
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
     const normalized = normalizeVietnamesePhone(phone);
@@ -132,7 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAuth = authStatus === 'authenticated_synced' || authStatus === 'authenticated_offline';
-  return <AuthContext.Provider value={{ authStatus, user, profile: user, firebaseUser, isLoading: authStatus === 'initializing', isGuest: !isAuth, isAuthenticated: isAuth, isSynced: authStatus === 'authenticated_synced', isSupabaseReady: isSupabaseConfigured, loginWithGoogle, logout, updateProfile, requestDeletion, sendPhoneOtp, verifyPhoneOtp }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ authStatus, user, profile: user, firebaseUser, isLoading: authStatus === 'initializing', isGuest: !isAuth, isAuthenticated: isAuth, isSynced: authStatus === 'authenticated_synced', isSupabaseReady: isSupabaseConfigured, loginWithGoogle, signInWithPassword, signUpWithPassword, logout, updateProfile, requestDeletion, sendPhoneOtp, verifyPhoneOtp }}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
