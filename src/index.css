@@ -7,11 +7,11 @@
  * Scale follows mobile UI guidance: 12px min caption, 15-16px body, 16px inputs (prevents iOS zoom)
  */
 @theme {
-  --color-background: #f9fafb;
+  --color-background: #f4f7f8;
   --color-surface: #ffffff;
-  --color-foreground: #1d2939;
-  --color-muted: #667085;
-  --color-primary: #e31917;
+  --color-foreground: #17212b;
+  --color-muted: #5f6f7b;
+  --color-primary: #c92827;
   --color-primary-foreground: #ffffff;
   --color-primary-dark: #b31312;
   --color-primary-soft: #fff1f0;
@@ -52,8 +52,8 @@
     min-height: 100%;
     margin: 0;
     padding: 0;
-    background-color: #F9FAFB;
-    color: #1D2939;
+    background-color: #f4f7f8;
+    color: #17212b;
     font-size: 15px;
     line-height: 1.6;
     letter-spacing: -0.003em;
@@ -189,7 +189,23 @@
 }
 
 .brand-gradient {
-  background: linear-gradient(135deg, #e31917 0%, #b31312 100%);
+  background: linear-gradient(135deg, #c92827 0%, #9f1f20 100%);
+}
+
+.editorial-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(23, 33, 43, 0.08);
+  box-shadow: 0 14px 36px rgba(23, 33, 43, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; }
+  body { background-color: #11181d; color: #f3f6f7; }
+  .editorial-surface { background: rgba(24, 34, 40, 0.92); border-color: rgba(255,255,255,0.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editorial-surface { transition: none !important; }
 }
 
 @keyframes film-pan {
