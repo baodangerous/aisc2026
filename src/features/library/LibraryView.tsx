@@ -178,11 +178,12 @@ export const LibraryView: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filteredResources.map((res) => {
-                const durationStr = formatDuration(res.durationSeconds);
+                const stepImageCount = res.steps.filter((s) => s.imageUrl).length;
 
                 return (
                   <div
                     key={res.id}
+                    onClick={() => handleOpenLesson(res)}
                     className="bg-white border border-slate-200 hover:border-blue-500 rounded-2xl overflow-hidden shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between group"
                   >
                     <div>
@@ -196,15 +197,17 @@ export const LibraryView: React.FC = () => {
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
-                        {/* Quiet unboxed duration indicator */}
-                        <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1 text-white text-xs font-mono font-medium drop-shadow-sm">
-                          <Clock className="w-3.5 h-3.5" aria-hidden="true" />
-                          <span>{durationStr}</span>
+                        <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 text-white text-xs font-medium drop-shadow-sm">
+                          <span className="truncate">{res.videoChannel || res.sourceOrganization}</span>
+                          {stepImageCount > 0 && (
+                            <span className="shrink-0 px-1.5 py-0.5 rounded bg-black/60">
+                              {stepImageCount} ảnh minh họa
+                            </span>
+                          )}
                         </div>
 
-                        {/* Play Icon Trigger */}
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="w-11 h-11 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg">
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-12 h-12 rounded-full bg-[#D92D20] text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                             <Play className="w-5 h-5 fill-current ml-0.5" aria-hidden="true" />
                           </div>
                         </div>
@@ -225,14 +228,18 @@ export const LibraryView: React.FC = () => {
                           {res.title}
                         </h3>
 
-                        <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                          {res.description}
-                        </p>
-
-                        <div className="pt-1 flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
-                          <span className="truncate">{res.evidenceLevel}</span>
-                        </div>
+                        {stepImageCount > 0 && (
+                          <div className="flex gap-1.5 pt-1" aria-hidden="true">
+                            {res.steps
+                              .filter((s) => s.imageUrl)
+                              .slice(0, 4)
+                              .map((s) => (
+                                <div key={s.stepNumber} className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-white">
+                                  <SafeImage src={s.imageUrl} alt="" className="w-full h-full object-cover" containerClassName="relative w-full h-full overflow-hidden bg-white" />
+                                </div>
+                              ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 

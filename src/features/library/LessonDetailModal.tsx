@@ -119,14 +119,12 @@ export const LessonDetailModal: React.FC<LessonDetailModalProps> = ({
             {/* Source Org Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-[#F9FAFB] border border-[#EAECF0] rounded-xl text-xs text-[#475467]">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-[#101828]">{resource.sourceOrganization}</span>
-                <span className="text-[#98A2B3]">•</span>
-                <span className="flex items-center gap-1 text-[#667085]">
-                  <Clock className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>{durationStr}</span>
+                <Play className="w-3.5 h-3.5 text-[#D92D20] fill-current shrink-0" aria-hidden="true" />
+                <span>
+                  Video: <strong className="text-[#101828]">{resource.videoChannel || resource.sourceOrganization}</strong>
                 </span>
                 <span className="text-[#98A2B3]">•</span>
-                <span className="uppercase font-semibold text-[#667085]">{resource.language}</span>
+                <span className="text-[#667085]">Phụ đề tự động trên YouTube</span>
               </div>
 
               <a
@@ -172,28 +170,64 @@ export const LessonDetailModal: React.FC<LessonDetailModalProps> = ({
               <BookOpen className="w-4 h-4 text-[#175CD3]" aria-hidden="true" />
               <span>Các bước thực hiện chuẩn</span>
             </h3>
-            <div className="space-y-2.5">
+            <ol className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {resource.steps.map((step) => (
-                <div
+                <li
                   key={step.stepNumber}
-                  className="p-3.5 bg-white border border-[#EAECF0] rounded-xl shadow-2xs space-y-1.5"
+                  className={`bg-white border border-[#EAECF0] rounded-xl shadow-2xs overflow-hidden flex flex-col ${
+                    step.imageUrl ? '' : 'sm:col-span-2'
+                  }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-[#EFF8FF] text-[#175CD3] font-mono text-xs font-bold flex items-center justify-center shrink-0">
-                      {step.stepNumber}
-                    </span>
-                    <h4 className="text-xs sm:text-sm font-bold text-[#101828]">{step.title}</h4>
-                  </div>
-                  <p className="text-xs text-[#475467] leading-relaxed pl-7">{step.detail}</p>
-                  {step.keyPoint && (
-                    <div className="ml-7 p-2 bg-[#F9FAFB] border border-[#EAECF0] rounded-lg text-xs text-[#175CD3] font-medium flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                      <span>{step.keyPoint}</span>
-                    </div>
+                  {step.imageUrl && (
+                    <figure className="relative">
+                      <div className="aspect-[4/3] w-full bg-[#F2F4F7]">
+                        <SafeImage
+                          src={step.imageUrl}
+                          alt={step.imageAlt || step.title}
+                          fallbackCategory="general"
+                          className="w-full h-full object-contain"
+                          containerClassName="relative w-full h-full overflow-hidden bg-white"
+                        />
+                      </div>
+                      <span className="absolute top-2 left-2 w-7 h-7 rounded-full bg-[#175CD3] text-white text-sm font-bold flex items-center justify-center shadow-md">
+                        {step.stepNumber}
+                      </span>
+                      <figcaption className="px-3 py-1.5 bg-[#F9FAFB] border-y border-[#EAECF0] text-[11px] text-[#667085] flex items-center justify-between gap-2">
+                        <span className="font-medium text-[#344054] truncate">{step.imageAlt}</span>
+                        {step.imageSourceUrl && (
+                          <a
+                            href={step.imageSourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 hover:text-[#175CD3] hover:underline"
+                            title={step.imageCredit}
+                          >
+                            Nguồn ảnh
+                          </a>
+                        )}
+                      </figcaption>
+                    </figure>
                   )}
-                </div>
+                  <div className="p-3.5 space-y-1.5 flex-1">
+                    <div className="flex items-center gap-2">
+                      {!step.imageUrl && (
+                        <span className="w-6 h-6 rounded-full bg-[#EFF8FF] text-[#175CD3] text-xs font-bold flex items-center justify-center shrink-0">
+                          {step.stepNumber}
+                        </span>
+                      )}
+                      <h4 className="text-sm font-bold text-[#101828] leading-snug">{step.title}</h4>
+                    </div>
+                    <p className="text-xs text-[#475467] leading-relaxed">{step.detail}</p>
+                    {step.keyPoint && (
+                      <p className="p-2 bg-[#EFF8FF] rounded-lg text-xs text-[#175CD3] font-medium flex items-start gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+                        <span>{step.keyPoint}</span>
+                      </p>
+                    )}
+                  </div>
+                </li>
               ))}
-            </div>
+            </ol>
           </div>
 
           {/* 5. Avoid Actions & 115 Danger Signs Grid */}
