@@ -1,5 +1,5 @@
 import React, { useState, Suspense } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './features/auth/AuthContext';
 import { Navigation } from './components/Navigation';
 import { Call115Modal } from './components/Call115Modal';
@@ -41,7 +41,7 @@ export const App: React.FC = () => {
 
   return (
     <AuthProvider>
-      <HashRouter>
+      <BrowserRouter>
         <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary selection:text-primary-foreground">
           <Navigation
             onOpenCall115={() => setIsCall115Open(true)}
@@ -81,7 +81,7 @@ export const App: React.FC = () => {
             onClose={() => setIsLoginOpen(false)}
           />
         </div>
-      </HashRouter>
+      </BrowserRouter>
     </AuthProvider>
   );
 };
