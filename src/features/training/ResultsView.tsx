@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import useSWR from 'swr';
+import { useAuth } from '../auth/AuthContext';
+import { auth } from '../../services/firebase/client';
 import { useSearchParams, Link } from 'react-router-dom';
 import {
   Clock,
@@ -30,41 +33,30 @@ export const ResultsView: React.FC = () => {
   const sessionIdParam = searchParams.get('session');
   const scenarioIdParam = searchParams.get('scenario') || 'sc_ohca_01';
 
-  const [session, setSession] = useState<TrainingSession | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const { user, isLoading: authLoading } = useAuth();
+  const { data: session = null, isLoading: loading } = useSWR(
+    !authLoading && sessionIdParam ? ['training-result', user?.uid || 'guest', sessionIdParam] : null,
+    async () => {
+      if (user) {
+        const response = await fetch(`/api/sessions/${encodeURIComponent(sessionIdParam!)}`, { headers: { Authorization: `Bearer ${await auth?.currentUser?.getIdToken()}` } });
+        if (!response.ok) throw new Error('Không thể tải kết quả.');
+        return (await response.json()).session as TrainingSession;
+      }
+      const sessions = await getLocalSessions();
+      return sessions.find((item) => !item.ownerUid && (item.clientSessionId === sessionIdParam || item.sessionId === sessionIdParam)) || null;
+    }, { shouldRetryOnError: false }
+  );
   const [activeLessonModal, setActiveLessonModal] = useState<MedicalLearningResource | null>(null);
 
   const scenario = APPROVED_SCENARIOS.find((s) => s.id === scenarioIdParam) || APPROVED_SCENARIOS[0];
   const version = scenario.versions[0];
   const recommendedResources = getApprovedResourcesForScenario(scenario.category || scenario.id);
 
-  useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      try {
-        const localList = await getLocalSessions();
-        const found = localList.find((s) => s.clientSessionId === sessionIdParam || s.sessionId === sessionIdParam) || localList[0];
-        setSession(found || null);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, [sessionIdParam]);
+  if (authLoading || loading) return <p role="status" className="p-6 text-muted">Đang tải kết quả…</p>;
+  if (!session) return <div className="flex flex-col gap-3 p-6 text-foreground"><h1 className="text-2xl font-bold">Chưa có kết quả</h1><p>Không tìm thấy phiên luyện tập của bạn.</p><Link to="/training" className="text-primary underline">Bắt đầu luyện tập</Link></div>;
 
-  // Compute metrics from session events or defaults
-  const metrics = session
-    ? calculateSessionMetrics(session.events || [], version.thresholds, session.status === 'completed')
-    : {
-        durationSec: 85,
-        timeToGuidanceSec: 14,
-        timeToCallSec: 38,
-        timeToActionSec: 52,
-        adiSec: 0,
-        mroFlag: false,
-        readinessScore: 92,
-        delayBreakdown: { guidanceDelaySec: 0, callDelaySec: 0, actionDelaySec: 0 },
-      };
+  // Training scores describe app interactions, not clinical competence or real rescues.
+  const metrics = calculateSessionMetrics(session.events || [], version.thresholds, session.status === 'completed');
 
   const scoreInfo = getReadinessPresentation(metrics.readinessScore);
 
@@ -167,11 +159,11 @@ export const ResultsView: React.FC = () => {
           <div className="mt-6 pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-600" />
-              <span>Dữ liệu đã lưu an toàn trên thiết bị (IndexedDB)</span>
+              <span>{user ? 'Kết quả từ tài khoản của bạn' : 'Kết quả chỉ lưu trên thiết bị này'}</span>
             </div>
             <div className="flex items-center gap-1 text-slate-700 font-medium">
               <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-              <span>Đã đối chiếu ngưỡng chuẩn y tế ADI</span>
+              <span>Chỉ số luyện tập, không phải đánh giá lâm sàng</span>
             </div>
           </div>
         </div>

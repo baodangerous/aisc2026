@@ -18,7 +18,9 @@ describe('Gemini Resilience & Error Handling Verification', () => {
 
     expect(res.status).toBe(500);
     expect(res.body.code).toBe('AI_SERVICE_ERROR');
-    expect(res.body.message).toContain('GEMINI_UNAVAILABLE');
+    expect(res.body.message).not.toContain('GEMINI_UNAVAILABLE');
+    expect(res.body.message).not.toContain('Service overloaded');
+    expect(res.body.message).toContain('biểu mẫu thủ công');
   });
 
   it('rejects malformed extraction payload with 400', async () => {

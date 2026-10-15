@@ -1,793 +1,256 @@
-import {
-  TrainingSession,
-  DailyAggregate,
-  UserProfile,
-  Scenario,
-  ScenarioThresholds,
-  CommunityFacility,
-  AuditLog,
-  DeletionRequest,
-  VolunteerApplication,
-  VolunteerStatus,
-  SessionEvent,
-} from '../src/domain/schemas';
+import { randomUUID } from 'node:crypto';
+import type { Query } from 'firebase-admin/firestore';
+import type { TrainingSession, DailyAggregate, UserProfile, ScenarioThresholds, CommunityFacility, AuditLog, DeletionRequest, VolunteerApplication, VolunteerStatus, SessionEvent } from '../src/domain/schemas';
 import { APPROVED_SCENARIOS } from '../src/content/approvedScenarios';
 import { calculateSessionMetrics, calculateDelayFunnel } from '../src/domain/metrics/calculator';
+import { COLLECTION_MODELS, TrainingSessionSchema, FacilitySchema } from '../src/domain/schemas/persistence';
 import { adminDb, isFirestoreAdminEnabled } from './firebaseAdmin';
-import { serverStore, ServerDataStore } from './store';
-import { Query } from 'firebase-admin/firestore';
 
-export interface IDataRepository {
-  init(): Promise<void>;
-  probe(timeoutMs?: number): Promise<{ ok: boolean; database: 'cloud_firestore' | 'memory_fallback'; degraded?: boolean }>;
-  getUser(uid: string): Promise<UserProfile | null>;
-  upsertUser(user: Partial<UserProfile> & { uid: string }): Promise<UserProfile>;
-  deleteUser(uid: string): Promise<void>;
+type CollectionName = keyof typeof COLLECTION_MODELS;
+type VolunteerInput = Omit<VolunteerApplication, 'id' | 'status' | 'statusHistory' | 'createdAt' | 'updatedAt'>;
 
-  getScenarios(): Promise<Scenario[]>;
-  getScenario(id: string): Promise<Scenario | null>;
-
-  createTrainingSession(session: TrainingSession): Promise<TrainingSession>;
-  appendSessionEvents(sessionId: string, newEvents: SessionEvent[]): Promise<TrainingSession | null>;
-  completeTrainingSession(
-    sessionId: string,
-    payload: {
-      completedAt?: string;
-      confidenceAfter?: number;
-      finalEvents?: SessionEvent[];
-      thresholds?: ScenarioThresholds;
-    }
-  ): Promise<TrainingSession | null>;
-  getTrainingSession(id: string): Promise<TrainingSession | null>;
-  listTrainingSessions(ownerUid?: string): Promise<TrainingSession[]>;
-
-  getFacilities(): Promise<CommunityFacility[]>;
-
-  createVolunteerApplication(data: Omit<VolunteerApplication, 'id' | 'status' | 'statusHistory' | 'createdAt' | 'updatedAt'>): Promise<VolunteerApplication>;
-  getVolunteerApplicationByUserId(userId: string): Promise<VolunteerApplication | null>;
-  getVolunteerApplicationById(id: string): Promise<VolunteerApplication | null>;
-  updateVolunteerStatusByUser(userId: string, action: 'pause' | 'resume' | 'withdraw'): Promise<VolunteerApplication | null>;
-  listVolunteerApplications(filters?: { status?: string; province?: string; cprTrained?: boolean; search?: string }): Promise<VolunteerApplication[]>;
-  reviewVolunteerApplication(id: string, reviewerId: string, reviewerName: string, status: VolunteerStatus, reviewNote: string): Promise<VolunteerApplication | null>;
-
-  logAudit(entry: Omit<AuditLog, 'id' | 'timestamp'>): Promise<void>;
-  getAuditLogs(): Promise<AuditLog[]>;
-
-  createDeletionRequest(req: Omit<DeletionRequest, 'id' | 'requestedAt'>): Promise<DeletionRequest>;
-
-  getDailyAggregates(scenarioId?: string): Promise<DailyAggregate[]>;
-  getDelayFunnel(scenarioId?: string): Promise<any>;
+export class RepositoryError extends Error {
+  constructor(public code = 'STORAGE_UNAVAILABLE', public status = 503) {
+    super('Không thể truy cập dữ liệu lúc này. Vui lòng thử lại.');
+  }
 }
 
-export const DEFAULT_FACILITIES: CommunityFacility[] = [
-  {
-    id: 'fac_station_115_hcm',
-    name: 'Trung Tâm Cấp Cứu 115 TP. Hồ Chí Minh',
-    type: 'emergency_station',
-    address: '524 Sư Vạn Hạnh, Phường 12, Quận 10, TP.HCM',
-    province: 'TP. Hồ Chí Minh',
-    district: 'Quận 10',
-    lat: 10.7733,
-    lng: 106.6603,
-    regionCell: 'hcm_q10',
-    isPublicAccess: true,
-    operatingHours: '24/7',
-    status: 'verified',
-    disclaimer: 'Cơ sở cấp cứu 115 chính thức trực thuộc Sở Y Tế TP.HCM.',
-  },
-  {
-    id: 'fac_hosp_nd115',
-    name: 'Bệnh viện Nhân Dân 115 (Khoa Cấp cứu & Đột quỵ)',
-    type: 'hospital',
-    address: '527 Sư Vạn Hạnh, Phường 12, Quận 10, TP.HCM',
-    province: 'TP. Hồ Chí Minh',
-    district: 'Quận 10',
-    lat: 10.7725,
-    lng: 106.6612,
-    regionCell: 'hcm_q10',
-    isPublicAccess: true,
-    operatingHours: '24/7',
-    status: 'verified',
-    disclaimer: 'Bệnh viện tuyến cuối đa khoa có đơn vị cấp cứu đột quỵ.',
-  },
-  {
-    id: 'fac_hosp_01',
-    name: 'Bệnh viện Đa khoa Sài Gòn',
-    type: 'hospital',
-    address: '125 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
-    province: 'TP. Hồ Chí Minh',
-    district: 'Quận 1',
-    lat: 10.7725,
-    lng: 106.6985,
-    regionCell: 'hcm_q1_central',
-    isPublicAccess: true,
-    operatingHours: '24/7',
-    status: 'synthetic_simulation',
-    disclaimer: 'Dữ liệu mô phỏng — không dùng để điều hướng trong cấp cứu thật.',
-  },
-  {
-    id: 'fac_hosp_02',
-    name: 'Bệnh viện Nhân dân Gia Định',
-    type: 'hospital',
-    address: '01 Nơ Trang Long, Phường 7, Bình Thạnh, TP.HCM',
-    province: 'TP. Hồ Chí Minh',
-    district: 'Bình Thạnh',
-    lat: 10.8035,
-    lng: 106.6953,
-    regionCell: 'hcm_binhthanh_core',
-    isPublicAccess: true,
-    operatingHours: '24/7',
-    status: 'synthetic_simulation',
-    disclaimer: 'Dữ liệu mô phỏng — không dùng để điều hướng trong cấp cứu thật.',
-  },
-  {
-    id: 'fac_aed_01',
-    name: 'Điểm AED Minh Họa — Công viên 23/9',
-    type: 'aed',
-    address: 'Đường Lê Lai, Phường Bến Thành, Quận 1, TP.HCM',
-    province: 'TP. Hồ Chí Minh',
-    district: 'Quận 1',
-    lat: 10.7702,
-    lng: 106.6934,
-    regionCell: 'hcm_q1_central',
-    isPublicAccess: true,
-    operatingHours: '24/7',
-    status: 'synthetic_simulation',
-    disclaimer: 'Dữ liệu mô phỏng theo đề án số hóa AED — Không dùng thay thế chỉ dẫn y tế trong cấp cứu thật.',
-  },
-  {
-    id: 'fac_aed_02',
-    name: 'Điểm AED Minh Họa — Nhà thi đấu Nguyễn Du',
-    type: 'aed',
-    address: '116 Nguyễn Du, Phường Bến Thành, Quận 1, TP.HCM',
-    province: 'TP. Hồ Chí Minh',
-    district: 'Quận 1',
-    lat: 10.7745,
-    lng: 106.6922,
-    regionCell: 'hcm_q1_central',
-    isPublicAccess: true,
-    operatingHours: '06:00 - 22:00',
-    status: 'synthetic_simulation',
-    disclaimer: 'Dữ liệu mô phỏng theo đề án số hóa AED — Không dùng thay thế chỉ dẫn y tế trong cấp cứu thật.',
-  },
-  {
-    id: 'fac_aed_03',
-    name: 'Điểm AED Minh Họa — Co.opmart Cống Quỳnh',
-    type: 'aed',
-    address: '189C Cống Quỳnh, Phường Nguyễn Cư Trinh, Quận 1, TP.HCM',
-    province: 'TP. Hồ Chí Minh',
-    district: 'Quận 1',
-    lat: 10.7656,
-    lng: 106.6872,
-    regionCell: 'hcm_q1_west',
-    isPublicAccess: true,
-    operatingHours: '08:00 - 22:00',
-    status: 'synthetic_simulation',
-    disclaimer: 'Dữ liệu mô phỏng theo đề án số hóa AED — Không dùng thay thế chỉ dẫn y tế trong cấp cứu thật.',
-  },
-];
+function validate<T>(collection: CollectionName, data: unknown): T {
+  return COLLECTION_MODELS[collection].schema.parse(data) as T;
+}
 
-export class FirestoreRepository implements IDataRepository {
-  private initialized = false;
-  private firestoreActive = false;
-  private fallbackStore: ServerDataStore = serverStore;
+function serializable<T>(collection: CollectionName, data: T): T {
+  const parsed = validate<T>(collection, data);
+  const json = JSON.stringify(parsed);
+  if (Buffer.byteLength(json) > 750_000) throw new RepositoryError('DOCUMENT_TOO_LARGE', 413);
+  return JSON.parse(json);
+}
 
-  async init(): Promise<void> {
-    if (this.initialized) return;
+function mergeEvents(previous: SessionEvent[], incoming: SessionEvent[]): SessionEvent[] {
+  const events = new Map(previous.map((event) => [event.clientEventId, event]));
+  for (const event of incoming) if (!events.has(event.clientEventId)) events.set(event.clientEventId, event);
+  return [...events.values()].sort((a, b) => a.elapsedMs - b.elapsedMs);
+}
 
-    if (!isFirestoreAdminEnabled()) {
-      this.initialized = true;
-      this.firestoreActive = false;
-      console.log('[FirestoreRepository] Firestore Admin disabled (ENABLE_FIRESTORE_ADMIN!=true); memory resilience store active.');
-      return;
+// No runtime seed data or RAM fallback: a successful mutation means Firestore acknowledged it.
+export class FirestoreRepository {
+  async init(): Promise<void> {}
+
+  private async run<T>(operation: () => Promise<T>): Promise<T> {
+    if (!isFirestoreAdminEnabled()) throw new RepositoryError();
+    try { return await operation(); }
+    catch (error) {
+      if (error instanceof RepositoryError) throw error;
+      throw new RepositoryError();
     }
+  }
 
+  private async get<T>(collection: CollectionName, id: string): Promise<T | null> {
+    return this.run(async () => {
+      const snapshot = await adminDb.collection(collection).doc(id).get();
+      return snapshot.exists ? validate<T>(collection, snapshot.data()) : null;
+    });
+  }
+
+  private async list<T>(collection: CollectionName, configure?: (query: Query) => Query): Promise<T[]> {
+    return this.run(async () => {
+      const query = adminDb.collection(collection);
+      const snapshot = await (configure ? configure(query) : query).limit(500).get();
+      return snapshot.docs.map((document) => validate<T>(collection, document.data()));
+    });
+  }
+
+  async probe(timeoutMs = 3500): Promise<{ ok: boolean; database: 'cloud_firestore' | 'unavailable' }> {
+    if (!isFirestoreAdminEnabled()) return { ok: false, database: 'unavailable' };
+    let timer: NodeJS.Timeout | undefined;
     try {
-      // Attempt idempotent seeding on Firestore
-      for (const sc of APPROVED_SCENARIOS) {
-        const scRef = adminDb.collection('scenarios').doc(sc.id);
-        const doc = await scRef.get().catch(() => null);
-        if (doc && !doc.exists) {
-          await scRef.set(sc).catch(() => {});
-        }
-      }
-
-      for (const fac of DEFAULT_FACILITIES) {
-        const fRef = adminDb.collection('facilities').doc(fac.id);
-        const doc = await fRef.get().catch(() => null);
-        if (doc && !doc.exists) {
-          await fRef.set(fac).catch(() => {});
-        }
-      }
-
-      this.firestoreActive = true;
-      this.initialized = true;
-      console.log('[FirestoreRepository] Initialized successfully with Cloud Firestore.');
-    } catch (err: any) {
-      this.firestoreActive = false;
-      this.initialized = true;
-      console.log('[FirestoreRepository] Cloud Firestore offline or restricted; memory resilience store active.');
-    }
+      await Promise.race([
+        adminDb.collection('users').limit(1).get(),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs); }),
+      ]);
+      return { ok: true, database: 'cloud_firestore' };
+    } catch { return { ok: false, database: 'unavailable' }; }
+    finally { if (timer) clearTimeout(timer); }
   }
 
-  // --- Users ---
-  async getUser(uid: string): Promise<UserProfile | null> {
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        const doc = await adminDb.collection('users').doc(uid).get().catch(() => null);
-        if (!doc || !doc.exists) return this.fallbackStore.users.get(uid) || null;
-        return doc.data() as UserProfile;
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-    return this.fallbackStore.users.get(uid) || null;
-  }
+  getUser(uid: string) { return this.get<UserProfile>('users', uid); }
 
   async upsertUser(user: Partial<UserProfile> & { uid: string }): Promise<UserProfile> {
-    const now = new Date().toISOString();
-    const existing = this.fallbackStore.users.get(user.uid);
-    let updated: UserProfile;
-
-    if (!existing) {
-      updated = {
-        uid: user.uid,
-        displayName: user.displayName || 'Công dân Cứu sinh',
-        phoneMasked: user.phoneMasked || 'Chưa cung cấp',
-        role: user.role || 'citizen',
-        preferredLanguage: user.preferredLanguage || 'vi',
-        onboardingCompleted: user.onboardingCompleted ?? false,
-        createdAt: now,
-        updatedAt: now,
-      };
-    } else {
-      updated = {
-        ...existing,
-        ...user,
-        updatedAt: now,
-      };
-    }
-    this.fallbackStore.users.set(user.uid, updated);
-
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        const userRef = adminDb.collection('users').doc(user.uid);
-        await userRef.set(updated, { merge: true }).catch(() => {
-          this.firestoreActive = false;
-        });
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-
-    return updated;
+    return this.run(() => adminDb.runTransaction(async (transaction) => {
+      const ref = adminDb.collection('users').doc(user.uid);
+      const previous = await transaction.get(ref);
+      const now = new Date().toISOString();
+      const updated = serializable<UserProfile>('users', {
+        displayName: 'Người dùng', role: 'citizen', preferredLanguage: 'vi',
+        onboardingCompleted: false, createdAt: now,
+        ...(previous.exists ? previous.data() : {}), ...user, updatedAt: now,
+      } as UserProfile);
+      transaction.set(ref, updated);
+      return updated;
+    }));
   }
 
-  async deleteUser(uid: string): Promise<void> {
-    this.fallbackStore.users.delete(uid);
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        await adminDb.collection('users').doc(uid).delete().catch(() => {
-          this.firestoreActive = false;
-        });
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-  }
+  // Deletion is a tracked workflow, never a misleading profile-only deletion.
+  async deleteUser(_uid: string): Promise<void> { throw new RepositoryError('DELETION_WORKFLOW_REQUIRED', 409); }
 
-  // --- Scenarios ---
-  async getScenarios(): Promise<Scenario[]> {
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        const snap = await adminDb.collection('scenarios').get().catch(() => null);
-        if (snap && !snap.empty) return snap.docs.map((d) => d.data() as Scenario);
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-    return APPROVED_SCENARIOS;
-  }
+  async getScenarios() { return APPROVED_SCENARIOS; }
+  async getScenario(id: string) { return APPROVED_SCENARIOS.find((scenario) => scenario.id === id) || null; }
 
-  async getScenario(id: string): Promise<Scenario | null> {
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        const doc = await adminDb.collection('scenarios').doc(id).get().catch(() => null);
-        if (doc && doc.exists) return doc.data() as Scenario;
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-    const found = APPROVED_SCENARIOS.find((s) => s.id === id);
-    return found || null;
-  }
-
-  // --- Health Probe with strict timeout ---
-  async probe(timeoutMs = 3500): Promise<{ ok: boolean; database: 'cloud_firestore' | 'memory_fallback'; degraded?: boolean }> {
-    if (!isFirestoreAdminEnabled() || !this.firestoreActive) {
-      return {
-        ok: true,
-        database: 'memory_fallback',
-        degraded: true,
-      };
-    }
-
-    let timer: NodeJS.Timeout | undefined;
-    const probePromise = (async () => {
-      try {
-        const snap = await adminDb.collection('scenarios').limit(1).get().catch((e) => {
-          throw e;
-        });
-        return snap !== null && snap !== undefined;
-      } catch (err) {
-        throw err;
-      }
-    })();
-
-    const timeoutPromise = new Promise<boolean>((_, reject) => {
-      timer = setTimeout(() => reject(new Error('FIRESTORE_PROBE_TIMEOUT')), timeoutMs);
-    });
-
-    try {
-      const result = await Promise.race([probePromise, timeoutPromise]);
-      if (result) {
-        return {
-          ok: true,
-          database: 'cloud_firestore',
-        };
-      }
-      this.firestoreActive = false;
-      return {
-        ok: true,
-        database: 'memory_fallback',
-        degraded: true,
-      };
-    } catch {
-      this.firestoreActive = false;
-      return {
-        ok: true,
-        database: 'memory_fallback',
-        degraded: true,
-      };
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
-  }
-
-  // --- Training Sessions ---
   async createTrainingSession(session: TrainingSession): Promise<TrainingSession> {
-    this.fallbackStore.sessions.set(session.sessionId, JSON.parse(JSON.stringify(session)));
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        await adminDb.collection('trainingSessions').doc(session.sessionId).set(session).catch(() => {
-          this.firestoreActive = false;
-        });
-      } catch {
-        this.firestoreActive = false;
+    const record = serializable('trainingSessions', session);
+    return this.run(() => adminDb.runTransaction(async (transaction) => {
+      const ref = adminDb.collection('trainingSessions').doc(record.sessionId);
+      const previous = await transaction.get(ref);
+      if (previous.exists) {
+        const existing = TrainingSessionSchema.parse(previous.data());
+        if (existing.ownerUid !== record.ownerUid) throw new RepositoryError('SESSION_CONFLICT', 409);
+        return existing;
       }
-    }
-    return session;
+      transaction.create(ref, record);
+      return record;
+    }));
   }
 
-  async appendSessionEvents(sessionId: string, newEvents: SessionEvent[]): Promise<TrainingSession | null> {
-    let existingSession = this.fallbackStore.sessions.get(sessionId) || null;
-
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        const docRef = adminDb.collection('trainingSessions').doc(sessionId);
-        const doc = await docRef.get().catch(() => null);
-        if (doc && doc.exists) {
-          existingSession = doc.data() as TrainingSession;
-        }
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-
-    if (!existingSession) return null;
-
-    const eventIds = new Set(existingSession.events.map((e) => e.clientEventId));
-    const uniqueIncoming = newEvents.filter((e) => !eventIds.has(e.clientEventId));
-
-    if (uniqueIncoming.length === 0) {
-      return existingSession;
-    }
-
-    const updatedEvents = [...existingSession.events, ...uniqueIncoming].sort(
-      (a, b) => a.elapsedMs - b.elapsedMs
-    );
-
-    const updatedSession: TrainingSession = {
-      ...existingSession,
-      events: updatedEvents,
-      updatedAt: new Date().toISOString(),
-    };
-
-    this.fallbackStore.sessions.set(sessionId, JSON.parse(JSON.stringify(updatedSession)));
-
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        await adminDb.collection('trainingSessions').doc(sessionId).set(updatedSession, { merge: true }).catch(() => {
-          this.firestoreActive = false;
-        });
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-
-    return updatedSession;
+  private async mutateSession(id: string, update: (session: TrainingSession) => TrainingSession) {
+    return this.run(() => adminDb.runTransaction(async (transaction) => {
+      const ref = adminDb.collection('trainingSessions').doc(id);
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists) return null;
+      const current = TrainingSessionSchema.parse(snapshot.data());
+      if (current.status !== 'in_progress') return current;
+      const next = serializable('trainingSessions', update(current));
+      transaction.set(ref, next);
+      return next;
+    }));
   }
 
-  async completeTrainingSession(
-    sessionId: string,
-    payload: {
-      completedAt?: string;
-      confidenceAfter?: number;
-      finalEvents?: SessionEvent[];
-      thresholds?: ScenarioThresholds;
-    }
-  ): Promise<TrainingSession | null> {
-    let existingSession = this.fallbackStore.sessions.get(sessionId) || null;
-
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        const docRef = adminDb.collection('trainingSessions').doc(sessionId);
-        const doc = await docRef.get().catch(() => null);
-        if (doc && doc.exists) {
-          existingSession = doc.data() as TrainingSession;
-        }
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-
-    if (!existingSession) return null;
-
-    let combinedEvents = existingSession.events;
-    if (payload.finalEvents && payload.finalEvents.length > 0) {
-      const eventIds = new Set(existingSession.events.map((e) => e.clientEventId));
-      const newEvts = payload.finalEvents.filter((e) => !eventIds.has(e.clientEventId));
-      combinedEvents = [...existingSession.events, ...newEvts].sort((a, b) => a.elapsedMs - b.elapsedMs);
-    }
-
-    const completedAt = payload.completedAt || new Date().toISOString();
-    const thresholds = payload.thresholds || {
-      timeToGuidanceSec: 15,
-      timeToCallSec: 45,
-      timeToActionSec: 60,
-      mroThresholdSec: 45,
-    };
-    const metrics = calculateSessionMetrics(combinedEvents, thresholds, true);
-
-    const completedSession: TrainingSession = {
-      ...existingSession,
-      events: combinedEvents,
-      completedAt,
-      status: 'completed',
-      durationSec: metrics.durationSec,
-      timeToGuidanceSec: metrics.timeToGuidanceSec,
-      timeToCallSec: metrics.timeToCallSec,
-      timeToActionSec: metrics.timeToActionSec,
-      adiSec: metrics.adiSec,
-      mroFlag: metrics.mroFlag,
-      readinessScore: metrics.readinessScore,
-      confidenceAfter: payload.confidenceAfter ?? existingSession.confidenceAfter,
-      confidenceDelta: (payload.confidenceAfter ?? existingSession.confidenceAfter ?? 3) - (existingSession.confidenceBefore ?? 3),
-      updatedAt: new Date().toISOString(),
-    };
-
-    this.fallbackStore.sessions.set(sessionId, JSON.parse(JSON.stringify(completedSession)));
-
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        await adminDb.collection('trainingSessions').doc(sessionId).set(completedSession, { merge: true }).catch(() => {
-          this.firestoreActive = false;
-        });
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-
-    return completedSession;
+  appendSessionEvents(id: string, incoming: SessionEvent[]) {
+    return this.mutateSession(id, (session) => ({
+      ...session, events: mergeEvents(session.events, incoming), updatedAt: new Date().toISOString(),
+    }));
   }
 
-  async getTrainingSession(id: string): Promise<TrainingSession | null> {
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        const doc = await adminDb.collection('trainingSessions').doc(id).get().catch(() => null);
-        if (doc && doc.exists) return doc.data() as TrainingSession;
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-    return this.fallbackStore.sessions.get(id) || null;
+  completeTrainingSession(id: string, payload: {
+    completedAt?: string; confidenceAfter?: number; finalEvents?: SessionEvent[]; thresholds?: ScenarioThresholds;
+  }) {
+    return this.mutateSession(id, (session) => {
+      const events = mergeEvents(session.events, payload.finalEvents || []);
+      const scenario = APPROVED_SCENARIOS.find((item) => item.id === session.scenarioId);
+      const version = scenario?.versions.find((item) => item.versionId === session.scenarioVersionId);
+      if (!version) throw new RepositoryError('SCENARIO_NOT_FOUND', 409);
+      const { delayBreakdown: _, ...metrics } = calculateSessionMetrics(events, version.thresholds, true);
+      const confidenceAfter = payload.confidenceAfter ?? session.confidenceAfter;
+      return {
+        ...session, ...metrics, events, status: 'completed', confidenceAfter,
+        confidenceDelta: confidenceAfter !== undefined && session.confidenceBefore !== undefined
+          ? confidenceAfter - session.confidenceBefore : undefined,
+        completedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      };
+    });
   }
 
-  async listTrainingSessions(ownerUid?: string): Promise<TrainingSession[]> {
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        let query: Query = adminDb.collection('trainingSessions');
-        if (ownerUid) {
-          query = query.where('ownerUid', '==', ownerUid);
-        }
-        const snap = await query.limit(50).get().catch(() => null);
-        if (snap && !snap.empty) {
-          return snap.docs.map((d) => d.data() as TrainingSession);
-        }
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-    const all = Array.from(this.fallbackStore.sessions.values());
-    if (ownerUid) {
-      return all.filter((s) => s.ownerUid === ownerUid);
-    }
-    return all;
+  getTrainingSession(id: string) { return this.get<TrainingSession>('trainingSessions', id); }
+  listTrainingSessions(ownerUid?: string) {
+    return this.list<TrainingSession>('trainingSessions', (query) => ownerUid ? query.where('ownerUid', '==', ownerUid) : query);
   }
 
-  // --- Facilities ---
   async getFacilities(): Promise<CommunityFacility[]> {
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        const snap = await adminDb.collection('facilities').get().catch(() => null);
-        if (snap && !snap.empty) {
-          return snap.docs.map((d) => d.data() as CommunityFacility);
-        }
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-    return DEFAULT_FACILITIES;
+    if (!isFirestoreAdminEnabled()) return [];
+    return this.run(async () => {
+      const snapshot = await adminDb.collection('facilities').where('status', '==', 'verified').limit(500).get();
+      return snapshot.docs.flatMap((doc) => {
+        const parsed = FacilitySchema.safeParse(doc.data());
+        return parsed.success ? [parsed.data] : [];
+      });
+    });
   }
 
-  // --- Volunteers ---
-  async createVolunteerApplication(
-    data: Omit<VolunteerApplication, 'id' | 'status' | 'statusHistory' | 'createdAt' | 'updatedAt'>
-  ): Promise<VolunteerApplication> {
-    const id = `vol_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const now = new Date().toISOString();
-
-    const application: VolunteerApplication = {
-      ...data,
-      id,
-      status: 'pending_review',
-      statusHistory: [
-        {
-          status: 'pending_review',
-          timestamp: now,
-          note: 'Hồ sơ đã được gửi trực tuyến qua cổng GoldenMinutes.',
-          actorRole: 'volunteer',
-        },
-      ],
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    this.fallbackStore.volunteerApplications.set(id, application);
-
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        await adminDb.collection('volunteerApplications').doc(id).set(application).catch(() => {
-          this.firestoreActive = false;
-        });
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-
-    return application;
+  async createVolunteerApplication(data: VolunteerInput): Promise<VolunteerApplication> {
+    return this.run(() => adminDb.runTransaction(async (transaction) => {
+      const query = adminDb.collection('volunteerApplications').where('userId', '==', data.userId).limit(1);
+      const previous = await transaction.get(query);
+      const ref = previous.empty ? adminDb.collection('volunteerApplications').doc(data.userId) : previous.docs[0].ref;
+      const existing = previous.empty ? null : validate<VolunteerApplication>('volunteerApplications', previous.docs[0].data());
+      const now = new Date().toISOString();
+      const application = serializable<VolunteerApplication>('volunteerApplications', {
+        ...data, id: ref.id, status: 'pending_review',
+        statusHistory: [...(existing?.statusHistory || []), { status: 'pending_review', timestamp: now, actorRole: 'citizen' }],
+        createdAt: existing?.createdAt || now, updatedAt: now,
+      });
+      transaction.set(ref, application);
+      return application;
+    }));
   }
 
-  async getVolunteerApplicationByUserId(userId: string): Promise<VolunteerApplication | null> {
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        const snap = await adminDb
-          .collection('volunteerApplications')
-          .where('userId', '==', userId)
-          .limit(1)
-          .get()
-          .catch(() => null);
-        if (snap && !snap.empty) {
-          return snap.docs[0].data() as VolunteerApplication;
-        }
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-    return this.fallbackStore.getVolunteerApplicationByUserId(userId) || null;
+  async getVolunteerApplicationByUserId(userId: string) {
+    return (await this.list<VolunteerApplication>('volunteerApplications', (query) => query.where('userId', '==', userId)))[0] || null;
+  }
+  getVolunteerApplicationById(id: string) { return this.get<VolunteerApplication>('volunteerApplications', id); }
+
+  private async transitionVolunteer(id: string, status: VolunteerStatus, actorRole: string, reviewNote?: string, reviewerId?: string) {
+    return this.run(() => adminDb.runTransaction(async (transaction) => {
+      const ref = adminDb.collection('volunteerApplications').doc(id);
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists) return null;
+      const current = validate<VolunteerApplication>('volunteerApplications', snapshot.data());
+      const now = new Date().toISOString();
+      const updated = serializable<VolunteerApplication>('volunteerApplications', {
+        ...current, status, updatedAt: now,
+        ...(reviewerId ? { reviewedBy: reviewerId, reviewedAt: now, reviewNote } : {}),
+        statusHistory: [...current.statusHistory, { status, timestamp: now, actorRole, note: reviewNote }].slice(-100),
+      });
+      transaction.set(ref, updated);
+      return updated;
+    }));
   }
 
-  async getVolunteerApplicationById(id: string): Promise<VolunteerApplication | null> {
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        const doc = await adminDb.collection('volunteerApplications').doc(id).get().catch(() => null);
-        if (doc && doc.exists) {
-          return doc.data() as VolunteerApplication;
-        }
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-    return this.fallbackStore.volunteerApplications.get(id) || null;
+  async updateVolunteerStatusByUser(userId: string, action: 'pause' | 'resume' | 'withdraw') {
+    const application = await this.getVolunteerApplicationByUserId(userId);
+    if (!application) return null;
+    const status = { pause: 'suspended', resume: 'pending_review', withdraw: 'withdrawn' } as const;
+    return this.transitionVolunteer(application.id, status[action], 'citizen');
   }
 
-  async updateVolunteerStatusByUser(
-    userId: string,
-    action: 'pause' | 'resume' | 'withdraw'
-  ): Promise<VolunteerApplication | null> {
-    const updated = this.fallbackStore.updateVolunteerStatusByUser(userId, action);
-    if (!updated) return null;
-
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        await adminDb.collection('volunteerApplications').doc(updated.id).set(updated, { merge: true }).catch(() => {
-          this.firestoreActive = false;
-        });
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-
-    return updated;
+  async listVolunteerApplications(filters?: { status?: string; province?: string; cprTrained?: boolean; search?: string }) {
+    const list = await this.list<VolunteerApplication>('volunteerApplications');
+    return list.filter((item) =>
+      (!filters?.status || filters.status === 'all' || item.status === filters.status) &&
+      (!filters?.province || filters.province === 'all' || item.province === filters.province) &&
+      (filters?.cprTrained === undefined || item.cprTrained === filters.cprTrained) &&
+      (!filters?.search || item.displayName.toLocaleLowerCase('vi').includes(filters.search.toLocaleLowerCase('vi'))));
   }
 
-  async listVolunteerApplications(filters?: {
-    status?: string;
-    province?: string;
-    cprTrained?: boolean;
-    search?: string;
-  }): Promise<VolunteerApplication[]> {
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        let query: Query = adminDb.collection('volunteerApplications');
-        if (filters?.status) {
-          query = query.where('status', '==', filters.status);
-        }
-        if (filters?.province) {
-          query = query.where('province', '==', filters.province);
-        }
-        if (filters?.cprTrained !== undefined) {
-          query = query.where('cprTrained', '==', filters.cprTrained);
-        }
-
-        const snap = await query.get().catch(() => null);
-        if (snap && !snap.empty) {
-          let list = snap.docs.map((d) => d.data() as VolunteerApplication);
-
-          if (filters?.search) {
-            const q = filters.search.toLowerCase().trim();
-            list = list.filter(
-              (a) =>
-                a.displayName.toLowerCase().includes(q) ||
-                a.district.toLowerCase().includes(q) ||
-                (a.certificateNumber && a.certificateNumber.toLowerCase().includes(q))
-            );
-          }
-
-          return list;
-        }
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-
-    return this.fallbackStore.listVolunteerApplications(filters);
+  reviewVolunteerApplication(id: string, reviewerId: string, _reviewerName: string, status: VolunteerStatus, reviewNote: string) {
+    return this.transitionVolunteer(id, status, 'platform_admin', reviewNote, reviewerId);
   }
 
-  async reviewVolunteerApplication(
-    id: string,
-    reviewerId: string,
-    reviewerName: string,
-    status: VolunteerStatus,
-    reviewNote: string
-  ): Promise<VolunteerApplication | null> {
-    const updated = this.fallbackStore.reviewVolunteerApplication(id, reviewerId, reviewerName, status, reviewNote);
-    if (!updated) return null;
-
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        await adminDb.collection('volunteerApplications').doc(updated.id).set(updated, { merge: true }).catch(() => {
-          this.firestoreActive = false;
-        });
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-
-    return updated;
-  }
-
-  // --- Audit Logs ---
   async logAudit(entry: Omit<AuditLog, 'id' | 'timestamp'>): Promise<void> {
-    this.fallbackStore.logAudit(entry);
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        const id = `audit_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-        const logDoc: AuditLog = {
-          ...entry,
-          id,
-          timestamp: new Date().toISOString(),
-        };
-        await adminDb.collection('auditLogs').doc(id).set(logDoc).catch(() => {
-          this.firestoreActive = false;
-        });
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
+    const record = serializable<AuditLog>('auditLogs', { ...entry, details: Object.fromEntries(Object.entries(entry.details).filter(([, value]) => value !== undefined)), id: randomUUID(), timestamp: new Date().toISOString() });
+    await this.run(() => adminDb.collection('auditLogs').doc(record.id).create(record));
+  }
+  getAuditLogs() { return this.list<AuditLog>('auditLogs', (query) => query.orderBy('timestamp', 'desc')); }
+
+  async createDeletionRequest(input: Omit<DeletionRequest, 'id' | 'requestedAt'>): Promise<DeletionRequest> {
+    return this.run(() => adminDb.runTransaction(async (transaction) => {
+      const ref = adminDb.collection('deletionRequests').doc(input.uid);
+      const existing = await transaction.get(ref);
+      if (existing.exists) return validate<DeletionRequest>('deletionRequests', existing.data());
+      const record = serializable<DeletionRequest>('deletionRequests', {
+        ...input, id: input.uid, requestedAt: new Date().toISOString(),
+      });
+      transaction.create(ref, record);
+      transaction.update(adminDb.collection('users').doc(input.uid), { deletionRequestedAt: record.requestedAt });
+      return record;
+    }));
   }
 
-  async getAuditLogs(): Promise<AuditLog[]> {
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        const snap = await adminDb.collection('auditLogs').limit(100).get().catch(() => null);
-        if (snap && !snap.empty) {
-          return snap.docs.map((d) => d.data() as AuditLog);
-        }
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-    return this.fallbackStore.auditLogs.slice(0, 100);
+  getDailyAggregates(scenarioId?: string) {
+    return this.list<DailyAggregate>('aggregates', (query) => scenarioId ? query.where('scenarioId', '==', scenarioId) : query);
   }
 
-  // --- Privacy & Deletion ---
-  async createDeletionRequest(req: Omit<DeletionRequest, 'id' | 'requestedAt'>): Promise<DeletionRequest> {
-    const id = `del_${Date.now()}`;
-    const now = new Date().toISOString();
-    const docData: DeletionRequest = {
-      ...req,
-      id,
-      requestedAt: now,
-    };
-    this.fallbackStore.deletionRequests.set(id, docData);
-
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        await adminDb.collection('deletionRequests').doc(id).set(docData).catch(() => {
-          this.firestoreActive = false;
-        });
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-
-    return docData;
-  }
-
-  // --- Aggregates & Analytics ---
-  async getDailyAggregates(scenarioId?: string): Promise<DailyAggregate[]> {
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        let query: Query = adminDb.collection('aggregates');
-        if (scenarioId) {
-          query = query.where('scenarioId', '==', scenarioId);
-        }
-        const snap = await query.limit(90).get().catch(() => null);
-        if (snap && !snap.empty) {
-          return snap.docs.map((d) => d.data() as DailyAggregate);
-        }
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-    return this.fallbackStore.getDailyAggregates({ scenarioId });
-  }
-
-  async getDelayFunnel(scenarioId?: string): Promise<any> {
-    if (this.firestoreActive && isFirestoreAdminEnabled()) {
-      try {
-        const snap = await adminDb.collection('trainingSessions').limit(500).get().catch(() => null);
-        if (snap && !snap.empty) {
-          const sessions = snap.docs.map((d) => d.data() as TrainingSession);
-          return calculateDelayFunnel(sessions);
-        }
-      } catch {
-        this.firestoreActive = false;
-      }
-    }
-    const sessions = Array.from(this.fallbackStore.sessions.values());
-    return calculateDelayFunnel(sessions);
+  async getDelayFunnel(scenarioId?: string) {
+    const sessions = await this.list<TrainingSession>('trainingSessions', (query) => scenarioId ? query.where('scenarioId', '==', scenarioId) : query);
+    return calculateDelayFunnel(sessions.filter((session) => session.dataOrigin === 'training_user'));
   }
 }
 

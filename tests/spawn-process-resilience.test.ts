@@ -17,7 +17,7 @@ describe('Real Standalone Spawn Integration Test (Zero special env)', () => {
     }
   });
 
-  it('spawns server with no env vars, readyz returns 200 memory_fallback, and server survives probe and malicious origin', async () => {
+  it('keeps liveness available but reports storage not ready without credentials, and rejects malicious origins', async () => {
     // 1. Spawn node process running compiled dist/server.js (or standalone)
     const serverPath = path.resolve(process.cwd(), 'dist/server.js');
     child = spawn('node', [serverPath], {
@@ -65,12 +65,12 @@ describe('Real Standalone Spawn Integration Test (Zero special env)', () => {
     const health1 = await fetch(`http://127.0.0.1:${testPort}/healthz`);
     expect(health1.status).toBe(200);
 
-    // 3. GET /readyz -> 200 memory_fallback
+    // Liveness is not evidence of durable storage readiness.
     const readyRes = await fetch(`http://127.0.0.1:${testPort}/readyz`);
-    expect(readyRes.status).toBe(200);
+    expect(readyRes.status).toBe(503);
     const readyJson = await readyRes.json();
-    expect(readyJson.status).toBe('ready');
-    expect(readyJson.database).toBe('memory_fallback');
+    expect(readyJson.status).toBe('not_ready');
+    expect(readyJson.database).toBeUndefined();
 
     // 4. Wait 3 seconds
     await new Promise((r) => setTimeout(r, 3000));

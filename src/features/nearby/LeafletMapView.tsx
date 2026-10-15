@@ -1,7 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { CareFacility } from './NearbyCareView';
+import type { CareFacility } from './NearbyCareView';
+
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]!));
 
 interface LeafletMapViewProps {
   center: { lat: number; lng: number };
@@ -136,7 +138,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
 
       const sourceBadge =
         fac.source === 'verified_official'
-          ? '<span class="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[11px] font-semibold">Cơ sở 115 Xác minh</span>'
+          ? '<span class="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[11px] font-semibold">Có hồ sơ xác minh nguồn</span>'
           : '<span class="inline-block px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[11px] font-semibold">Dữ liệu minh họa</span>';
 
       const popupHtml = `
@@ -145,14 +147,14 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             <span class="text-[11px] font-bold text-gray-500 uppercase">${typeLabel}</span>
             ${fac.distanceKm !== undefined ? `<span class="text-[11px] font-bold text-[#175CD3] bg-gray-100 px-1.5 py-0.2 rounded font-mono">~${fac.distanceKm} km</span>` : ''}
           </div>
-          <h4 class="text-xs font-bold text-[#101828] leading-tight">${fac.name}</h4>
-          <p class="text-xs text-[#475467] leading-snug">${fac.address}</p>
+          <h4 class="text-xs font-bold text-[#101828] leading-tight">${escapeHtml(fac.name)}</h4>
+          <p class="text-xs text-[#475467] leading-snug">${escapeHtml(fac.address)}</p>
           <div class="pt-0.5">
             ${sourceBadge}
           </div>
           <div class="pt-2 border-t border-gray-100 flex items-center gap-1">
             <a 
-              href="${fac.phone ? `tel:${fac.phone.replace(/\s+/g, '')}` : 'tel:115'}" 
+              href="${fac.phone ? `tel:${fac.phone.replace(/[^+0-9]/g, '')}` : 'tel:115'}"
               class="flex-1 text-center py-1 px-1.5 bg-[#D92D20] text-white text-[11px] font-bold rounded hover:bg-[#B42318] no-underline"
             >
               ${fac.phone ? 'Gọi ngay' : 'Gọi 115'}

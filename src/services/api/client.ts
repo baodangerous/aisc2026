@@ -295,7 +295,7 @@ export const apiClient = {
     const authHeaders = await getAuthHeader();
     if (!authHeaders.Authorization) {
       const localList = await getLocalSessions();
-      return { sessions: localList };
+      return { sessions: localList.filter((session) => !session.ownerUid) };
     }
     const res = await fetch(`${API_BASE}/sessions`, {
       headers: authHeaders,
@@ -338,26 +338,24 @@ export const apiClient = {
       };
     }
 
-    const mroRescues = list.reduce((sum, a) => sum + (a.completionCount || 0), 0);
     return {
-      totalSessions,
-      hasData: true,
-      livesSavedEstimate: Math.max(1, Math.round(mroRescues * 0.15)),
-      averageAdiReductionPercent: 25,
-      certifiedRespondersCount: Math.max(1, Math.round(totalSessions * 0.2)),
+      totalSessions, hasData: true,
+      livesSavedEstimate: null,
+      averageAdiReductionPercent: null,
+      certifiedRespondersCount: null,
     };
   },
 
   // Analytics Dashboard
   async getDailyAggregates(scenarioId?: string) {
     const query = scenarioId ? `?scenarioId=${scenarioId}` : '';
-    const res = await fetch(`${API_BASE}/aggregates/daily${query}`);
+    const res = await fetch(`${API_BASE}/aggregates/daily${query}`, { headers: await getAuthHeader() });
     return handleResponse<{ aggregates: DailyAggregate[] }>(res);
   },
 
   async getDelayFunnel(scenarioId?: string) {
     const query = scenarioId ? `?scenarioId=${scenarioId}` : '';
-    const res = await fetch(`${API_BASE}/analytics/funnel${query}`);
+    const res = await fetch(`${API_BASE}/analytics/funnel${query}`, { headers: await getAuthHeader() });
     return handleResponse<{ funnel: DelayFunnelStep[] }>(res);
   },
 
@@ -410,13 +408,14 @@ export const apiClient = {
         totalSessions,
         completedSessions,
         completionRate,
-        medianTimeToGuidanceSec: Math.round(avgAdi > 0 ? 8 : 10),
-        medianTimeToCallSec: Math.round(avgAdi > 0 ? 15 : 20),
-        medianAdiSec: Math.round(avgAdi * 10) / 10,
+        medianTimeToGuidanceSec: null,
+        medianTimeToCallSec: null,
+        medianTimeToActionSec: null,
+        medianAdiSec: null,
         mroRate: Math.round((aggregates.reduce((sum, a) => sum + (a.mroCount || 0), 0) / Math.max(1, completedSessions)) * 100),
         avgReadinessScore: Math.round(avgReadiness),
-        confidenceDeltaAvg: 1.5,
-        largestDelayStep: 'call_115',
+        confidenceDeltaAvg: null,
+        largestDelayStep: funnelRes.funnel.length ? [...funnelRes.funnel].sort((a, b) => b.avoidableDelaySec - a.avoidableDelaySec)[0].stepKey : null,
       },
       dailyAggregates: aggregates,
       delayFunnel: funnelRes.funnel || [],

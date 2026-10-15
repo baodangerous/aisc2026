@@ -169,7 +169,7 @@ export const TrainingSessionView: React.FC = () => {
       });
       setAiExtractedFacts(res.facts);
       setIsFactsConfirmed(false);
-      logEvent('action_started', { actionKey: 'ai_fact_extraction_text' });
+      logEvent('feedback_submitted', { actionKey: 'ai_fact_extraction_text' });
     } catch (err) {
       console.warn('AI Extraction failed, fallback available', err);
     } finally {
@@ -180,9 +180,9 @@ export const TrainingSessionView: React.FC = () => {
   // Confirm Facts before passing to rule engine
   const handleConfirmFacts = () => {
     setIsFactsConfirmed(true);
-    logEvent('action_started', {
+    logEvent('feedback_submitted', {
       actionKey: 'emergency_facts_confirmed',
-      facts: JSON.stringify(aiExtractedFacts || {}),
+      hasVoiceInput: Boolean(aiExtractedFacts),
     });
   };
 
@@ -190,7 +190,7 @@ export const TrainingSessionView: React.FC = () => {
   const handleApplyVisualObservations = (result: VisualFactExtractionOutput) => {
     setHasCameraSnapshot(true);
     setVisualAnalysisData(result);
-    logEvent('action_started', {
+    logEvent('feedback_submitted', {
       actionKey: 'camera_visual_analysis_applied',
       posture: result.postureAssessment,
     });

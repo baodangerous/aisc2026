@@ -447,7 +447,7 @@ export type LearningResourceTopic =
   | 'traffic_accident'
   | 'general';
 
-export type ReviewStatus = 'draft' | 'pending_review' | 'approved' | 'rejected' | 'needs_update';
+export type ReviewStatus = 'draft' | 'pending_review' | 'reference_only' | 'approved' | 'rejected' | 'needs_update';
 
 export interface MedicalLearningResourceStep {
   stepNumber: number;
@@ -496,6 +496,7 @@ export interface MedicalLearningResource {
   quiz?: LearningResourceQuizQuestion[];
   relatedScenarioIds: string[];
   copyrightStatus: string;
+  sourceCheckedAt?: string;
   embeddingAllowed: boolean;
   difficultyLevel: 'Cơ bản' | 'Nâng cao';
   createdBy?: string;

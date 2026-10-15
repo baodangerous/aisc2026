@@ -8,6 +8,7 @@ import {
   AudioTranscribeOutput,
   VisualFactExtractionInput,
   VisualFactExtractionOutput,
+  VisualFactExtractionOutputSchema,
 } from '../../src/domain/schemas';
 
 // PII Redactor: removes phone numbers, email addresses, specific ID numbers from emergency text
@@ -55,7 +56,7 @@ export async function extractEmergencyFacts(
   const ai = getGeminiClient();
 
   if (!ai) {
-    return extractEmergencyFactsFallback(sanitizedText);
+    throw new Error('AI_SERVICE_UNAVAILABLE');
   }
 
   const systemInstruction = `
@@ -131,8 +132,8 @@ QUY TẮC AN TOÀN TUYỆT ĐỐI:
       recommendedEmergencyPrompt: parsed.recommendedEmergencyPrompt || 'Xác nhận thông tin triệu chứng với ứng dụng',
     };
   } catch (err) {
-    console.warn('Gemini fact extraction failed or timed out, using fallback rule parser', err);
-    return extractEmergencyFactsFallback(sanitizedText);
+    console.warn('Fact extraction unavailable');
+    throw new Error('AI_SERVICE_UNAVAILABLE');
   }
 }
 
@@ -219,7 +220,7 @@ export async function generateAnalyticsInsight(
       : 'Dữ liệu huấn luyện người dùng đã đồng thuận (User Training Dataset)';
 
   if (!ai) {
-    return generateAnalyticsInsightFallback(input, provenanceLabel);
+    throw new Error('AI_SERVICE_UNAVAILABLE');
   }
 
   const prompt = `
@@ -304,8 +305,8 @@ QUY TẮC BẮT BUỘC:
       dataProvenanceNote: `${provenanceLabel} (N = ${snap.totalSessions} phiên)`,
     };
   } catch (err) {
-    console.warn('Gemini analytics insight failed, returning grounded deterministic fallback', err);
-    return generateAnalyticsInsightFallback(input, provenanceLabel);
+    console.warn('Analytics insight unavailable');
+    throw new Error('AI_SERVICE_UNAVAILABLE');
   }
 }
 
@@ -353,11 +354,7 @@ export async function transcribeAndExtractFromAudio(
   const mimeType = input.mimeType ? input.mimeType.split(';')[0].trim() : 'audio/webm';
 
   if (!ai) {
-    return {
-      transcript: 'Nạn nhân nằm bất động, không phản ứng khi gọi, thở ngáp cá, cần ép tim và gọi 115 khẩn cấp.',
-      facts: extractEmergencyFactsFallback('Nạn nhân nằm bất động không phản ứng, thở ngáp cá'),
-      transcribedBy: 'fallback_local',
-    };
+    throw new Error('AI_SERVICE_UNAVAILABLE');
   }
 
   const systemInstruction = `
@@ -452,12 +449,8 @@ QUY TẮC AN TOÀN:
       transcribedBy: 'gemini_server',
     };
   } catch (err) {
-    console.warn('Gemini audio transcription failed, returning fallback', err);
-    return {
-      transcript: 'Nạn nhân nằm bất động, không phản ứng, nghi ngờ ngừng tim đột ngột.',
-      facts: extractEmergencyFactsFallback('Nạn nhân nằm bất động không phản ứng'),
-      transcribedBy: 'fallback_local',
-    };
+    console.warn('Audio transcription unavailable');
+    throw new Error('AI_SERVICE_UNAVAILABLE');
   }
 }
 
@@ -483,7 +476,7 @@ export async function extractVisualPracticeFacts(
   const mimeType = input.mimeType ? input.mimeType.split(';')[0].trim() : 'image/jpeg';
 
   if (!ai) {
-    return extractVisualPracticeFactsFallback(input);
+    throw new Error('AI_SERVICE_UNAVAILABLE');
   }
 
   const systemInstruction = `
@@ -566,49 +559,9 @@ CÁC ĐIỀU CẤM TUYỆT ĐỐI THEO NGHỊ ĐỊNH 13/2023/NĐ-CP & ĐẠO Đ
       },
     });
 
-    const parsed = JSON.parse(response.text || '{}') as VisualFactExtractionOutput;
-    return {
-      postureAssessment: parsed.postureAssessment || 'good',
-      handPlacement: parsed.handPlacement || 'Vị trí đặt tay ở 1/2 dưới xương ức',
-      armAngle: parsed.armAngle || 'Cánh tay giữ thẳng góc 90 độ so với ngực',
-      environmentSafety: parsed.environmentSafety || 'Môi trường bề mặt phẳng, chắc chắn',
-      observations: parsed.observations || ['Tư thế ép tim cơ bản đạt chuẩn'],
-      correctiveTips: parsed.correctiveTips || ['Giữ nhịp ép đều từ 100 - 120 lần/phút'],
-      simulatedFactsExtracted: parsed.simulatedFactsExtracted,
-      safetyDisclaimer:
-        'Nhận xét trên chỉ phục vụ mục đích hỗ trợ luyện tập kỹ năng sơ cứu, không thay thế cho chẩn đoán y khoa chuyên môn.',
-    };
+    return VisualFactExtractionOutputSchema.parse(JSON.parse(response.text || '{}'));
   } catch (err) {
-    console.warn('Gemini visual practice evaluation failed, returning fallback', err);
-    return extractVisualPracticeFactsFallback(input);
+    console.warn('Visual analysis unavailable');
+    throw new Error('AI_SERVICE_UNAVAILABLE');
   }
-}
-
-function extractVisualPracticeFactsFallback(
-  input: VisualFactExtractionInput
-): VisualFactExtractionOutput {
-  const isCpr = !input.scenarioId || input.scenarioId.includes('ohca') || input.scenarioId.includes('cpr');
-  return {
-    postureAssessment: 'good',
-    handPlacement: isCpr ? 'Gốc bàn tay đặt chính giữa 1/2 dưới xương ức' : 'Đã định vị vùng thao tác sơ cứu',
-    armAngle: isCpr ? 'Khớp khuỷu tay thẳng, vai thẳng góc 90° so với thân người' : 'Tư thế thao tác ổn định',
-    environmentSafety: 'Mặt phẳng tiếp xúc chắc chắn, không gian xung quanh thông thoáng',
-    observations: [
-      'Gốc bàn tay đặt đúng trung tâm lồng ngực',
-      'Đan các ngón tay để không ấn đè lên xương sườn bên cạnh',
-      'Khoảng cách người cứu hộ và nạn nhân hợp lý',
-    ],
-    correctiveTips: [
-      'Dùng trọng lượng nửa thân trên ép xuống với độ sâu 5 - 6 cm',
-      'Để lồng ngực nở lại hoàn toàn sau mỗi lần ép',
-      'Kết hợp máy đếm nhịp 110 BPM để duy trì tần số ổn định',
-    ],
-    simulatedFactsExtracted: {
-      consciousness: 'unresponsive',
-      breathing: 'not_breathing',
-      severeBleeding: false,
-    },
-    safetyDisclaimer:
-      'Nhận xét trên chỉ phục vụ mục đích hỗ trợ luyện tập kỹ năng sơ cứu, không thay thế cho chẩn đoán y khoa chuyên môn.',
-  };
 }

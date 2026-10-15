@@ -12,10 +12,11 @@ describe('Production Server Entry Verification', () => {
     expect(appFile).not.toContain('process.on(');
   });
 
-  it('vite.config.ts is decoupled from server and does NOT import server backend', () => {
+  it('vite mounts API only through a development configureServer hook without starting a second listener', () => {
     const viteConfig = fs.readFileSync(path.resolve(process.cwd(), 'vite.config.ts'), 'utf-8');
-    expect(viteConfig).not.toContain("server/app");
-    expect(viteConfig).not.toContain("expressApiPlugin");
+    expect(viteConfig).toContain('async configureServer(server)');
+    expect(viteConfig).toContain("await import('./server/app')");
+    expect(viteConfig).not.toContain('app.listen(');
     expect(viteConfig).not.toContain("from './server/index'");
     expect(viteConfig).not.toContain("from './server/standalone'");
     expect(viteConfig).not.toContain("from './server'");

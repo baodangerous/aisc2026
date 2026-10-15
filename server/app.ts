@@ -103,7 +103,9 @@ export function createApp(options?: AppOptions): express.Express {
     req.headers['x-request-id'] = requestId;
     res.setHeader('X-Request-Id', requestId);
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    if (isProduction()) res.setHeader('Strict-Transport-Security', 'max-age=63072000');
+    if (req.path.startsWith('/api')) res.setHeader('Cache-Control', 'no-store');
     next();
   });
 
@@ -122,13 +124,8 @@ export function createApp(options?: AppOptions): express.Express {
   app.get('/readyz', async (req: Request, res: Response) => {
     try {
       const probeResult = await dataRepository.probe(3500);
-      if (probeResult.database === 'memory_fallback') {
-        return res.status(200).json({
-          status: 'ready',
-          database: 'memory_fallback',
-          degraded: true,
-          timestamp: new Date().toISOString(),
-        });
+      if (!probeResult.ok) {
+        return res.status(503).json({ status: 'not_ready', timestamp: new Date().toISOString() });
       }
       return res.status(200).json({
         status: 'ready',
@@ -136,13 +133,7 @@ export function createApp(options?: AppOptions): express.Express {
         timestamp: new Date().toISOString(),
       });
     } catch (err: any) {
-      // In case of unexpected probe errors, GoldenMinutes in-memory fallback is still ready
-      return res.status(200).json({
-        status: 'ready',
-        database: 'memory_fallback',
-        degraded: true,
-        timestamp: new Date().toISOString(),
-      });
+      return res.status(503).json({ status: 'not_ready', timestamp: new Date().toISOString() });
     }
   });
 
@@ -159,8 +150,12 @@ export function createApp(options?: AppOptions): express.Express {
   });
 
   // Serve static frontend files in production
-  const distPath = path.resolve(process.cwd(), 'dist');
-  app.use(express.static(distPath));
+  const distPath = path.resolve(process.cwd(), 'dist/client');
+  app.use((req, res, next) => {
+    if (req.path === '/server.js' || req.path.endsWith('.map')) return res.sendStatus(404);
+    next();
+  });
+  app.use(express.static(distPath, { dotfiles: 'deny' }));
 
   // Fallback for React Router SPA (non-API routes)
   app.get('*', (req: Request, res: Response, next: NextFunction) => {
@@ -196,7 +191,11 @@ export function createApp(options?: AppOptions): express.Express {
         requestId: req.headers['x-request-id'] || 'req_cors',
       });
     }
-    console.error('Unhandled Server Error:', err?.message || err);
+    if (err?.name === 'ZodError') return res.status(400).json({ code: 'INVALID_DATA', message: 'Dữ liệu không hợp lệ.' });
+    if (err?.status && Number.isInteger(err.status) && err.status >= 400 && err.status <= 503) {
+      return res.status(err.status).json({ code: err.code || 'REQUEST_FAILED', message: 'Không thể xử lý yêu cầu lúc này. Vui lòng thử lại.' });
+    }
+    console.error('Unhandled server error', { requestId: req.headers['x-request-id'] });
     res.status(500).json({
       code: 'INTERNAL_SERVER_ERROR',
       message: 'Đã xảy ra lỗi máy chủ nội bộ.',

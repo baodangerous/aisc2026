@@ -211,12 +211,18 @@ export function aggregateSessions(
  */
 export function calculateDelayFunnel(sessions: TrainingSession[]): DelayFunnelStep[] {
   const completed = sessions.filter((s) => s.status === 'completed');
+  if (completed.length === 0) return [];
   const total = Math.max(1, completed.length);
 
   const ttgVals = completed.map((s) => s.timeToGuidanceSec || 0);
   const ttcVals = completed.map((s) => s.timeToCallSec || 0);
   const ttaVals = completed.map((s) => s.timeToActionSec || 0);
 
+  const recognitionTimes = completed.flatMap((session) => {
+    const answer = session.events.find((event) => event.type === 'answer_selected');
+    return answer ? [answer.elapsedMs / 1000] : [];
+  });
+  const medianRecognition = calculateMedian(recognitionTimes);
   const medianTTG = calculateMedian(ttgVals);
   const medianTTC = calculateMedian(ttcVals);
   const medianTTA = calculateMedian(ttaVals);
@@ -233,9 +239,9 @@ export function calculateDelayFunnel(sessions: TrainingSession[]): DelayFunnelSt
     {
       stepKey: 'recognize_symptoms',
       stepLabel: 'Đánh giá an toàn & Triệu chứng',
-      medianTimeSec: Math.round(medianTTG * 0.4),
+      medianTimeSec: medianRecognition,
       standardTargetSec: 8,
-      avoidableDelaySec: Math.max(0, Math.round(medianTTG * 0.4) - 8),
+      avoidableDelaySec: Math.max(0, medianRecognition - 8),
       bottleneckRate: Math.round((completed.filter((s) => (s.timeToGuidanceSec || 0) > 15).length / total) * 100),
     },
     {
