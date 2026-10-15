@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import useSWR from 'swr';
 import { useAuth } from '../auth/AuthContext';
 import { auth } from '../../services/firebase/client';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
   Clock,
   Zap,
@@ -30,6 +30,7 @@ import { getReadinessPresentation } from '../../utils/formatters';
 
 export const ResultsView: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const sessionIdParam = searchParams.get('session');
   const scenarioIdParam = searchParams.get('scenario') || 'sc_ohca_01';
 
@@ -427,13 +428,14 @@ export const ResultsView: React.FC = () => {
 
         {/* Action Buttons (min 48px touch targets) */}
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
-          <Link
-            to={`/training?scenario=${scenario.id}`}
+          <button
+            type="button"
+            onClick={() => navigate(`/training?scenario=${encodeURIComponent(scenario.id)}`)}
             className="flex-1 min-h-[48px] py-3 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all text-center cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
           >
             <RotateCcw className="w-4 h-4" aria-hidden="true" />
             <span>Luyện Lại Tình Huống Này</span>
-          </Link>
+          </button>
 
           <Link
             to="/library"
