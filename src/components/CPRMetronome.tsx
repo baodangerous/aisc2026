@@ -132,7 +132,7 @@ export const CPRMetronome: React.FC<CPRMetronomeProps> = ({
           <span className={`text-3xl font-extrabold tracking-tight font-mono ${isPlaying ? 'text-[#D92D20]' : 'text-[#101828]'}`}>
             {isPlaying ? beatCount : currentBpm}
           </span>
-          <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider mt-0.5">
+          <span className="text-[11px] font-bold text-[#667085] uppercase tracking-wider mt-0.5">
             {isPlaying ? 'Lần ép' : 'Nhịp / Phút'}
           </span>
         </div>
@@ -159,7 +159,7 @@ export const CPRMetronome: React.FC<CPRMetronomeProps> = ({
               }`}
               aria-label={`Đặt nhịp ${rate} BPM`}
             >
-              {rate} <span className="text-[10px] font-normal opacity-80">BPM</span>
+              {rate} <span className="text-[11px] font-normal opacity-80">BPM</span>
             </button>
           ))}
         </div>

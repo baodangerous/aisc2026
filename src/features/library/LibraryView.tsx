@@ -197,7 +197,7 @@ export const LibraryView: React.FC = () => {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
                         {/* Quiet unboxed duration indicator */}
-                        <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1 text-white text-[11px] font-mono font-medium drop-shadow-sm">
+                        <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1 text-white text-xs font-mono font-medium drop-shadow-sm">
                           <Clock className="w-3.5 h-3.5" aria-hidden="true" />
                           <span>{durationStr}</span>
                         </div>
@@ -218,7 +218,7 @@ export const LibraryView: React.FC = () => {
                             res.difficultyLevel,
                             res.language.toUpperCase(),
                           ]}
-                          className="text-[11px] text-slate-500"
+                          className="text-xs text-slate-500"
                         />
 
                         <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug line-clamp-2">
@@ -229,7 +229,7 @@ export const LibraryView: React.FC = () => {
                           {res.description}
                         </p>
 
-                        <div className="pt-1 flex items-center gap-1.5 text-[11px] text-emerald-700 font-semibold">
+                        <div className="pt-1 flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
                           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
                           <span className="truncate">{res.evidenceLevel}</span>
                         </div>

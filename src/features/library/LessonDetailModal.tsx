@@ -186,7 +186,7 @@ export const LessonDetailModal: React.FC<LessonDetailModalProps> = ({
                   </div>
                   <p className="text-xs text-[#475467] leading-relaxed pl-7">{step.detail}</p>
                   {step.keyPoint && (
-                    <div className="ml-7 p-2 bg-[#F9FAFB] border border-[#EAECF0] rounded-lg text-[11px] text-[#175CD3] font-medium flex items-center gap-1.5">
+                    <div className="ml-7 p-2 bg-[#F9FAFB] border border-[#EAECF0] rounded-lg text-xs text-[#175CD3] font-medium flex items-center gap-1.5">
                       <ShieldCheck className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                       <span>{step.keyPoint}</span>
                     </div>
@@ -204,7 +204,7 @@ export const LessonDetailModal: React.FC<LessonDetailModalProps> = ({
                 <AlertOctagon className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>Những điều KHÔNG ĐƯỢC LÀM:</span>
               </div>
-              <ul className="space-y-1.5 text-[11px] text-[#B42318] leading-relaxed list-disc list-inside">
+              <ul className="space-y-1.5 text-xs text-[#B42318] leading-relaxed list-disc list-inside">
                 {resource.avoidActions.map((act, i) => (
                   <li key={i}>{act}</li>
                 ))}
@@ -217,7 +217,7 @@ export const LessonDetailModal: React.FC<LessonDetailModalProps> = ({
                 <PhoneCall className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>Dấu hiệu kích hoạt 115 ngay:</span>
               </div>
-              <ul className="space-y-1.5 text-[11px] text-[#175CD3] leading-relaxed list-disc list-inside">
+              <ul className="space-y-1.5 text-xs text-[#175CD3] leading-relaxed list-disc list-inside">
                 {resource.dangerSigns115.map((sign, i) => (
                   <li key={i}>{sign}</li>
                 ))}
@@ -272,7 +272,7 @@ export const LessonDetailModal: React.FC<LessonDetailModalProps> = ({
 
                     {showQuizExplanations[qIdx] && (
                       <div
-                        className={`p-2.5 rounded-lg text-[11px] leading-relaxed border ${
+                        className={`p-2.5 rounded-lg text-xs leading-relaxed border ${
                           isCorrect
                             ? 'bg-[#ECFDF3] border-[#A6F4C5] text-[#027A48]'
                             : 'bg-[#FEF0C7] border-[#FEDF89] text-[#B54708]'
@@ -316,13 +316,13 @@ export const LessonDetailModal: React.FC<LessonDetailModalProps> = ({
           </div>
 
           {/* 8. Medical & Legal Metadata Audit Card */}
-          <div className="p-3.5 bg-[#F9FAFB] border border-[#EAECF0] rounded-xl space-y-1.5 text-[11px] text-[#667085] leading-relaxed">
+          <div className="p-3.5 bg-[#F9FAFB] border border-[#EAECF0] rounded-xl space-y-1.5 text-xs text-[#667085] leading-relaxed">
             <div className="flex flex-wrap items-center justify-between gap-1 border-b border-[#EAECF0] pb-1.5">
               <span>Mức chứng cứ: <strong className="text-[#344054]">{resource.evidenceLevel}</strong></span>
               <span>Nguồn tài liệu: <strong className="text-[#344054]">{resource.sourceOrganization}</strong></span>
               <span>Ngày rà soát nguồn: <strong className="text-[#344054]">{resource.reviewedAt}</strong></span>
             </div>
-            <p className="text-[10px] text-[#98A2B3] pt-0.5">
+            <p className="text-[11px] text-[#98A2B3] pt-0.5">
               Tài liệu tham khảo từ nguồn công khai — chưa được GoldenMinutes thẩm định y khoa độc lập. GoldenMinutes là công cụ hỗ trợ luyện tập, không thay thế khóa đào tạo có chứng chỉ và không phải dịch vụ điều phối 115.
             </p>
           </div>

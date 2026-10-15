@@ -207,7 +207,7 @@ export const PracticeCameraSheet: React.FC<PracticeCameraSheetProps> = ({
                   Chỉ Luyện Tập
                 </span>
               </div>
-              <p className="text-[11px] text-[#667085] truncate max-w-[220px] sm:max-w-xs">{stepTitle}</p>
+              <p className="text-xs text-[#667085] truncate max-w-[220px] sm:max-w-xs">{stepTitle}</p>
             </div>
           </div>
           <button
@@ -232,7 +232,7 @@ export const PracticeCameraSheet: React.FC<PracticeCameraSheetProps> = ({
                 <p className="leading-relaxed text-[#475467]">
                   Camera hỗ trợ bạn kiểm tra tư thế ép tim, góc đặt cánh tay và khoảng cách an toàn trong buổi luyện tập.
                 </p>
-                <div className="p-3 bg-white rounded-lg border border-[#EAECF0] space-y-1.5 text-[11px] text-[#344054]">
+                <div className="p-3 bg-white rounded-lg border border-[#EAECF0] space-y-1.5 text-xs text-[#344054]">
                   <div className="font-semibold text-[#101828]">
                     • Tuân thủ nghiêm ngặt Nghị định 13/2023/NĐ-CP:
                   </div>
@@ -309,13 +309,13 @@ export const PracticeCameraSheet: React.FC<PracticeCameraSheetProps> = ({
 
                 {/* Posture Overlay Box */}
                 <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-white/60 m-6 rounded-2xl flex flex-col items-center justify-between p-3 text-center">
-                  <span className="text-[10px] font-bold text-white bg-black/60 px-2.5 py-0.5 rounded-md backdrop-blur-xs">
+                  <span className="text-[11px] font-bold text-white bg-black/60 px-2.5 py-0.5 rounded-md backdrop-blur-xs">
                     Căn chỉnh vị trí ép tim vào giữa khung ngực
                   </span>
                   <div className="w-14 h-14 border-2 border-white/80 rounded-full flex items-center justify-center text-white text-base font-bold bg-white/15 backdrop-blur-xs">
                     +
                   </div>
-                  <span className="text-[10px] font-medium text-white/90 bg-black/50 px-2 py-0.5 rounded backdrop-blur-xs">
+                  <span className="text-[11px] font-medium text-white/90 bg-black/50 px-2 py-0.5 rounded backdrop-blur-xs">
                     Giữ hai cánh tay vuông góc 90°
                   </span>
                 </div>
@@ -342,7 +342,7 @@ export const PracticeCameraSheet: React.FC<PracticeCameraSheetProps> = ({
                 <span>CHỤP ẢNH TƯ THẾ THỰC HÀNH</span>
               </button>
 
-              <div className="p-2.5 bg-[#F9FAFB] rounded-xl border border-[#EAECF0] text-[11px] text-[#667085] flex items-center gap-2">
+              <div className="p-2.5 bg-[#F9FAFB] rounded-xl border border-[#EAECF0] text-xs text-[#667085] flex items-center gap-2">
                 <Info className="w-3.5 h-3.5 text-[#175CD3] shrink-0" />
                 <span>Ảnh chỉ được xử lý tạm thời để hỗ trợ căn chỉnh và tự động bị hủy sau khi phân tích.</span>
               </div>
@@ -368,26 +368,26 @@ export const PracticeCameraSheet: React.FC<PracticeCameraSheetProps> = ({
                       <CheckCircle2 className="w-4 h-4 text-[#12B76A]" />
                       <span>Kết Quả Đánh Giá Kỹ Thuật (Gemini Vision)</span>
                     </div>
-                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-white text-[#027A48] border border-[#A6F4C5]">
+                    <span className="text-[11px] font-bold uppercase px-2 py-0.5 rounded bg-white text-[#027A48] border border-[#A6F4C5]">
                       {analysisResult.postureAssessment === 'good' ? 'Tư thế Tốt' : 'Cần điều chỉnh'}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                     <div className="p-2 bg-white/80 rounded-lg border border-[#A6F4C5]">
-                      <span className="text-[#667085] block text-[10px]">Vị trí đặt tay:</span>
+                      <span className="text-[#667085] block text-[11px]">Vị trí đặt tay:</span>
                       <strong className="text-[#101828]">{analysisResult.handPlacement}</strong>
                     </div>
                     <div className="p-2 bg-white/80 rounded-lg border border-[#A6F4C5]">
-                      <span className="text-[#667085] block text-[10px]">Góc cánh tay:</span>
+                      <span className="text-[#667085] block text-[11px]">Góc cánh tay:</span>
                       <strong className="text-[#101828]">{analysisResult.armAngle}</strong>
                     </div>
                   </div>
 
                   {analysisResult.observations.length > 0 && (
                     <div className="space-y-1 text-[#344054] pt-1">
-                      <span className="font-bold text-[11px] text-[#027A48]">Quan sát chi tiết:</span>
-                      <ul className="space-y-1 text-[11px] pl-3 list-disc list-outside">
+                      <span className="font-bold text-xs text-[#027A48]">Quan sát chi tiết:</span>
+                      <ul className="space-y-1 text-xs pl-3 list-disc list-outside">
                         {analysisResult.observations.map((obs, idx) => (
                           <li key={idx}>{obs}</li>
                         ))}
@@ -396,13 +396,13 @@ export const PracticeCameraSheet: React.FC<PracticeCameraSheetProps> = ({
                   )}
 
                   {analysisResult.correctiveTips.length > 0 && (
-                    <div className="p-2.5 bg-white rounded-lg border border-[#A6F4C5] text-[11px] space-y-1">
+                    <div className="p-2.5 bg-white rounded-lg border border-[#A6F4C5] text-xs space-y-1">
                       <span className="font-bold text-[#027A48]">Mẹo thực hành tiếp theo:</span>
                       <p className="text-[#344054]">{analysisResult.correctiveTips.join(' • ')}</p>
                     </div>
                   )}
 
-                  <p className="text-[10px] text-[#667085] pt-1 italic">
+                  <p className="text-[11px] text-[#667085] pt-1 italic">
                     {analysisResult.safetyDisclaimer}
                   </p>
                 </div>

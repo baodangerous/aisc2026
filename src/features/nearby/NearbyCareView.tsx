@@ -545,7 +545,7 @@ const GoogleMapInnerController: React.FC<GoogleMapControllerProps> = ({
               ) : (
                 <Stethoscope className={`w-4 h-4 ${isSelected ? 'text-[#B2DDFF]' : 'text-[#175CD3]'}`} />
               )}
-              {isSelected && <span className="text-[10px] font-bold pr-1 max-w-[120px] truncate">{fac.name}</span>}
+              {isSelected && <span className="text-[11px] font-bold pr-1 max-w-[120px] truncate">{fac.name}</span>}
             </div>
           </AdvancedMarker>
         );
@@ -799,7 +799,7 @@ export const NearbyCareView: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 pt-1">
             {/* Manual Preset Region Selector */}
             <div className="md:col-span-5">
-              <label className="text-[11px] font-bold text-[#475467] block mb-1">
+              <label className="text-xs font-bold text-[#475467] block mb-1">
                 Khu vực tìm kiếm {geoState === 'denied' && <span className="text-[#D92D20] font-normal">(Do từ chối GPS)</span>}:
               </label>
               <select
@@ -817,7 +817,7 @@ export const NearbyCareView: React.FC = () => {
 
             {/* Keyword Search Input */}
             <div className="md:col-span-7">
-              <label className="text-[11px] font-bold text-[#475467] block mb-1">Tìm kiếm theo tên hoặc đường:</label>
+              <label className="text-xs font-bold text-[#475467] block mb-1">Tìm kiếm theo tên hoặc đường:</label>
               <div className="relative">
                 <Search className="w-4 h-4 text-[#98A2B3] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -832,7 +832,7 @@ export const NearbyCareView: React.FC = () => {
           </div>
 
           {/* Map Engine Banner */}
-          <div className="p-2.5 bg-[#F0FDF9] border border-[#99F6E0] rounded-xl text-[11px] text-[#0E9384] flex items-center justify-between gap-2">
+          <div className="p-2.5 bg-[#F0FDF9] border border-[#99F6E0] rounded-xl text-xs text-[#0E9384] flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
               <Globe className="w-3.5 h-3.5 text-[#0E9384] shrink-0" />
               <span>
@@ -841,7 +841,7 @@ export const NearbyCareView: React.FC = () => {
                   : 'Đang hoạt động trên nền tảng bản đồ mở OpenStreetMap (Hoàn toàn miễn phí — không yêu cầu thẻ ngân hàng hay API Key).'}
               </span>
             </div>
-            <span className="text-[10px] font-bold text-[#0E9384] px-2 py-0.5 bg-white rounded border border-[#99F6E0] shrink-0">
+            <span className="text-[11px] font-bold text-[#0E9384] px-2 py-0.5 bg-white rounded border border-[#99F6E0] shrink-0">
               {isKeyAvailable ? 'Google Maps' : 'OpenStreetMap (Free)'}
             </span>
           </div>
@@ -995,7 +995,7 @@ export const NearbyCareView: React.FC = () => {
                       </p>
 
                       {/* Operating Hours */}
-                      <div className="flex items-center gap-2 text-[11px] text-[#667085]">
+                      <div className="flex items-center gap-2 text-xs text-[#667085]">
                         <Clock className="w-3 h-3 text-[#98A2B3]" />
                         <span>
                           {fac.isOpenNow !== undefined
@@ -1011,21 +1011,21 @@ export const NearbyCareView: React.FC = () => {
                       {/* Provenance Badge */}
                       <div className="pt-1">
                         {isGoogleSource && (
-                          <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#027A48] bg-[#ECFDF3] px-2 py-0.5 rounded border border-[#A6F4C5]">
+                          <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#027A48] bg-[#ECFDF3] px-2 py-0.5 rounded border border-[#A6F4C5]">
                             <CheckCircle2 className="w-3 h-3 text-[#12B76A]" />
                             <span>Nguồn: Google Places API</span>
                           </div>
                         )}
 
                         {isVerified && (
-                          <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#175CD3] bg-[#EFF8FF] px-2 py-0.5 rounded border border-[#B2DDFF]">
+                          <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#175CD3] bg-[#EFF8FF] px-2 py-0.5 rounded border border-[#B2DDFF]">
                             <CheckCircle2 className="w-3 h-3 text-[#175CD3]" />
                             <span>Nguồn: Trạm Cấp cứu 115 Chính thức</span>
                           </div>
                         )}
 
                         {isSimulated && (
-                          <div className="p-1.5 bg-[#FEF0C7] rounded border border-[#FEDF89] text-[10px] text-[#B54708] font-medium leading-tight">
+                          <div className="p-1.5 bg-[#FEF0C7] rounded border border-[#FEDF89] text-[11px] text-[#B54708] font-medium leading-tight">
                             <span>Nguồn: Dữ liệu minh họa — không dùng để điều hướng trong cấp cứu thật.</span>
                           </div>
                         )}
@@ -1033,7 +1033,7 @@ export const NearbyCareView: React.FC = () => {
 
                       {/* AED Disclaimer */}
                       {isAed && (
-                        <p className="text-[10px] text-[#B54708] bg-[#FFFAEB] p-1.5 rounded border border-[#FEDF89] leading-tight">
+                        <p className="text-[11px] text-[#B54708] bg-[#FFFAEB] p-1.5 rounded border border-[#FEDF89] leading-tight">
                           ⚠️ Điểm AED mô phỏng đề án. Trong tình huống thật, hãy gọi 115 và ép tim liên tục không gián đoạn.
                         </p>
                       )}

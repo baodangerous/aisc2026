@@ -92,7 +92,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           .bindPopup(
             `<div class="text-xs font-sans p-1">
               <p class="font-bold text-[#101828]">Vị trí hiện tại của bạn</p>
-              <p class="text-[#667085] text-[11px]">Đã định vị qua GPS thiết bị</p>
+              <p class="text-[#667085] text-xs">Đã định vị qua GPS thiết bị</p>
             </div>`
           );
       } else {
@@ -136,24 +136,24 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
 
       const sourceBadge =
         fac.source === 'verified_official'
-          ? '<span class="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[10px] font-semibold">Cơ sở 115 Xác minh</span>'
-          : '<span class="inline-block px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[10px] font-semibold">Dữ liệu minh họa</span>';
+          ? '<span class="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[11px] font-semibold">Cơ sở 115 Xác minh</span>'
+          : '<span class="inline-block px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[11px] font-semibold">Dữ liệu minh họa</span>';
 
       const popupHtml = `
         <div class="font-sans text-left max-w-[220px] p-0.5 space-y-1.5">
           <div class="flex items-center justify-between gap-1">
-            <span class="text-[10px] font-bold text-gray-500 uppercase">${typeLabel}</span>
-            ${fac.distanceKm !== undefined ? `<span class="text-[10px] font-bold text-[#175CD3] bg-gray-100 px-1.5 py-0.2 rounded font-mono">~${fac.distanceKm} km</span>` : ''}
+            <span class="text-[11px] font-bold text-gray-500 uppercase">${typeLabel}</span>
+            ${fac.distanceKm !== undefined ? `<span class="text-[11px] font-bold text-[#175CD3] bg-gray-100 px-1.5 py-0.2 rounded font-mono">~${fac.distanceKm} km</span>` : ''}
           </div>
           <h4 class="text-xs font-bold text-[#101828] leading-tight">${fac.name}</h4>
-          <p class="text-[11px] text-[#475467] leading-snug">${fac.address}</p>
+          <p class="text-xs text-[#475467] leading-snug">${fac.address}</p>
           <div class="pt-0.5">
             ${sourceBadge}
           </div>
           <div class="pt-2 border-t border-gray-100 flex items-center gap-1">
             <a 
               href="${fac.phone ? `tel:${fac.phone.replace(/\s+/g, '')}` : 'tel:115'}" 
-              class="flex-1 text-center py-1 px-1.5 bg-[#D92D20] text-white text-[10px] font-bold rounded hover:bg-[#B42318] no-underline"
+              class="flex-1 text-center py-1 px-1.5 bg-[#D92D20] text-white text-[11px] font-bold rounded hover:bg-[#B42318] no-underline"
             >
               ${fac.phone ? 'Gọi ngay' : 'Gọi 115'}
             </a>
@@ -161,7 +161,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               href="https://www.google.com/maps/dir/?api=1&destination=${fac.lat},${fac.lng}" 
               target="_blank" 
               rel="noopener noreferrer" 
-              class="flex-1 text-center py-1 px-1.5 bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF] text-[10px] font-bold rounded hover:bg-[#D1E9FF] no-underline"
+              class="flex-1 text-center py-1 px-1.5 bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF] text-[11px] font-bold rounded hover:bg-[#D1E9FF] no-underline"
             >
               Chỉ đường
             </a>
@@ -229,7 +229,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
     <div className="w-full h-full relative">
       <div ref={mapContainerRef} className="w-full h-full z-0" />
       {/* OpenStreetMap watermark & attribution badge */}
-      <div className="absolute bottom-1 left-2 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] text-[#475467] shadow-xs border border-[#EAECF0] pointer-events-none z-10">
+      <div className="absolute bottom-1 left-2 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded text-[11px] text-[#475467] shadow-xs border border-[#EAECF0] pointer-events-none z-10">
         🗺️ Bản đồ mở <strong>OpenStreetMap</strong> (Hoàn toàn miễn phí)
       </div>
     </div>

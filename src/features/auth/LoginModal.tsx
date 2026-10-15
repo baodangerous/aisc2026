@@ -48,7 +48,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             <h2 className="text-base sm:text-lg font-bold text-[#101828] leading-tight">
               Đăng nhập GoldenMinutes
             </h2>
-            <p className="text-[11px] text-[#667085]">
+            <p className="text-xs text-[#667085]">
               Lưu tiến trình luyện tập và hồ sơ tình nguyện cộng đồng
             </p>
           </div>
@@ -104,7 +104,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               <span>{isLoading ? 'Đang xác thực...' : 'Tiếp tục với Google (Miễn phí)'}</span>
             </button>
 
-            <div className="p-3 bg-[#F9FAFB] rounded-xl border border-[#EAECF0] text-[11px] text-[#475467] space-y-1.5">
+            <div className="p-3 bg-[#F9FAFB] rounded-xl border border-[#EAECF0] text-xs text-[#475467] space-y-1.5">
               <div className="flex items-center gap-1.5 font-semibold text-[#344054]">
                 <Sparkles className="w-3.5 h-3.5 text-[#175CD3]" aria-hidden="true" />
                 <span>Bảo mật theo Nghị định 13/2023/NĐ-CP</span>
