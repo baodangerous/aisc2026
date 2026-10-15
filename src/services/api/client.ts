@@ -1,4 +1,3 @@
-import { auth, isFirebaseConfigured } from '../firebase/client';
 import { getSupabaseProfile, supabase } from '../supabase/client';
 import { saveLocalSession, saveLocalEvent, getLocalSessions } from '../indexedDb';
 import {
@@ -58,14 +57,13 @@ async function persistSupabaseSession(session: any, ownerUid: string) {
   return data;
 }
 
-// Obtain Firebase ID token dynamically from current logged-in user
-async function getAuthHeader(idTokenOverride?: string): Promise<Record<string, string>> {
-  if (idTokenOverride) {
-    return { Authorization: `Bearer ${idTokenOverride}` };
-  }
-  if (!auth || !auth.currentUser) return {};
+// Obtain the current Supabase access token for server-side verification.
+async function getAuthHeader(accessTokenOverride?: string): Promise<Record<string, string>> {
+  if (accessTokenOverride) return { Authorization: `Bearer ${accessTokenOverride}` };
+  if (!supabase) return {};
   try {
-    const token = await auth.currentUser.getIdToken();
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
     return token ? { Authorization: `Bearer ${token}` } : {};
   } catch {
     return {};
@@ -105,14 +103,14 @@ export const apiClient = {
     }>(res);
   },
 
-  // Firebase Auth Helper APIs
+  // Supabase Auth Helper APIs
   async syncFirebaseUserProfile(
     displayName?: string,
     preferredLanguage?: string,
     phone?: string,
-    idTokenOverride?: string
+    accessTokenOverride?: string
   ) {
-    const authHeaders = await getAuthHeader(idTokenOverride);
+    const authHeaders = await getAuthHeader(accessTokenOverride);
     const res = await fetch(`${API_BASE}/auth/sync-profile`, {
       method: 'POST',
       headers: {
@@ -124,8 +122,8 @@ export const apiClient = {
     return handleResponse<{ user: UserProfile }>(res);
   },
 
-  async getCurrentUser(idTokenOverride?: string) {
-    const authHeaders = await getAuthHeader(idTokenOverride);
+  async getCurrentUser(accessTokenOverride?: string) {
+    const authHeaders = await getAuthHeader(accessTokenOverride);
     if (!authHeaders.Authorization) {
       return {
         user: {

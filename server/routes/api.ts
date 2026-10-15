@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { dataRepository, RepositoryError } from '../repository';
 import { DocumentIdSchema, SessionEventSchema, normalizeEvents } from '../../src/domain/schemas/persistence';
 import { adminAuth } from '../firebaseAdmin';
+import { verifySupabaseAccessToken } from '../supabaseAuth';
 import {
   extractEmergencyFacts,
   generateAnalyticsInsight,
@@ -65,29 +66,36 @@ export const authenticateOptional = async (req: AuthenticatedRequest, res: Respo
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     try {
-      // Verify ID token with Firebase Admin SDK
-      const decoded = await adminAuth.verifyIdToken(token, true);
-      req.firebaseUid = decoded.uid;
-      req.firebaseClaims = decoded;
-
-      // Fetch or auto-provision user in repository
-      let user = await dataRepository.getUser(decoded.uid);
-      if (!user) {
-        // Derive masked phone
-        const rawPhone = decoded.phone_number || '';
-        const phoneMasked = rawPhone.length > 6
-          ? `${rawPhone.slice(0, 3)}***${rawPhone.slice(-4)}`
-          : 'Chưa cung cấp';
-
-        user = await dataRepository.upsertUser({
-          uid: decoded.uid,
-          displayName: decoded.name || 'Công dân Cứu sinh',
-          phoneMasked,
-          role: getEffectiveRoleFromClaims(decoded),
-          preferredLanguage: 'vi',
-        });
+      const supabaseUser = await verifySupabaseAccessToken(token);
+      if (supabaseUser) {
+        req.firebaseUid = supabaseUser.id;
+        req.firebaseClaims = { sub: supabaseUser.id, role: supabaseUser.app_metadata?.role || 'citizen' };
+        let user = await dataRepository.getUser(supabaseUser.id);
+        if (!user) {
+          const rawPhone = supabaseUser.phone || '';
+          const phoneMasked = rawPhone.length > 6 ? `${rawPhone.slice(0, 3)}***${rawPhone.slice(-4)}` : 'Chưa cung cấp';
+          user = await dataRepository.upsertUser({
+            uid: supabaseUser.id,
+            displayName: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Công dân Cứu sinh',
+            phoneMasked,
+            role: getEffectiveRoleFromClaims(req.firebaseClaims),
+            preferredLanguage: 'vi',
+          });
+        }
+        req.user = { ...user, role: user.role || getEffectiveRoleFromClaims(req.firebaseClaims) };
+      } else {
+        // Legacy Firebase verification remains only for existing server clients during migration.
+        const decoded = await adminAuth.verifyIdToken(token, true);
+        req.firebaseUid = decoded.uid;
+        req.firebaseClaims = decoded;
+        let user = await dataRepository.getUser(decoded.uid);
+        if (!user) {
+          const rawPhone = decoded.phone_number || '';
+          const phoneMasked = rawPhone.length > 6 ? `${rawPhone.slice(0, 3)}***${rawPhone.slice(-4)}` : 'Chưa cung cấp';
+          user = await dataRepository.upsertUser({ uid: decoded.uid, displayName: decoded.name || 'Công dân Cứu sinh', phoneMasked, role: getEffectiveRoleFromClaims(decoded), preferredLanguage: 'vi' });
+        }
+        req.user = { ...user, role: getEffectiveRoleFromClaims(decoded) };
       }
-      req.user = { ...user, role: getEffectiveRoleFromClaims(decoded) };
     } catch (err) {
       if (err instanceof RepositoryError || (err instanceof Error && err.message.includes('disabled'))) {
         return res.status(503).json({ code: 'ACCOUNT_SERVICE_UNAVAILABLE', message: 'Dịch vụ tài khoản chưa sẵn sàng. Vui lòng thử lại sau.' });
@@ -103,7 +111,7 @@ export const authenticateRequired = (req: AuthenticatedRequest, res: Response, n
     if (!req.user || !req.firebaseUid) {
       return res.status(401).json({
         code: 'UNAUTHORIZED',
-        message: 'Yêu cầu đăng nhập Firebase để truy cập tài nguyên này.',
+        message: 'Yêu cầu đăng nhập để truy cập tài nguyên này.',
         requestId: req.headers['x-request-id'] || 'req_anon',
       });
     }
