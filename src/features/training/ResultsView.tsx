@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import useSWR from 'swr';
 import { useAuth } from '../auth/AuthContext';
-import { auth } from '../../services/firebase/client';
+import { supabase } from '../../services/supabase/client';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
   Clock,
@@ -39,7 +39,9 @@ export const ResultsView: React.FC = () => {
     !authLoading && sessionIdParam ? ['training-result', user?.uid || 'guest', sessionIdParam] : null,
     async () => {
       if (user) {
-        const response = await fetch(`/api/sessions/${encodeURIComponent(sessionIdParam!)}`, { headers: { Authorization: `Bearer ${await auth?.currentUser?.getIdToken()}` } });
+        const { data: sessionData } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+        const accessToken = sessionData.session?.access_token;
+        const response = await fetch(`/api/sessions/${encodeURIComponent(sessionIdParam!)}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
         if (!response.ok) throw new Error('Không thể tải kết quả.');
         return (await response.json()).session as TrainingSession;
       }
@@ -241,7 +243,7 @@ export const ResultsView: React.FC = () => {
                 <span>Tiến Trình Các Thao Tác Đã Thực Hiện</span>
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Màu sắc phản ánh độ chính xác lâm sàng theo phác đồ sơ cấp cứu
+                Màu sắc phản ánh đ��� chính xác lâm sàng theo phác đồ sơ cấp cứu
               </p>
             </div>
             <MetadataRow
