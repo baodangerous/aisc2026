@@ -13,7 +13,8 @@
 </p>
 
 <p>
-  <img alt="React 19" src="https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white">
+  <img alt="GoldenMinutes brand" src="https://img.shields.io/badge/GoldenMinutes-%23e31917-e31917?logoColor=white">
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-e31917?logo=react&logoColor=white">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
   <img alt="Vite 6" src="https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white">
   <img alt="Tailwind CSS 4" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">

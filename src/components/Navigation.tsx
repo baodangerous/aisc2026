@@ -62,7 +62,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
           
           {/* Zone 1: Brand Title (Single text element wordmark, whitespace-nowrap shrink-0) */}
           <Link to="/" className="flex items-center gap-2 min-w-0 group" aria-label="GoldenMinutes - Trang chủ">
-            <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-sm shadow-rose-600/30 shrink-0 group-active:scale-95 transition-transform">
+            <div className="brand-gradient w-9 h-9 rounded-xl text-white flex items-center justify-center shadow-sm shadow-rose-600/30 shrink-0 group-active:scale-95 transition-transform">
               <Heart className="w-[18px] h-[18px] fill-current" aria-hidden="true" />
             </div>
             <span className="hidden min-[340px]:inline font-extrabold text-base sm:text-lg tracking-tight text-slate-900 whitespace-nowrap truncate">
