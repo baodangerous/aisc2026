@@ -1,4 +1,5 @@
 import { auth, isFirebaseConfigured } from '../firebase/client';
+import { getSupabaseProfile, supabase } from '../supabase/client';
 import { saveLocalSession, saveLocalEvent, getLocalSessions } from '../indexedDb';
 import {
   UserProfile,
@@ -20,6 +21,42 @@ import {
 } from '../../domain/schemas';
 
 const API_BASE = '/api';
+
+async function getSupabaseTrainingContext() {
+  if (!supabase) return null;
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return null;
+  return { user: session.user, profile: await getSupabaseProfile(session.user) };
+}
+
+async function persistSupabaseSession(session: any, ownerUid: string) {
+  if (!supabase) return null;
+  const metrics = {
+    durationSec: session.durationSec,
+    timeToGuidanceSec: session.timeToGuidanceSec,
+    timeToCallSec: session.timeToCallSec,
+    timeToActionSec: session.timeToActionSec,
+    adiSec: session.adiSec,
+    mroFlag: session.mroFlag,
+    readinessScore: session.readinessScore,
+    confidenceDelta: session.confidenceDelta,
+  };
+  const { data, error } = await supabase.from('training_sessions').upsert({
+    session_id: session.sessionId || session.clientSessionId,
+    owner_uid: ownerUid,
+    scenario_id: session.scenarioId,
+    scenario_version_id: session.scenarioVersionId || 'v1',
+    status: session.status || 'in_progress',
+    data_origin: 'training_user',
+    events: session.events || [],
+    metrics,
+    started_at: session.startedAt || new Date().toISOString(),
+    completed_at: session.completedAt || null,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'session_id' }).select().single();
+  if (error) throw error;
+  return data;
+}
 
 // Obtain Firebase ID token dynamically from current logged-in user
 async function getAuthHeader(idTokenOverride?: string): Promise<Record<string, string>> {
@@ -144,6 +181,11 @@ export const apiClient = {
 
   // Training Sessions
   async saveTrainingSession(session: any) {
+    const supabaseContext = await getSupabaseTrainingContext().catch(() => null);
+    if (supabaseContext) {
+      await persistSupabaseSession(session, supabaseContext.user.id);
+      return { session: session as TrainingSession, isLocalOnly: false };
+    }
     const authHeaders = await getAuthHeader();
     if (!authHeaders.Authorization) {
       // Guest mode: Persist purely to local IndexedDB
@@ -194,6 +236,17 @@ export const apiClient = {
   },
 
   async sendEventsBatch(clientSessionId: string, events: any[]) {
+    const supabaseContext = await getSupabaseTrainingContext().catch(() => null);
+    if (supabaseContext) {
+      const { data: current, error: readError } = await supabase.from('training_sessions').select('events').eq('session_id', clientSessionId).eq('owner_uid', supabaseContext.user.id).maybeSingle();
+      if (readError) throw readError;
+      const previous = Array.isArray(current?.events) ? current.events : [];
+      const merged = [...previous, ...events].filter((event, index, list) => list.findIndex((item) => item.clientEventId === event.clientEventId) === index);
+      const { error } = await supabase.from('training_sessions').update({ events: merged, updated_at: new Date().toISOString() }).eq('session_id', clientSessionId).eq('owner_uid', supabaseContext.user.id);
+      if (error) throw error;
+      return { success: true, pending: false };
+    }
+
     // Save to local indexedDB first
     try {
       for (const ev of events) {
@@ -227,6 +280,36 @@ export const apiClient = {
     confidenceAfter?: number;
     finalEvents: any[];
   }) {
+    const supabaseContext = await getSupabaseTrainingContext().catch(() => null);
+    if (supabaseContext) {
+      const { data: current, error: readError } = await supabase.from('training_sessions').select('scenario_id,scenario_version_id,events,metrics,started_at').eq('session_id', clientSessionId).eq('owner_uid', supabaseContext.user.id).maybeSingle();
+      if (readError) throw readError;
+      if (!current) throw new Error('Không tìm thấy phiên luyện tập.');
+      const { calculateSessionMetrics } = await import('../../domain/metrics/calculator');
+      const events = [...(Array.isArray(current.events) ? current.events : []), ...payload.finalEvents].filter((event, index, list) => list.findIndex((item) => item.clientEventId === event.clientEventId) === index);
+      const metrics = calculateSessionMetrics(events, { timeToGuidanceSec: 15, timeToCallSec: 30, timeToActionSec: 60, mroThresholdSec: 45 }, true);
+      const nextMetrics = { ...current.metrics, ...metrics, confidenceAfter: payload.confidenceAfter };
+      const { error } = await supabase.from('training_sessions').update({ status: 'completed', events, metrics: nextMetrics, completed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('session_id', clientSessionId).eq('owner_uid', supabaseContext.user.id);
+      if (error) throw error;
+      return { success: true, session: {
+        sessionId: clientSessionId,
+        clientSessionId,
+        ownerUid: supabaseContext.user.id,
+        scenarioId: current.scenario_id,
+        scenarioVersionId: current.scenario_version_id,
+        scenarioTitle: payload.scenarioTitle || 'Luyện tập tình huống',
+        mode: 'training',
+        status: 'completed',
+        startedAt: current.started_at,
+        completedAt: new Date().toISOString(),
+        createdAt: current.started_at,
+        updatedAt: new Date().toISOString(),
+        events,
+        dataOrigin: 'training_user',
+        ...metrics,
+        confidenceAfter: payload.confidenceAfter,
+      } as TrainingSession };
+    }
     const authHeaders = await getAuthHeader();
     if (!authHeaders.Authorization) {
       // Guest: calculate and persist in IndexedDB
@@ -292,6 +375,12 @@ export const apiClient = {
   },
 
   async getMySessions() {
+    const supabaseContext = await getSupabaseTrainingContext().catch(() => null);
+    if (supabaseContext) {
+      const { data, error } = await supabase.from('training_sessions').select('session_id,owner_uid,scenario_id,scenario_version_id,status,events,metrics,started_at,completed_at,updated_at').eq('owner_uid', supabaseContext.user.id).order('updated_at', { ascending: false });
+      if (error) throw error;
+      return { sessions: (data || []).map((row: any) => ({ sessionId: row.session_id, clientSessionId: row.session_id, ownerUid: row.owner_uid, scenarioId: row.scenario_id, scenarioVersionId: row.scenario_version_id, status: row.status, events: row.events || [], startedAt: row.started_at, completedAt: row.completed_at, updatedAt: row.updated_at, dataOrigin: 'training_user', ...(row.metrics || {}) })) as TrainingSession[] };
+    }
     const authHeaders = await getAuthHeader();
     if (!authHeaders.Authorization) {
       const localList = await getLocalSessions();
