@@ -14,7 +14,7 @@ interface AuthContextType {
   isGuest: boolean;
   isAuthenticated: boolean;
   isSynced: boolean;
-  isFirebaseReady: boolean;
+  isSupabaseReady: boolean;
   loginWithGoogle: () => Promise<void>;
   sendPhoneOtp: (phone: string) => Promise<void>;
   verifyPhoneOtp: (phone: string, token: string) => Promise<void>;
@@ -65,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogle = async () => {
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
-    const redirectTo = import.meta.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}${window.location.pathname}`;
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },
@@ -80,15 +80,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const sendPhoneOtp = async (phone: string) => {
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
-    const normalized = phone.trim().replace(/\s+/g, '');
-    if (!/^\+[1-9]\d{7,14}$/.test(normalized)) throw new Error('Nhập số điện thoại theo định dạng quốc tế, ví dụ +84901234567.');
+    const normalized = normalizeVietnamesePhone(phone);
+    if (!normalized) throw new Error('Nhập số điện thoại Việt Nam hợp lệ, ví dụ 0901234567 hoặc +84901234567.');
     const { error } = await supabase.auth.signInWithOtp({ phone: normalized });
     if (error) throw error;
   };
 
   const verifyPhoneOtp = async (phone: string, token: string) => {
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
-    const normalized = phone.trim().replace(/\s+/g, '');
+    const normalized = normalizeVietnamesePhone(phone);
+    if (!normalized || !/^\d{6}$/.test(token.trim())) throw new Error('Số điện thoại hoặc mã OTP không hợp lệ.');
     const { error } = await supabase.auth.verifyOtp({ phone: normalized, token: token.trim(), type: 'sms' });
     if (error) throw error;
   };
@@ -123,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAuth = authStatus === 'authenticated_synced' || authStatus === 'authenticated_offline';
-  return <AuthContext.Provider value={{ authStatus, user, profile: user, firebaseUser, isLoading: authStatus === 'initializing', isGuest: !isAuth, isAuthenticated: isAuth, isSynced: authStatus === 'authenticated_synced', isFirebaseReady: isSupabaseConfigured, loginWithGoogle, logout, updateProfile, requestDeletion, sendPhoneOtp, verifyPhoneOtp }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ authStatus, user, profile: user, firebaseUser, isLoading: authStatus === 'initializing', isGuest: !isAuth, isAuthenticated: isAuth, isSynced: authStatus === 'authenticated_synced', isSupabaseReady: isSupabaseConfigured, loginWithGoogle, logout, updateProfile, requestDeletion, sendPhoneOtp, verifyPhoneOtp }}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
@@ -131,6 +132,14 @@ export const useAuth = () => {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 };
+
+function normalizeVietnamesePhone(value: string) {
+  const digits = value.trim().replace(/[\s().-]/g, '');
+  if (/^0\d{9}$/.test(digits)) return `+84${digits.slice(1)}`;
+  if (/^84\d{9}$/.test(digits)) return `+${digits}`;
+  if (/^\+84\d{9}$/.test(digits)) return digits;
+  return null;
+}
 
 function guestProfile(): UserProfile {
   const now = new Date().toISOString();

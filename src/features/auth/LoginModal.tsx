@@ -3,7 +3,7 @@ import { X, LockKeyhole, AlertCircle, LogIn, LoaderCircle, Smartphone } from 'lu
 import { useAuth } from './AuthContext';
 
 export function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { loginWithGoogle, sendPhoneOtp, verifyPhoneOtp, isFirebaseReady } = useAuth();
+  const { loginWithGoogle, sendPhoneOtp, verifyPhoneOtp, isSupabaseReady } = useAuth();
   const [pending, setPending] = useState(false);
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -39,7 +39,7 @@ export function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         <div className="flex items-center justify-between"><LockKeyhole className="size-8 text-primary" aria-hidden="true" /><button type="button" onClick={onClose} aria-label="Đóng cửa sổ" className="flex size-11 items-center justify-center rounded-full bg-background text-foreground"><X className="size-5" aria-hidden="true" /></button></div>
         <div className="flex flex-col gap-2"><h2 id="login-title" className="text-2xl font-bold">Chào mừng trở lại</h2><p className="text-base leading-relaxed text-muted">Đăng nhập để lưu kết quả luyện tập.</p></div>
         {error && <p role="alert" className="flex items-start gap-2 text-sm text-primary"><AlertCircle className="size-5 shrink-0" aria-hidden="true" />{error}</p>}
-        {isFirebaseReady ? <div className="flex flex-col gap-3">
+        {isSupabaseReady ? <div className="flex flex-col gap-3">
           <button type="button" disabled={pending} onClick={login} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-base font-semibold text-primary-foreground disabled:opacity-60">{pending ? <LoaderCircle className="size-5 animate-spin" aria-hidden="true" /> : <LogIn className="size-5" aria-hidden="true" />}{pending ? 'Đang đăng nhập…' : 'Tiếp tục với Google'}</button>
           <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-border" />hoặc<span className="h-px flex-1 bg-border" /></div>
           <label className="text-sm font-semibold" htmlFor="phone-login">Số điện thoại</label>
