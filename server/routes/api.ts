@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { dataRepository } from '../repository';
+import { dataRepository, RepositoryError } from '../repository';
+import { DocumentIdSchema, SessionEventSchema, normalizeEvents } from '../../src/domain/schemas/persistence';
 import { adminAuth } from '../firebaseAdmin';
 import {
   extractEmergencyFacts,
@@ -21,6 +22,13 @@ import {
 import { calculateSessionMetrics } from '../../src/domain/metrics/calculator';
 
 export const apiRouter = Router();
+const safeHandler = (handler: import('express').RequestHandler): import('express').RequestHandler =>
+  (req, res, next) => { Promise.resolve().then(() => handler(req, res, next)).catch(next); };
+const routes = {
+  get: (path: string, ...handlers: import('express').RequestHandler[]) => apiRouter.get(path, ...handlers.map(safeHandler)),
+  post: (path: string, ...handlers: import('express').RequestHandler[]) => apiRouter.post(path, ...handlers.map(safeHandler)),
+  patch: (path: string, ...handlers: import('express').RequestHandler[]) => apiRouter.patch(path, ...handlers.map(safeHandler)),
+};
 
 export const VALID_ROLES = ['citizen', 'volunteer', 'clinical_reviewer', 'org_admin', 'platform_admin'] as const;
 export type ValidRole = (typeof VALID_ROLES)[number];
@@ -58,7 +66,7 @@ export const authenticateOptional = async (req: AuthenticatedRequest, res: Respo
     const token = authHeader.substring(7);
     try {
       // Verify ID token with Firebase Admin SDK
-      const decoded = await adminAuth.verifyIdToken(token);
+      const decoded = await adminAuth.verifyIdToken(token, true);
       req.firebaseUid = decoded.uid;
       req.firebaseClaims = decoded;
 
@@ -79,10 +87,12 @@ export const authenticateOptional = async (req: AuthenticatedRequest, res: Respo
           preferredLanguage: 'vi',
         });
       }
-      req.user = user;
+      req.user = { ...user, role: getEffectiveRoleFromClaims(decoded) };
     } catch (err) {
-      console.warn('[Auth Middleware] Invalid Firebase ID Token:', (err as any).message);
-      // Do not block optional requests if token expired; proceed as guest
+      if (err instanceof RepositoryError || (err instanceof Error && err.message.includes('disabled'))) {
+        return res.status(503).json({ code: 'ACCOUNT_SERVICE_UNAVAILABLE', message: 'Dịch vụ tài khoản chưa sẵn sàng. Vui lòng thử lại sau.' });
+      }
+      return res.status(401).json({ code: 'UNAUTHORIZED', message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' });
     }
   }
   next();
@@ -134,14 +144,11 @@ const checkAiRateLimit = (key: string, maxPerMin: number = 20): boolean => {
 };
 
 // 1. Health Check
-apiRouter.get('/health', async (req: Request, res: Response) => {
+routes.get('/health', async (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     app: 'GoldenMinutes Emergency Response Intelligence System',
-    version: '2.5.0-firebase-spark-free',
-    geminiReady: Boolean(process.env.GEMINI_API_KEY),
-    geminiModel: process.env.GEMINI_MODEL || 'gemini-3.7-flash',
-    uptimeSeconds: Math.round(process.uptime()),
+
     timestamp: new Date().toISOString(),
   });
 });
@@ -153,7 +160,7 @@ const SyncProfileSchema = z.object({
   phone: z.string().max(20).optional(),
 });
 
-apiRouter.post('/auth/sync-profile', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
+routes.post('/auth/sync-profile', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
   const parsed = SyncProfileSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ code: 'INVALID_INPUT', errors: parsed.error.issues });
@@ -179,15 +186,15 @@ apiRouter.post('/auth/sync-profile', authenticateRequired, async (req: Authentic
     actorRole: updated.role,
     action: 'USER_SYNC_PROFILE',
     targetResource: `users/${uid}`,
-    details: { displayName: updated.displayName, preferredLanguage: updated.preferredLanguage },
-    ipAddressMasked: '127.0.0.***',
+    details: { preferredLanguage: updated.preferredLanguage },
+    ipAddressMasked: 'not_collected',
   });
 
   res.json({ user: updated });
 });
 
 // 3. User Me Profile
-apiRouter.get('/auth/me', authenticateOptional, async (req: AuthenticatedRequest, res: Response) => {
+routes.get('/auth/me', authenticateOptional, async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) {
     return res.json({
       user: {
@@ -211,12 +218,12 @@ apiRouter.get('/auth/me', authenticateOptional, async (req: AuthenticatedRequest
 });
 
 // 4. Scenarios List & Details
-apiRouter.get('/scenarios', async (req: Request, res: Response) => {
+routes.get('/scenarios', async (req: Request, res: Response) => {
   const list = await dataRepository.getScenarios();
   res.json({ scenarios: list });
 });
 
-apiRouter.get('/scenarios/:id', async (req: Request, res: Response) => {
+routes.get('/scenarios/:id', async (req: Request, res: Response) => {
   const scenario = await dataRepository.getScenario(req.params.id);
   if (!scenario) {
     return res.status(404).json({ code: 'NOT_FOUND', message: 'Kịch bản không tồn tại.' });
@@ -226,21 +233,18 @@ apiRouter.get('/scenarios/:id', async (req: Request, res: Response) => {
 
 // 5. Training Sessions: Create / Sync (Requires Firebase Auth; guest stores in local IndexedDB)
 const CreateSessionSchema = z.object({
-  sessionId: z.string().optional(),
-  clientSessionId: z.string().optional(),
-  scenarioId: z.string(),
-  scenarioVersionId: z.string().optional(),
-  scenarioTitle: z.string(),
-  mode: z.enum(['training', 'simulation', 'real_emergency_view']).optional(),
+  sessionId: DocumentIdSchema.optional(), clientSessionId: DocumentIdSchema.optional(),
+  scenarioId: DocumentIdSchema, scenarioVersionId: DocumentIdSchema.optional(),
+  scenarioTitle: z.string().max(200),
+  mode: z.enum(['training', 'simulation']).optional(),
   status: z.enum(['in_progress', 'completed', 'abandoned']).optional(),
-  events: z.array(z.any()),
-  dataOrigin: z.enum(['training_user', 'synthetic_seed', 'pilot_verified']).optional(),
-  confidenceBefore: z.number().optional(),
-  confidenceAfter: z.number().optional(),
-  notes: z.string().optional(),
+  events: z.array(SessionEventSchema).max(512),
+  dataOrigin: z.literal('training_user').optional(),
+  confidenceBefore: z.number().int().min(1).max(5).optional(),
+  confidenceAfter: z.number().int().min(1).max(5).optional(),
 });
 
-apiRouter.post('/sessions', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
+routes.post('/sessions', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
   const parsed = CreateSessionSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ code: 'INVALID_SESSION_DATA', errors: parsed.error.issues });
@@ -260,31 +264,28 @@ apiRouter.post('/sessions', authenticateRequired, async (req: AuthenticatedReque
   } = parsed.data;
   const ownerUid = req.firebaseUid!;
 
-  const thresholds = {
-    timeToGuidanceSec: 15,
-    timeToCallSec: 30,
-    timeToActionSec: 60,
-    mroThresholdSec: 45,
-  };
-
-  const metrics = calculateSessionMetrics(events, thresholds, true);
-
-  const sessionId = parsed.data.sessionId || clientSessionId || `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const sessionId = parsed.data.sessionId || clientSessionId || `sess_${crypto.randomUUID()}`;
   const now = new Date().toISOString();
 
-  // Check if session already synced idempotently
+  // Check ownership before returning a duplicate; IDs are not authorization.
   const existing = await dataRepository.getTrainingSession(sessionId);
   if (existing) {
+    if (existing.ownerUid !== ownerUid) return res.status(409).json({ code: 'SESSION_CONFLICT', message: 'Mã phiên không khả dụng.' });
     return res.json({ session: existing, isDuplicate: true });
   }
+  const scenario = await dataRepository.getScenario(scenarioId);
+  const version = scenario?.versions.find((item) => item.versionId === (scenarioVersionId || scenario.activeVersionId));
+  if (!scenario || !version) return res.status(400).json({ code: 'INVALID_SCENARIO', message: 'Phiên bản bài tập không tồn tại.' });
+  const safeEvents = normalizeEvents(events, sessionId);
+  const metrics = calculateSessionMetrics(safeEvents, version.thresholds, (status || 'completed') === 'completed');
 
   const session: TrainingSession = {
     sessionId,
     clientSessionId: clientSessionId || sessionId,
     ownerUid,
     scenarioId,
-    scenarioVersionId: scenarioVersionId || 'v1',
-    scenarioTitle,
+    scenarioVersionId: version.versionId,
+    scenarioTitle: scenario.title,
     mode: mode || 'training',
     status: status || 'completed',
     startedAt: events[0]?.occurredAtClient || now,
@@ -299,8 +300,8 @@ apiRouter.post('/sessions', authenticateRequired, async (req: AuthenticatedReque
     confidenceBefore,
     confidenceAfter,
     confidenceDelta: (confidenceBefore !== undefined && confidenceAfter !== undefined) ? confidenceAfter - confidenceBefore : undefined,
-    dataOrigin: dataOrigin || 'training_user',
-    events,
+    dataOrigin: 'training_user',
+    events: safeEvents,
     createdAt: now,
     updatedAt: now,
   };
@@ -313,25 +314,16 @@ apiRouter.post('/sessions', authenticateRequired, async (req: AuthenticatedReque
     action: 'TRAINING_SESSION_SUBMIT',
     targetResource: `sessions/${created.sessionId}`,
     details: { adi: created.adiSec, readiness: created.readinessScore },
-    ipAddressMasked: '127.0.0.***',
+    ipAddressMasked: 'not_collected',
   });
 
   res.status(201).json({ session: created });
 });
 
 // 5b. Idempotent Event Batch Appending
-const AppendEventsSchema = z.object({
-  events: z.array(z.object({
-    clientEventId: z.string(),
-    type: z.string(),
-    stepId: z.string().optional(),
-    occurredAtClient: z.string(),
-    deltaMsFromStart: z.number(),
-    payload: z.record(z.string(), z.any()).optional(),
-  })).min(1),
-});
+const AppendEventsSchema = z.object({ events: z.array(SessionEventSchema).min(1).max(512) });
 
-apiRouter.post('/sessions/:id/events', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
+routes.post('/sessions/:id/events', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
   const sessionId = req.params.id;
   const parsed = AppendEventsSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -343,11 +335,11 @@ apiRouter.post('/sessions/:id/events', authenticateRequired, async (req: Authent
     return res.status(404).json({ code: 'SESSION_NOT_FOUND', message: 'Phiên luyện tập không tồn tại.' });
   }
 
-  if (existing.ownerUid && existing.ownerUid !== req.firebaseUid) {
+  if (existing.ownerUid !== req.firebaseUid) {
     return res.status(403).json({ code: 'FORBIDDEN', message: 'Bạn không có quyền chỉnh sửa phiên này.' });
   }
 
-  const updatedSession = await dataRepository.appendSessionEvents(sessionId, parsed.data.events as any[]);
+  const updatedSession = await dataRepository.appendSessionEvents(sessionId, normalizeEvents(parsed.data.events, sessionId));
   res.json({ success: true, session: updatedSession });
 });
 
@@ -356,11 +348,11 @@ const CompleteSessionSchema = z.object({
   scenarioId: z.string(),
   scenarioVersionId: z.string().optional(),
   scenarioTitle: z.string().optional(),
-  confidenceAfter: z.number().optional(),
-  finalEvents: z.array(z.any()),
+  confidenceAfter: z.number().int().min(1).max(5).optional(),
+  finalEvents: z.array(SessionEventSchema).max(512),
 });
 
-apiRouter.post('/sessions/:id/complete', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
+routes.post('/sessions/:id/complete', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
   const sessionId = req.params.id;
   const parsed = CompleteSessionSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -372,7 +364,7 @@ apiRouter.post('/sessions/:id/complete', authenticateRequired, async (req: Authe
     return res.status(404).json({ code: 'SESSION_NOT_FOUND', message: 'Phiên luyện tập không tồn tại.' });
   }
 
-  if (existing.ownerUid && existing.ownerUid !== req.firebaseUid) {
+  if (existing.ownerUid !== req.firebaseUid) {
     return res.status(403).json({ code: 'FORBIDDEN', message: 'Bạn không có quyền hoàn tất phiên này.' });
   }
 
@@ -385,7 +377,7 @@ apiRouter.post('/sessions/:id/complete', authenticateRequired, async (req: Authe
 
   const completed = await dataRepository.completeTrainingSession(sessionId, {
     confidenceAfter: parsed.data.confidenceAfter,
-    finalEvents: parsed.data.finalEvents,
+    finalEvents: normalizeEvents(parsed.data.finalEvents, sessionId),
     thresholds,
   });
 
@@ -393,17 +385,17 @@ apiRouter.post('/sessions/:id/complete', authenticateRequired, async (req: Authe
 });
 
 // 6. List user's private sessions (Strictly own sessions only)
-apiRouter.get('/sessions', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
+routes.get('/sessions', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
   const uid = req.firebaseUid!;
   const list = await dataRepository.listTrainingSessions(uid);
   res.json({ sessions: list });
 });
 
 // Admin/Reviewer listing of aggregated/audited sessions
-apiRouter.get(
+routes.get(
   '/admin/sessions',
   authenticateRequired,
-  requireRole(['platform_admin', 'clinical_reviewer', 'org_admin']),
+  requireRole(['platform_admin']),
   async (req: AuthenticatedRequest, res: Response) => {
     const list = await dataRepository.listTrainingSessions();
     res.json({ sessions: list });
@@ -411,7 +403,7 @@ apiRouter.get(
 );
 
 // 7. Get specific session (IDOR safe check)
-apiRouter.get('/sessions/:id', authenticateRequired, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+routes.get('/sessions/:id', authenticateRequired, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const session = await dataRepository.getTrainingSession(req.params.id);
     if (!session) {
@@ -421,7 +413,7 @@ apiRouter.get('/sessions/:id', authenticateRequired, async (req: AuthenticatedRe
     // IDOR Protection: Citizens can only see their own sessions; Staff/Admin can view all via verified Custom Claims
     const isOwner = session.ownerUid === req.firebaseUid;
     const effectiveRole = getEffectiveRoleFromClaims(req.firebaseClaims);
-    const isPrivileged = ['platform_admin', 'clinical_reviewer', 'org_admin'].includes(effectiveRole);
+    const isPrivileged = ['platform_admin'].includes(effectiveRole);
     if (!isOwner && !isPrivileged) {
       return res.status(403).json({ code: 'FORBIDDEN', message: 'Bạn không có quyền xem phiên luyện tập này.' });
     }
@@ -433,31 +425,21 @@ apiRouter.get('/sessions/:id', authenticateRequired, async (req: AuthenticatedRe
 });
 
 // 7b. Self-service Account Deletion (Decree 13 / GDPR Compliance)
-apiRouter.post('/auth/delete-account', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
+routes.post('/auth/delete-account', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
   const uid = req.firebaseUid!;
   try {
-    // 1. Delete user doc
-    await dataRepository.deleteUser(uid);
-
-    // 2. Log deletion in compliance audit
-    await dataRepository.logAudit({
-      actorUid: uid,
-      actorRole: 'citizen',
-      action: 'USER_ACCOUNT_SELF_DELETED',
-      targetResource: `users/${uid}`,
-      details: { timestamp: new Date().toISOString() },
-      ipAddressMasked: '127.0.0.***',
+    const deletion = await dataRepository.createDeletionRequest({
+      uid, phoneMasked: req.user?.phoneMasked || '', status: 'pending',
     });
-
-    res.json({ success: true, message: 'Tài khoản và dữ liệu cá nhân đã được xóa theo yêu cầu.' });
+    res.status(202).json({ success: true, request: deletion, message: 'Đã tiếp nhận yêu cầu xóa. Dữ liệu chưa bị xóa; yêu cầu đang chờ xử lý.' });
   } catch (err: any) {
     console.error('Delete account error:', err);
-    res.status(500).json({ code: 'DELETE_ERROR', message: 'Không thể hoàn tất xóa tài khoản lúc này.' });
+    res.status(500).json({ code: 'DELETE_ERROR', message: 'Không th��� hoàn tất xóa tài khoản lúc này.' });
   }
 });
 
 // 8. Facilities Directory & AED Stations
-apiRouter.get('/facilities', async (req: Request, res: Response, next: NextFunction) => {
+routes.get('/facilities', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const facilities = await dataRepository.getFacilities();
     res.json({ facilities });
@@ -467,7 +449,7 @@ apiRouter.get('/facilities', async (req: Request, res: Response, next: NextFunct
 });
 
 // 9. Aggregates & Analytics
-apiRouter.get('/aggregates/daily', async (req: Request, res: Response, next: NextFunction) => {
+routes.get('/aggregates/daily', authenticateRequired, requireRole(['platform_admin']), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const scenarioId = req.query.scenarioId as string | undefined;
     const list = await dataRepository.getDailyAggregates(scenarioId);
@@ -477,7 +459,7 @@ apiRouter.get('/aggregates/daily', async (req: Request, res: Response, next: Nex
   }
 });
 
-apiRouter.get('/analytics/funnel', async (req: Request, res: Response, next: NextFunction) => {
+routes.get('/analytics/funnel', authenticateRequired, requireRole(['platform_admin']), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const scenarioId = req.query.scenarioId as string | undefined;
     const funnel = await dataRepository.getDelayFunnel(scenarioId);
@@ -504,7 +486,7 @@ const VolunteerApplySchema = z.object({
   privacyConsent: z.boolean(),
 });
 
-apiRouter.post('/volunteer/apply', authenticateRequired, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+routes.post('/volunteer/apply', authenticateRequired, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const parsed = VolunteerApplySchema.safeParse(req.body);
     if (!parsed.success) {
@@ -547,7 +529,7 @@ apiRouter.post('/volunteer/apply', authenticateRequired, async (req: Authenticat
       action: 'VOLUNTEER_APPLICATION_SUBMIT',
       targetResource: `volunteerApplications/${application.id}`,
       details: { province: body.province, district: body.district, skillsCount: body.skills.length },
-      ipAddressMasked: '127.0.0.***',
+      ipAddressMasked: 'not_collected',
     });
 
     res.status(201).json({ success: true, application });
@@ -556,13 +538,13 @@ apiRouter.post('/volunteer/apply', authenticateRequired, async (req: Authenticat
   }
 });
 
-apiRouter.get('/volunteer/my-application', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
+routes.get('/volunteer/my-application', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
   const user = req.user!;
   const application = await dataRepository.getVolunteerApplicationByUserId(user.uid);
   res.json({ application });
 });
 
-apiRouter.patch('/volunteer/my-application/status', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
+routes.patch('/volunteer/my-application/status', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
   const user = req.user!;
   const { action } = req.body;
 
@@ -581,17 +563,17 @@ apiRouter.patch('/volunteer/my-application/status', authenticateRequired, async 
     action: `VOLUNTEER_STATUS_${action.toUpperCase()}`,
     targetResource: `volunteerApplications/${updated.id}`,
     details: { newStatus: updated.status },
-    ipAddressMasked: '127.0.0.***',
+    ipAddressMasked: 'not_collected',
   });
 
   res.json({ success: true, application: updated });
 });
 
 // 11. Reviewer / Admin Volunteer Queue
-apiRouter.get(
+routes.get(
   '/volunteer/admin/applications',
   authenticateRequired,
-  requireRole(['platform_admin', 'clinical_reviewer', 'org_admin']),
+  requireRole(['platform_admin']),
   async (req: AuthenticatedRequest, res: Response) => {
     const { status, province, cprTrained, search } = req.query;
 
@@ -606,10 +588,10 @@ apiRouter.get(
   }
 );
 
-apiRouter.post(
+routes.post(
   '/volunteer/admin/applications/:id/review',
   authenticateRequired,
-  requireRole(['platform_admin', 'clinical_reviewer', 'org_admin']),
+  requireRole(['platform_admin']),
   async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
     const { status, reviewNote } = req.body;
@@ -641,7 +623,7 @@ apiRouter.post(
         reviewerId: user.uid,
         reviewNote,
       },
-      ipAddressMasked: '127.0.0.***',
+      ipAddressMasked: 'not_collected',
     });
 
     res.json({ success: true, application: updated });
@@ -649,7 +631,7 @@ apiRouter.post(
 );
 
 // 12. Privacy & Data Deletion (Decree 13 / GDPR)
-apiRouter.post('/privacy/delete-request', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
+routes.post('/privacy/delete-request', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
   const user = req.user!;
   const { reason } = req.body;
 
@@ -665,18 +647,18 @@ apiRouter.post('/privacy/delete-request', authenticateRequired, async (req: Auth
     actorRole: user.role,
     action: 'DELETION_REQUEST_SUBMIT',
     targetResource: `deletionRequests/${delReq.id}`,
-    details: { reason },
-    ipAddressMasked: '127.0.0.***',
+    details: { status: 'pending' },
+    ipAddressMasked: 'not_collected',
   });
 
   res.json({ success: true, request: delReq });
 });
 
 // 13. Audit Trail for Compliance
-apiRouter.get(
+routes.get(
   '/admin/audit-logs',
   authenticateRequired,
-  requireRole(['platform_admin', 'clinical_reviewer', 'org_admin']),
+  requireRole(['platform_admin']),
   async (req: AuthenticatedRequest, res: Response) => {
     const logs = await dataRepository.getAuditLogs();
     res.json({ logs });
@@ -692,7 +674,7 @@ const withAiTimeout = <T>(promise: Promise<T>, timeoutMs = 15000): Promise<T> =>
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
 };
 
-apiRouter.post('/ai/extract-facts', async (req: Request, res: Response) => {
+routes.post('/ai/extract-facts', async (req: Request, res: Response) => {
   const clientKey = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'client_anon';
   if (!checkAiRateLimit(clientKey, 30)) {
     return res.status(429).json({
@@ -719,13 +701,13 @@ apiRouter.post('/ai/extract-facts', async (req: Request, res: Response) => {
     console.warn('Fact Extraction Fallback Note:', err?.message || err);
     res.status(500).json({
       code: 'AI_SERVICE_ERROR',
-      message: err.message || 'Lỗi trích xuất sự kiện từ AI. Vui lòng sử dụng biểu mẫu thủ công.',
+      message: 'Lỗi trích xuất sự kiện từ AI. Vui lòng sử dụng biểu mẫu thủ công.',
       requestId: req.headers['x-request-id'] || 'req_ai_err',
     });
   }
 });
 
-apiRouter.post('/ai/transcribe-audio', async (req: Request, res: Response) => {
+routes.post('/ai/transcribe-audio', async (req: Request, res: Response) => {
   const clientKey = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'client_anon';
   if (!checkAiRateLimit(clientKey, 20)) {
     return res.status(429).json({
@@ -752,13 +734,13 @@ apiRouter.post('/ai/transcribe-audio', async (req: Request, res: Response) => {
     console.warn('Audio Transcription Fallback Note:', err?.message || err);
     res.status(500).json({
       code: 'AI_SERVICE_ERROR',
-      message: err.message || 'Không thể nhận diện giọng nói lúc này. Vui lòng nhập bằng văn bản.',
+      message: 'Không thể nhận diện giọng nói lúc này. Vui lòng nhập bằng văn bản.',
       requestId: req.headers['x-request-id'] || 'req_ai_err',
     });
   }
 });
 
-apiRouter.post('/ai/extract-visual-facts', async (req: Request, res: Response) => {
+routes.post('/ai/extract-visual-facts', async (req: Request, res: Response) => {
   const clientKey = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'client_anon';
   if (!checkAiRateLimit(clientKey, 15)) {
     return res.status(429).json({
@@ -785,13 +767,13 @@ apiRouter.post('/ai/extract-visual-facts', async (req: Request, res: Response) =
     console.warn('Visual Fact Extraction Fallback Note:', err?.message || err);
     res.status(500).json({
       code: 'AI_SERVICE_ERROR',
-      message: err.message || 'Không thể phân tích hình ảnh luyện tập lúc này.',
+      message: 'Không thể phân tích hình ảnh luyện tập lúc này.',
       requestId: req.headers['x-request-id'] || 'req_ai_err',
     });
   }
 });
 
-apiRouter.post('/ai/insights', async (req: Request, res: Response) => {
+routes.post('/ai/insights', async (req: Request, res: Response) => {
   const clientKey = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'client_anon';
   if (!checkAiRateLimit(clientKey, 15)) {
     return res.status(429).json({
@@ -818,7 +800,7 @@ apiRouter.post('/ai/insights', async (req: Request, res: Response) => {
     console.warn('Analytics Insight Fallback Note:', err?.message || err);
     res.status(500).json({
       code: 'AI_SERVICE_ERROR',
-      message: err.message || 'Lỗi sinh nhận định AI.',
+      message: 'Lỗi sinh nhận định AI.',
       requestId: req.headers['x-request-id'] || 'req_ai_err',
     });
   }

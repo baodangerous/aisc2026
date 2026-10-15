@@ -85,21 +85,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (err) {
         if (!isSubscribed) return;
-        // In case of unexpected profile load failure, assign safe in-memory profile and mark authenticated_offline
-        const safeProfile: UserProfile = {
-          uid: fbUser.uid,
-          displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Công dân Cứu sinh',
-          email: fbUser.email || undefined,
-          photoURL: fbUser.photoURL || undefined,
-          phoneMasked: undefined,
-          role: 'citizen',
-          preferredLanguage: 'vi',
-          onboardingCompleted: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        setUser(safeProfile);
-        setAuthStatus('authenticated_offline');
+        setUser(null);
+        setAuthStatus('authentication_error');
       }
     });
 
@@ -144,12 +131,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (auth) {
         await signOut(auth);
       }
-    } catch {
-      // ignore
-    } finally {
       setFirebaseUser(null);
       setUser(null);
       setAuthStatus('guest');
+    } catch {
+      throw new Error('Chưa thể đăng xuất. Vui lòng thử lại.');
     }
   };
 
@@ -203,7 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         profile: user,
         firebaseUser,
         isLoading: authStatus === 'initializing',
-        isGuest: authStatus === 'guest',
+        isGuest: authStatus === 'guest' || authStatus === 'authentication_error',
         isAuthenticated: isAuth,
         isSynced: authStatus === 'authenticated_synced',
         isFirebaseReady: isFirebaseConfigured,
@@ -234,7 +220,7 @@ async function syncGuestSessionsToUser(uid: string) {
 
     for (const sess of guestSessions) {
       try {
-        await apiClient.saveTrainingSession({
+        const result = await apiClient.saveTrainingSession({
           clientSessionId: sess.clientSessionId,
           scenarioId: sess.scenarioId,
           scenarioTitle: sess.scenarioTitle || 'Luyện tập tình huống',
@@ -242,6 +228,7 @@ async function syncGuestSessionsToUser(uid: string) {
           dataOrigin: 'training_user',
           notes: 'Đồng bộ từ phiên ngoại tuyến trên thiết bị',
         });
+        if ('isLocalOnly' in result && result.isLocalOnly) continue;
         sess.ownerUid = uid;
         await saveLocalSession(sess);
       } catch {

@@ -1,106 +1,38 @@
-import { initializeApp, getApps, App } from 'firebase-admin/app';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
-import { getAuth, Auth } from 'firebase-admin/auth';
-import * as fs from 'fs';
-import * as path from 'path';
+import { initializeApp, getApps, cert, applicationDefault, type App } from 'firebase-admin/app';
+import { getFirestore, type Firestore } from 'firebase-admin/firestore';
+import { getAuth, type Auth } from 'firebase-admin/auth';
 
 let cachedApp: App | null = null;
 let cachedDb: Firestore | null = null;
-let cachedAuth: Auth | null = null;
 
-export function isFirestoreAdminEnabled(): boolean {
-  return process.env.ENABLE_FIRESTORE_ADMIN === 'true';
-}
+export function isFirestoreAdminEnabled() { return process.env.ENABLE_FIRESTORE_ADMIN === 'true'; }
 
 export function getAdminApp(): App {
-  if (!isFirestoreAdminEnabled()) {
-    throw new Error('Firebase Admin is disabled. Set ENABLE_FIRESTORE_ADMIN=true to enable.');
-  }
+  if (!isFirestoreAdminEnabled()) throw new Error('Firebase Admin is disabled.');
   if (cachedApp) return cachedApp;
-  if (!getApps().length) {
-    const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
-    let config: any = {};
-    if (fs.existsSync(configPath)) {
-      try {
-        config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      } catch {
-        // ignore malformed local config
-      }
-    }
-
-    const projectId = config.projectId || process.env.FIREBASE_PROJECT_ID || 'gen-lang-client-0997555390';
-    cachedApp = initializeApp({
-      projectId,
-    });
-  } else {
-    cachedApp = getApps()[0];
-  }
-  return cachedApp;
+  if (getApps().length) return (cachedApp = getApps()[0]);
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  if (!projectId) throw new Error('Firebase Admin is disabled: configuration unavailable.');
+  try {
+    const account = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    const credential = account ? cert(JSON.parse(account)) : applicationDefault();
+    cachedApp = initializeApp({ projectId, credential });
+    return cachedApp;
+  } catch { throw new Error('Firebase Admin is disabled: configuration unavailable.'); }
 }
 
 export function getAdminDb(): Firestore {
-  if (!isFirestoreAdminEnabled()) {
-    throw new Error('Firebase Admin Firestore is disabled. Set ENABLE_FIRESTORE_ADMIN=true to enable.');
-  }
   if (cachedDb) return cachedDb;
-  const app = getAdminApp();
-  const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
-  let config: any = {};
-  if (fs.existsSync(configPath)) {
-    try {
-      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    } catch {
-      // ignore
-    }
-  }
-
-  const firestoreDatabaseId = config.firestoreDatabaseId;
-  if (firestoreDatabaseId) {
-    cachedDb = getFirestore(app, firestoreDatabaseId);
-  } else {
-    cachedDb = getFirestore(app);
-  }
-
-  try {
-    cachedDb.settings({ ignoreUndefinedProperties: true });
-  } catch {
-    // ignore
-  }
-
+  cachedDb = getFirestore(getAdminApp(), process.env.FIREBASE_DATABASE_ID || '(default)');
+  cachedDb.settings({ ignoreUndefinedProperties: true });
   return cachedDb;
 }
+export function getAdminAuth(): Auth { return getAuth(getAdminApp()); }
 
-export function getAdminAuth(): Auth {
-  if (!isFirestoreAdminEnabled()) {
-    throw new Error('Firebase Admin Auth is disabled. Set ENABLE_FIRESTORE_ADMIN=true to enable.');
-  }
-  if (cachedAuth) return cachedAuth;
-  const app = getAdminApp();
-  cachedAuth = getAuth(app);
-  return cachedAuth;
-}
-
-// Proxies so existing imports (adminDb, adminAuth, adminApp) work seamlessly with lazy initialization
-export const adminApp = new Proxy({} as App, {
-  get(_target, prop) {
-    const app = getAdminApp();
-    const val = (app as any)[prop];
-    return typeof val === 'function' ? val.bind(app) : val;
-  },
-});
-
+// Lazy proxies avoid credential access when importing the public learning app or running a build.
 export const adminDb = new Proxy({} as Firestore, {
-  get(_target, prop) {
-    const db = getAdminDb();
-    const val = (db as any)[prop];
-    return typeof val === 'function' ? val.bind(db) : val;
-  },
+  get(_target, property) { const db = getAdminDb(); const value = Reflect.get(db, property); return typeof value === 'function' ? value.bind(db) : value; },
 });
-
 export const adminAuth = new Proxy({} as Auth, {
-  get(_target, prop) {
-    const auth = getAdminAuth();
-    const val = (auth as any)[prop];
-    return typeof val === 'function' ? val.bind(auth) : val;
-  },
+  get(_target, property) { const auth = getAdminAuth(); const value = Reflect.get(auth, property); return typeof value === 'function' ? value.bind(auth) : value; },
 });

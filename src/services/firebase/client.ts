@@ -18,7 +18,7 @@ import {
   collection,
   onSnapshot,
 } from 'firebase/firestore';
-import rawFirebaseConfig from '../../../firebase-applet-config.json';
+
 
 // 1. Read environment variables
 const envApiKey = import.meta.env.VITE_FIREBASE_API_KEY as string | undefined;
@@ -29,7 +29,7 @@ const envMessagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID a
 const envAppId = import.meta.env.VITE_FIREBASE_APP_ID as string | undefined;
 const envDatabaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID as string | undefined;
 
-const jsonConfig: Record<string, any> = (rawFirebaseConfig as any) || {};
+const jsonConfig: Record<string, string> = {};
 
 const resolvedConfig = {
   apiKey: envApiKey || jsonConfig.apiKey || '',
@@ -44,6 +44,8 @@ const resolvedConfig = {
 // Defensive check for config presence
 export const isFirebaseConfigured = Boolean(
   resolvedConfig.apiKey &&
+  resolvedConfig.authDomain &&
+  resolvedConfig.appId &&
   resolvedConfig.projectId &&
   resolvedConfig.projectId !== 'demo-project' &&
   !resolvedConfig.projectId.includes('placeholder')

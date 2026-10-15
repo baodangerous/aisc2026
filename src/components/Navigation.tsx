@@ -27,6 +27,11 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
   const navigate = useNavigate();
   const { user, isGuest, logout } = useAuth();
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
+  const handleLogout = async () => {
+    try { await logout(); setIsMoreMenuOpen(false); setLogoutError(''); }
+    catch { setLogoutError('Chưa thể đăng xuất. Vui lòng thử lại.'); }
+  };
 
   const mainDesktopLinks = [
     { path: '/', label: 'Trang chủ' },
@@ -119,7 +124,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
                   </div>
                   <button
                     type="button"
-                    onClick={logout}
+                    onClick={handleLogout}
                     className="p-1 text-slate-400 hover:text-slate-700 text-xs transition-colors cursor-pointer"
                     title="Đăng xuất"
                   >
@@ -142,6 +147,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
         </div>
       </header>
 
+      {logoutError && <p role="alert" className="bg-surface p-3 text-sm text-primary">{logoutError}</p>}
       {/* Mobile Bottom Navigation Bar (5 items, safe-area padded, 44px+ hitboxes) */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 safe-area-pb shadow-[0_-4px_24px_rgba(16,24,40,0.06)]"
@@ -241,10 +247,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      logout();
-                      setIsMoreMenuOpen(false);
-                    }}
+                    onClick={handleLogout}
                     className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-semibold cursor-pointer"
                     title="Đăng xuất"
                   >
@@ -286,7 +289,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
                   </div>
                   <div>
                     <div className="text-xs font-bold text-slate-900">Thư viện Kỹ năng Cấp cứu</div>
-                    <div className="text-xs text-slate-500">Video chuẩn hóa AHA &amp; Bộ Y Tế</div>
+                    <div className="text-xs text-slate-500">Video và tài liệu tại nguồn phát hành</div>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-300" />
@@ -297,10 +300,10 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
             <div className="pt-2 border-t border-slate-200 space-y-1 text-xs text-slate-500">
               <div className="flex items-center gap-1.5 text-slate-700 font-semibold">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Nghị định 13/2023/NĐ-CP &amp; 279/2025/NĐ-CP</span>
+                <span>Quyền riêng tư</span>
               </div>
               <p className="leading-relaxed">
-                GoldenMinutes lưu trữ ngoại tuyến ưu tiên trên thiết bị. Mọi dữ liệu phân tích đều ẩn danh hóa theo ngưỡng an toàn.
+                Bài tập của khách lưu trên thiết bị. Dữ liệu tài khoản được giới hạn quyền truy cập; không nhập thông tin bệnh nhân thật vào bài tập.
               </p>
             </div>
           </div>

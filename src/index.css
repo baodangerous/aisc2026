@@ -7,6 +7,13 @@
  * Scale follows mobile UI guidance: 12px min caption, 15-16px body, 16px inputs (prevents iOS zoom)
  */
 @theme {
+  --color-background: #f9fafb;
+  --color-surface: #ffffff;
+  --color-foreground: #1d2939;
+  --color-muted: #667085;
+  --color-primary: #be123c;
+  --color-primary-foreground: #ffffff;
+  --color-border: color-mix(in srgb, #667085 22%, #ffffff);
   --font-sans: 'Be Vietnam Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }

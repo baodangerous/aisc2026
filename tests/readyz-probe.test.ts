@@ -3,11 +3,10 @@ import request from 'supertest';
 import { app } from '../server/index';
 
 describe('/readyz Readiness Probe Verification', () => {
-  it('returns 200 and status: ready with memory_fallback when Firestore Admin is not enabled', async () => {
+  it('returns 503 without claiming persistent storage is ready when Firestore is disabled', async () => {
     const res = await request(app).get('/readyz');
-    expect(res.status).toBe(200);
-    expect(res.body.status).toBe('ready');
-    expect(res.body.database).toBe('memory_fallback');
-    expect(res.body.degraded).toBe(true);
+    expect(res.status).toBe(503);
+    expect(res.body.status).toBe('not_ready');
+    expect(res.body.database).toBeUndefined();
   });
 });
