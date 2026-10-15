@@ -90,7 +90,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
               <LearningResourceCard key={resource.id} resource={resource} onOpen={() => navigate(`/library?lesson=${resource.slug}`)} />
             ))}
           </div>
-          <p className="text-xs leading-relaxed text-muted">Nguồn chính thống: American Heart Association, American Stroke Association, American College of Surgeons và British Red Cross. Mỗi tài liệu mở tại trang phát hành; GoldenMinutes không sao chép hoặc nh��n là đơn vị chứng nhận.</p>
+          <p className="text-xs leading-relaxed text-muted">Nguồn chính thống: American Heart Association, American Stroke Association, American College of Surgeons và British Red Cross. Mỗi tài liệu mở tại trang phát hành; GoldenMinutes không sao chép nội dung và không phải là đơn vị chứng nhận.</p>
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
             {REFERENCE_LEARNING_RESOURCES.slice(0, 4).map((resource) => <a key={resource.id} href={resource.sourcePageUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-primary underline underline-offset-4">{resource.sourceOrganization}<ExternalLink className="size-3" aria-hidden="true" /></a>)}
           </div>
