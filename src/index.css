@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+:root { color-scheme: light; }
+
 /*
  * Mobile typography system
  * - Be Vietnam Pro: designed for Vietnamese diacritics, high legibility at small sizes
@@ -222,11 +224,6 @@
 @keyframes assistant-drift { 50% { transform: translate(-1rem, 1rem) scale(1.1); } }
 @keyframes assistant-reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-@media (prefers-color-scheme: dark) {
-  :root { color-scheme: dark; }
-  body { background-color: #11181d; color: #f3f6f7; }
-  .editorial-surface { background: rgba(24, 34, 40, 0.92); border-color: rgba(255,255,255,0.1); }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .editorial-surface { transition: none !important; }

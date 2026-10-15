@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import { apiRouter } from './routes/api';
 import { dataRepository } from './repository';
+import { handleAIChat } from './routes/aiChat';
 
 export interface AppOptions {
   corsOrigins?: string[];
@@ -139,6 +140,7 @@ export function createApp(options?: AppOptions): express.Express {
 
   // API Routes
   app.use('/api', apiRouter);
+  app.post('/api/ai/chat', handleAIChat);
 
   // Explicit 404 JSON for unmatched /api requests (Prevents returning HTML to API callers)
   app.use('/api', (req: Request, res: Response) => {
