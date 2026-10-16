@@ -3,6 +3,7 @@ import useSWR from 'swr';
 import { MapPin, PhoneCall, Search } from 'lucide-react';
 import { LeafletMapView } from './LeafletMapView';
 import { FacilitySchema } from '../../domain/schemas/persistence';
+import { supabase } from '../../services/supabase/client';
 
 export interface CareFacility {
   id: string; name: string; type: 'aed' | 'hospital' | 'emergency_station' | 'clinic' | 'pharmacy';
@@ -41,14 +42,14 @@ export function NearbyCareView() {
     return () => { cancelled = true; };
   }, []);
   const { data = [], isLoading } = useSWR('verified-facilities', async () => {
-    try {
-      const response = await fetch('/api/facilities');
-      if (!response.ok) return [];
-      const payload = await response.json();
-      return FacilitySchema.array().parse(payload.facilities);
-    } catch {
-      return [];
-    }
+    if (!supabase) return [];
+    const { data: rows, error } = await supabase.from('medical_facilities').select('id,name,type,address,latitude,longitude,operating_hours,phone,source_url,verified_at').eq('status', 'verified').order('name');
+    if (error) return [];
+    return FacilitySchema.array().parse((rows ?? []).map((row) => ({
+      id: row.id, name: row.name, type: row.type, address: row.address, lat: row.latitude, lng: row.longitude,
+      operatingHours: row.operating_hours, phone: row.phone ?? undefined, sourceUrl: row.source_url ?? undefined,
+      verifiedAt: row.verified_at ?? undefined, disclaimer: 'Dữ liệu đã được xác minh trong cơ sở dữ liệu.',
+    })));
   }, { shouldRetryOnError: false, fallbackData: [] });
   const verifiedFacilities: CareFacility[] = data.map((item) => ({ ...item, source: 'verified_official' as const }));
   const sourceFacilities: CareFacility[] = verifiedFacilities;
@@ -70,7 +71,7 @@ export function NearbyCareView() {
           {data.length === 0 && <div role="note" className="rounded-2xl border border-border bg-surface p-5 text-sm text-muted"><p className="font-bold text-foreground">Chưa có địa điểm được xác minh</p><p className="mt-1 leading-relaxed">GoldenMinutes chưa hiển thị bệnh viện, trạm hỗ trợ hoặc AED khi chưa có dữ liệu chính thức. Khi cần cấp cứu, hãy gọi 115.</p></div>}
           <label className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4"><Search className="size-5 text-muted" aria-hidden="true" /><span className="sr-only">Tìm cơ sở y tế</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tên cơ sở hoặc địa chỉ" className="min-h-12 w-full bg-transparent text-foreground" /></label>
           {center && facilities.length > 0 && <LeafletMapView center={userCoords || center} facilities={facilities} selectedFacilityId={selected} onSelectFacility={setSelected} userCoords={userCoords} />}
-          {facilities.map((facility) => <article key={facility.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5"><button type="button" onClick={() => setSelected(facility.id)} className="text-left text-lg font-semibold">{facility.name}</button><p className="text-sm text-muted">{facility.address}</p>{facility.distanceKm !== undefined && <p className="text-sm font-semibold text-primary">Cách vị trí của bạn khoảng {facility.distanceKm < 1 ? `${Math.round(facility.distanceKm * 1000)} m` : `${facility.distanceKm.toFixed(1)} km`}</p>}{facility.verifiedAt ? <p className="text-sm text-muted">Xác minh: {new Date(facility.verifiedAt).toLocaleDateString('vi-VN')}</p> : <p className="text-sm text-amber-700">Chưa có xác minh — dữ liệu minh họa</p>}<p className="text-xs text-muted">Dữ liệu dùng trong ứng dụng; hãy gọi 115 để xác nhận khả năng tiếp nhận.</p></article>)}
+          {facilities.map((facility) => <article key={facility.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5"><button type="button" onClick={() => setSelected(facility.id)} className="text-left text-lg font-semibold">{facility.name}</button><p className="text-sm text-muted">{facility.address}</p>{facility.distanceKm !== undefined && <p className="text-sm font-semibold text-primary">Cách vị trí của bạn khoảng {facility.distanceKm < 1 ? `${Math.round(facility.distanceKm * 1000)} m` : `${facility.distanceKm.toFixed(1)} km`}</p>}{facility.verifiedAt ? <p className="text-sm text-muted">Xác minh: {new Date(facility.verifiedAt).toLocaleDateString('vi-VN')}</p> : <p className="text-sm text-emerald-700">Đã xác minh từ CSDL</p>}<p className="text-xs text-muted">Dữ liệu dùng trong ứng dụng; hãy gọi 115 để xác nhận khả năng tiếp nhận.</p></article>)}
           {!facilities.length && data.length > 0 && <p>Không tìm thấy cơ sở phù hợp.</p>}
         </>}
       </div>

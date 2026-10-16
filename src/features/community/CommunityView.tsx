@@ -26,10 +26,11 @@ export function CommunityView() {
 
   const load = async () => {
     if (!supabase) return;
-    const [{ data: postData }, { data: alertData }] = await Promise.all([
-      supabase.from(COMMUNITY_TABLES.posts).select('id,title,body,category,created_at').order('created_at', { ascending: false }).limit(20),
+    const [{ data: postData, error: postsError }, { data: alertData, error: alertsError }] = await Promise.all([
+      supabase.from(COMMUNITY_TABLES.posts).select('id,title,body,category,created_at').eq('status', 'published').order('created_at', { ascending: false }).limit(20),
       supabase.from(COMMUNITY_TABLES.alerts).select('id,title,description,kind,radius_m,latitude,longitude,created_at').eq('status', 'active').order('created_at', { ascending: false }).limit(20),
     ]);
+    if (postsError || alertsError) { setError('Chưa thể tải dữ liệu cộng đồng. Vui lòng thử lại.'); return; }
     setPosts(postData || []);
     setAlerts((alertData || []).filter((alert) => !nearbyOnly || !currentPosition || distanceInMeters(currentPosition, alert.latitude, alert.longitude) <= alert.radius_m));
   };
@@ -45,7 +46,7 @@ export function CommunityView() {
     if (title.trim().length < 5 || body.trim().length < 10) { setError('Tiêu đề cần ít nhất 5 ký tự và nội dung cần ít nhất 10 ký tự.'); return; }
     setError(''); setNotice('');
     const { error: insertError } = await supabase.from(COMMUNITY_TABLES.posts).insert({ author_uid: authUser.id, title: title.trim(), body: body.trim(), category });
-    if (insertError) setError(insertError.message); else { setTitle(''); setBody(''); setNotice('Bài viết đã được đăng.'); await load(); }
+    if (insertError) setError(insertError.code === '42501' ? 'Tài khoản chưa có quyền đăng bài.' : 'Không thể đăng bài lúc này. Vui lòng thử lại.'); else { setTitle(''); setBody(''); setNotice('Bài viết đã được đăng.'); await load(); }
   };
   const enableNearbyAlerts = () => {
     if (!navigator.geolocation) { setError('Thiết bị không hỗ trợ vị trí.'); return; }
