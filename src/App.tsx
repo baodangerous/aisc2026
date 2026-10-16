@@ -27,6 +27,9 @@ const NearbyFacilitiesView = lazyWithRetry(() =>
 const CommunityView = lazyWithRetry(() =>
   import('./features/community/CommunityView').then((m) => ({ default: m.CommunityView }))
 );
+const OrganizationDashboardView = lazyWithRetry(() =>
+  import('./features/organization/OrganizationDashboardView').then((m) => ({ default: m.OrganizationDashboardView }))
+);
 
 const RouteLoadingFallback: React.FC = () => (
   <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-3 text-[#667085]">
@@ -61,8 +64,8 @@ export const App: React.FC = () => {
                   <Route path="/library" element={<LibraryView />} />
                   <Route path="/volunteer" element={<Navigate to="/" replace />} />
                   <Route path="/volunteers" element={<Navigate to="/" replace />} />
-                  <Route path="/dashboard" element={<Navigate to="/" replace />} />
-                  <Route path="/admin" element={<Navigate to="/" replace />} />
+                  <Route path="/dashboard" element={<OrganizationDashboardView />} />
+                  <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>
