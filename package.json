@@ -11,6 +11,7 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "test": "vitest run",
+    "data:generate-demo": "tsx scripts/generate-demo-dataset.ts",
     "data:ingest": "tsx scripts/ingest-ai-dataset.ts"
   },
   "dependencies": {
