@@ -40,12 +40,16 @@ export function NearbyCareView() {
     }).catch(() => undefined);
     return () => { cancelled = true; };
   }, []);
-  const { data = [], error, isLoading, mutate } = useSWR('verified-facilities', async () => {
-    const response = await fetch('/api/facilities');
-    if (!response.ok) throw new Error('Không thể tải danh bạ.');
-    const payload = await response.json();
-    return FacilitySchema.array().parse(payload.facilities);
-  }, { shouldRetryOnError: false });
+  const { data = [], isLoading } = useSWR('verified-facilities', async () => {
+    try {
+      const response = await fetch('/api/facilities');
+      if (!response.ok) return [];
+      const payload = await response.json();
+      return FacilitySchema.array().parse(payload.facilities);
+    } catch {
+      return [];
+    }
+  }, { shouldRetryOnError: false, fallbackData: [] });
   const demoFacilities: CareFacility[] = [
     { id: 'demo-aed-community', name: 'Điểm AED cộng đồng (minh họa)', type: 'aed', address: 'Mô phỏng tại trung tâm cộng đồng · chưa phải địa chỉ dẫn đường', lat: 10.7769, lng: 106.7009, operatingHours: 'Mô phỏng 24/7', source: 'demo', disclaimer: 'Dữ liệu minh họa để trình diễn giao diện; không dùng cho điều hướng cấp cứu.', phone: '115' },
     { id: 'demo-hospital', name: 'Bệnh viện tiếp nhận cấp cứu (minh họa)', type: 'hospital', address: 'Mô phỏng mạng lưới y tế · cần xác nhận với 115', lat: 10.7829, lng: 106.6956, operatingHours: 'Mô phỏng', source: 'demo', disclaimer: 'Dữ liệu minh họa; khả năng tiếp nhận thực tế cần được xác nhận.', phone: '115' },
@@ -67,7 +71,7 @@ export function NearbyCareView() {
           <button type="button" onClick={requestLocation} disabled={locationState === 'loading'} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 font-semibold text-foreground transition-colors hover:border-primary disabled:opacity-60"><MapPin className="size-5" aria-hidden="true" />{locationState === 'loading' ? 'Đang định vị…' : locationState === 'ready' ? 'Đã cập nhật vị trí' : 'Dùng vị trí của tôi'}</button>
         </div>
         {locationState === 'denied' && <p role="status" className="text-sm text-amber-700">Không thể lấy vị trí. Bạn có thể bật quyền vị trí hoặc tìm theo tên địa điểm.</p>}
-        {isLoading ? <p role="status">Đang tải danh bạ…</p> : error ? <div role="alert" className="flex flex-col gap-3"><p>Chưa tải được danh bạ thật. Đang hiển thị bản đồ minh họa, không dùng để dẫn đường.</p><button type="button" onClick={() => mutate()} className="text-left text-primary underline">Thử lại</button></div> : <>
+        {isLoading ? <p role="status">Đang tải danh bạ…</p> : <>
           {data.length === 0 && <div role="note" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><p className="font-bold">Bản đồ minh họa — chưa có địa điểm đã xác minh</p><p className="mt-1 leading-relaxed">Các điểm bên dưới chỉ mô phỏng cách GoldenMinutes sẽ hiển thị bệnh viện, trạm hỗ trợ và AED khi có dữ liệu chính thức. Không dùng địa chỉ này để chỉ đường; hãy gọi 115.</p></div>}
           <label className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4"><Search className="size-5 text-muted" aria-hidden="true" /><span className="sr-only">Tìm cơ sở y tế</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tên cơ sở hoặc địa chỉ" className="min-h-12 w-full bg-transparent text-foreground" /></label>
           {center && <LeafletMapView center={userCoords || center} facilities={facilities} selectedFacilityId={selected} onSelectFacility={setSelected} userCoords={userCoords} />}

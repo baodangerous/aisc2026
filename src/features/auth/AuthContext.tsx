@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     if (error) {
       if (error.message.toLowerCase().includes('provider') && error.message.toLowerCase().includes('enabled')) {
-        throw new Error('Google chưa được bật trong Supabase Auth. Vào Authentication > Providers > Google, bật provider và thêm Client ID cùng Client Secret.');
+        throw new Error('Google chưa được bật trong Supabase Auth. Bạn vẫn có thể dùng email và mật khẩu bên dưới; hoặc bật Google tại Authentication > Providers > Google.');
       }
       throw error;
     }
