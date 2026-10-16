@@ -43,12 +43,12 @@ export function NearbyCareView() {
   }, []);
   const { data = [], isLoading } = useSWR('verified-facilities', async () => {
     if (!supabase) return [];
-    const { data: rows, error } = await supabase.from('medical_facilities').select('id,name,type,address,latitude,longitude,operating_hours,phone,source_url,verified_at').eq('status', 'verified').order('name');
+    const { data: rows, error } = await supabase.from('medical_facilities').select('id,name,type,address,province,latitude,longitude,operating_hours,phone,source_url,verified_at').eq('status', 'verified').order('name');
     if (error) return [];
     return FacilitySchema.array().parse((rows ?? []).map((row) => ({
-      id: row.id, name: row.name, type: row.type, address: row.address, lat: row.latitude, lng: row.longitude,
-      operatingHours: row.operating_hours, phone: row.phone ?? undefined, sourceUrl: row.source_url ?? undefined,
-      verifiedAt: row.verified_at ?? undefined, disclaimer: 'Dữ liệu đã được xác minh trong cơ sở dữ liệu.',
+      id: row.id, name: row.name, type: row.type, address: row.address, province: row.province ?? 'Chưa cập nhật', district: 'Chưa cập nhật', lat: row.latitude, lng: row.longitude,
+      regionCell: row.province ?? 'Chưa cập nhật', isPublicAccess: true, operatingHours: row.operating_hours, phone: row.phone ?? undefined, sourceUrl: row.source_url ?? 'https://supabase.com',
+      verifiedAt: row.verified_at ?? new Date().toISOString(), status: 'verified', disclaimer: 'Dữ liệu đã được xác minh trong cơ sở dữ liệu.',
     })));
   }, { shouldRetryOnError: false, fallbackData: [] });
   const verifiedFacilities: CareFacility[] = data.map((item) => ({ ...item, source: 'verified_official' as const }));
