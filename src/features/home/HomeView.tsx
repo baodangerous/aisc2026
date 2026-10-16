@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, PhoneCall, MapPin, BookOpen, ShieldAlert, Users, CircleCheck, ExternalLink, PlayCircle, Timer, LibraryBig, Navigation, Activity, ChevronRight } from 'lucide-react';
 import { REFERENCE_LEARNING_RESOURCES } from '../../content/curatedLearningCatalog';
+import { RESEARCH_MODULES, RESEARCH_NOTE } from '../../content/researchModules';
 import { HOME_EXERCISES, HOME_HERO, HOME_PHOTO_STORIES } from '../../config/homeContent';
 import { LearningResourceCard } from '../library/LearningResourceCard';
 
@@ -36,7 +37,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Bảng điều khiển</p>
               <h2 id="module-dashboard-title" className="mt-1 text-2xl font-bold">Sẵn sàng trong 3 phút</h2>
             </div>
-            <span className="hidden rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary sm:inline-flex">4 mô-đun chính</span>
+            <span className="hidden rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary sm:inline-flex">7 mô-đun chính</span>
           </div>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
@@ -52,6 +53,18 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
               </Link>
             ))}
           </div>
+        </section>
+
+        {/* Research-inspired modules */}
+        <section aria-labelledby="research-modules-title" className="space-y-4">
+          <div className="flex items-end justify-between gap-3">
+            <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Nghiên cứu & mở rộng</p><h2 id="research-modules-title" className="mt-1 text-2xl font-bold">Thêm lớp bảo vệ cho cộng đồng</h2></div>
+            <span className="hidden text-xs text-muted sm:inline">Nguồn mở đã đối chiếu</span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {RESEARCH_MODULES.map((module) => <article key={module.id} className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 shadow-[0_10px_25px_rgba(23,33,43,0.05)]"><div className="flex items-center justify-between gap-3"><span className="rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-primary">{module.mode === 'offline' ? 'Offline' : 'Mở rộng'}</span><ExternalLink className="size-4 text-muted" aria-hidden="true" /></div><div><h3 className="text-base font-bold">{module.title}</h3><p className="mt-2 text-sm leading-6 text-muted">{module.summary}</p></div><div className="mt-auto flex items-center justify-between gap-3"><Link to={module.href} className="text-sm font-bold text-primary">{module.action} <ChevronRight className="inline size-4" aria-hidden="true" /></Link><a href={module.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-right text-[11px] text-muted underline underline-offset-2">Nguồn: {module.source}</a></div></article>)}
+          </div>
+          <p className="text-xs leading-relaxed text-muted">{RESEARCH_NOTE}</p>
         </section>
 
         {/* Emergency CTA */}
