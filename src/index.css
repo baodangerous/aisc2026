@@ -18,7 +18,7 @@
   --color-primary-dark: #b31312;
   --color-primary-soft: #fff1f0;
   --color-border: color-mix(in srgb, #667085 22%, #ffffff);
-  --font-sans: 'Noto Sans', 'DejaVu Sans', Arial, 'Segoe UI', sans-serif;
+  --font-sans: 'DejaVu Sans', Arial, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -50,7 +50,7 @@
   }
 
   body {
-    font-family: Arial, "Segoe UI", sans-serif;
+    font-family: 'DejaVu Sans', Arial, sans-serif;
     letter-spacing: normal;
     width: 100%;
     min-height: 100%;
