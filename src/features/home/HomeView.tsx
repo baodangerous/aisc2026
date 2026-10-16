@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, PhoneCall, MapPin, BookOpen, ShieldAlert, Users, CircleCheck, ExternalLink, PlayCircle } from 'lucide-react';
+import { ArrowRight, PhoneCall, MapPin, BookOpen, ShieldAlert, Users, CircleCheck, ExternalLink, PlayCircle, Timer, LibraryBig, Navigation, Activity, ChevronRight } from 'lucide-react';
 import { REFERENCE_LEARNING_RESOURCES } from '../../content/curatedLearningCatalog';
 import { HOME_EXERCISES, HOME_HERO, HOME_PHOTO_STORIES } from '../../config/homeContent';
 import { LearningResourceCard } from '../library/LearningResourceCard';
@@ -28,6 +28,31 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
           </div>
         </section>
         <p className="text-xs text-muted">Nguồn ảnh và thông tin: <a className="underline underline-offset-2" href={HOME_HERO.sourceUrl} target="_blank" rel="noopener noreferrer">{HOME_HERO.sourceLabel}</a></p>
+
+        {/* Visual module dashboard */}
+        <section aria-labelledby="module-dashboard-title" className="space-y-4">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Bảng điều khiển</p>
+              <h2 id="module-dashboard-title" className="mt-1 text-2xl font-bold">Sẵn sàng trong 3 phút</h2>
+            </div>
+            <span className="hidden rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary sm:inline-flex">4 mô-đun chính</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {[
+              { href: '/training', label: 'Tập luyện phản xạ', caption: 'Luyện theo tình huống', metric: '03:00', icon: Timer, tone: 'bg-[#eef4ff] text-[#1849a9]' },
+              { href: '/library', label: 'Thư viện sơ cứu', caption: 'Học nhanh, nhớ lâu', metric: '12 bài', icon: LibraryBig, tone: 'bg-[#fff4e8] text-[#b54708]' },
+              { href: '/nearby', label: 'Điểm hỗ trợ gần bạn', caption: 'AED và cơ sở y tế', metric: 'Bản đồ', icon: Navigation, tone: 'bg-[#ecfdf3] text-[#027a48]' },
+              { href: '/emergency', label: 'Tình huống thật', caption: 'Hướng dẫn từng bước', metric: '115', icon: Activity, tone: 'bg-[#fff1f0] text-primary' },
+            ].map(({ href, label, caption, metric, icon: Icon, tone }) => (
+              <Link key={href} to={href} className="group relative min-h-[10.5rem] overflow-hidden rounded-2xl border border-border bg-surface p-4 shadow-[0_10px_25px_rgba(23,33,43,0.06)] transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_16px_30px_rgba(23,33,43,0.1)]">
+                <div className={`flex size-11 items-center justify-center rounded-xl ${tone}`}><Icon className="size-5" aria-hidden="true" /></div>
+                <div className="mt-6 space-y-1"><h3 className="text-sm font-bold leading-snug">{label}</h3><p className="text-xs text-muted">{caption}</p></div>
+                <div className="absolute bottom-4 right-4 flex items-center gap-1 text-xs font-bold text-primary"><span>{metric}</span><ChevronRight className="size-4 transition-transform group-hover:translate-x-1" aria-hidden="true" /></div>
+              </Link>
+            ))}
+          </div>
+        </section>
 
         {/* Emergency CTA */}
         <section aria-label="Hỗ trợ khẩn cấp" className="flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-[#c92827] to-[#9f1f20] p-5 text-primary-foreground shadow-[0_16px_34px_rgba(201,40,39,0.22)] sm:p-6">
