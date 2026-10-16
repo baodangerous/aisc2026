@@ -159,14 +159,9 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             >
               ${fac.phone ? 'Gọi ngay' : 'Gọi 115'}
             </a>
-            <a 
-              href="https://www.google.com/maps/dir/?api=1&destination=${fac.lat},${fac.lng}" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              class="flex-1 text-center py-1 px-1.5 bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF] text-[11px] font-bold rounded hover:bg-[#D1E9FF] no-underline"
-            >
-              Chỉ đường
-            </a>
+            <span class="flex-1 text-center py-1 px-1.5 bg-[#F2F4F7] text-[#475467] border border-[#D0D5DD] text-[11px] font-bold rounded">
+              Xem trên bản đồ
+            </span>
           </div>
         </div>
       `;

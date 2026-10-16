@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { X, ExternalLink, BookOpen, Video, Info } from 'lucide-react';
+import { X, BookOpen, Video, Info } from 'lucide-react';
 import type { MedicalLearningResource } from '../../domain/schemas';
 
 interface LessonDetailModalProps { resource: MedicalLearningResource | null; onClose: () => void; onOpenCall115?: () => void }
@@ -23,7 +23,7 @@ export function LessonDetailModal({ resource, onClose }: LessonDetailModalProps)
           <div><dt className="text-muted">Kiểm tra liên kết</dt><dd>{resource.sourceCheckedAt} · Không phải duyệt chuyên môn</dd></div>
           <div><dt className="text-muted">Bản quyền</dt><dd className="leading-relaxed">{resource.copyrightStatus}</dd></div>
         </dl>
-        <a href={resource.sourcePageUrl} target="_blank" rel="noopener noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-base font-semibold text-primary-foreground"><ExternalLink className="size-5" aria-hidden="true" />{resource.mediaType === 'video' ? 'Xem video tại nguồn' : 'Đọc tài liệu gốc'}</a>
+        <div className="rounded-2xl bg-primary-soft p-4 text-sm leading-relaxed text-foreground"><p className="font-bold">Bài học đã sẵn sàng offline</p><p className="mt-1">Đọc hướng dẫn, ghi nhớ thứ tự xử trí và luyện lại trong phần Tập luyện. Không cần mở ứng dụng hay tài khoản khác.</p></div>
         <p className="flex items-start gap-2 text-sm leading-relaxed text-muted"><Info className="size-5 shrink-0" aria-hidden="true" />{resource.emergencyWarning}</p>
       </div>
     </dialog>
