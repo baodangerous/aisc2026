@@ -57,8 +57,8 @@ export const FacilitySchema = z.object({
   address: z.string().max(500), province: shortText, district: shortText,
   lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180),
   regionCell: shortText, isPublicAccess: z.boolean(), operatingHours: shortText,
-  sourceUrl: z.string().url().startsWith('https://'), verifiedAt: timestamp,
-  status: z.literal('verified'), disclaimer: z.string().max(1000),
+  sourceUrl: z.string().url().startsWith('https://'), verifiedAt: timestamp.optional(),
+  status: z.enum(['verified', 'pending']), disclaimer: z.string().max(1000),
 });
 
 export const AuditLogSchema = z.object({
