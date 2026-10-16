@@ -33,6 +33,7 @@ export type CommunityMedia = { url: string; type: 'image' | 'video'; name: strin
 
 export type CommunityPost = {
   id: string;
+  author_uid?: string;
   title: string;
   body: string;
   category: string;

@@ -17,6 +17,9 @@ export function CommunityView() {
   const [category, setCategory] = useState('general');
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [editingBody, setEditingBody] = useState('');
   const [alertTitle, setAlertTitle] = useState('');
   const [alertKind, setAlertKind] = useState('other');
   const [alertRadius, setAlertRadius] = useState('1000');
@@ -29,7 +32,7 @@ export function CommunityView() {
   const load = async () => {
     if (!supabase) return;
     const [{ data: postData, error: postsError }, { data: alertData, error: alertsError }] = await Promise.all([
-      supabase.from(COMMUNITY_TABLES.posts).select('id,title,body,category,media,created_at').order('created_at', { ascending: false }).limit(20),
+      supabase.from(COMMUNITY_TABLES.posts).select('id,author_uid,title,body,category,media,created_at').order('created_at', { ascending: false }).limit(20),
       supabase.from(COMMUNITY_TABLES.alerts).select('id,title,description,kind,radius_m,latitude,longitude,created_at').order('created_at', { ascending: false }).limit(20),
     ]);
     if (postsError || alertsError) { setError('Chưa thể tải dữ liệu cộng đồng. Vui lòng thử lại.'); return; }
@@ -62,6 +65,23 @@ export function CommunityView() {
       setTitle(''); setBody(''); setMediaFiles([]); setNotice('Bài viết đã được đăng.'); await load();
     } catch (uploadError) { setError(uploadError instanceof Error ? uploadError.message : 'Không thể đăng bài lúc này. Vui lòng thử lại.'); } finally { setIsUploading(false); }
   };
+  const startEditingPost = (post: Post) => { setEditingPostId(post.id); setEditingTitle(post.title); setEditingBody(post.body); };
+  const cancelEditingPost = () => { setEditingPostId(null); setEditingTitle(''); setEditingBody(''); };
+  const updatePost = async (postId: string) => {
+    if (!supabase || !authUser || editingTitle.trim().length < 5 || editingBody.trim().length < 10) { setError('Tiêu đề cần ít nhất 5 ký tự và nội dung cần ít nhất 10 ký tự.'); return; }
+    const { error: updateError } = await supabase.from(COMMUNITY_TABLES.posts).update({ title: editingTitle.trim(), body: editingBody.trim() }).eq('id', postId).eq('author_uid', authUser.id);
+    if (updateError) { setError('Không thể cập nhật bài đăng.'); return; }
+    cancelEditingPost(); setNotice('Bài đăng đã được cập nhật.'); await load();
+  };
+  const deletePost = async (post: Post) => {
+    if (!supabase || !authUser || !window.confirm('Xóa bài đăng này?')) return;
+    const mediaPaths = (post.media || []).map((item) => item.url.split('/community-media/')[1]).filter(Boolean);
+    if (mediaPaths.length > 0) await supabase.storage.from('community-media').remove(mediaPaths);
+    const { error: deleteError } = await supabase.from(COMMUNITY_TABLES.posts).delete().eq('id', post.id).eq('author_uid', authUser.id);
+    if (deleteError) { setError('Không thể xóa bài đăng.'); return; }
+    setNotice('Bài đăng đã được xóa.'); await load();
+  };
+
   const selectMedia = (files: FileList | null) => {
     const selected = Array.from(files || []);
     if (selected.length > 4 || selected.some((file) => !/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(file.type) || file.size > 25 * 1024 * 1024)) { setError('Chọn tối đa 4 ảnh/video, mỗi file không quá 25 MB.'); return; }
@@ -99,7 +119,7 @@ export function CommunityView() {
     {error && <p role="alert" className="text-sm text-primary">{error}</p>}
     {notice && <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300">{notice}</p>}
     <section className="flex flex-col gap-3"><div className="flex items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-xl font-bold"><AlertTriangle className="size-5 text-primary" aria-hidden="true" />Cảnh báo đang hoạt động</h2><button type="button" onClick={nearbyOnly ? () => { setNearbyOnly(false); setCurrentPosition(null); } : enableNearbyAlerts} className="min-h-10 rounded-lg border border-border px-3 text-xs font-semibold">{nearbyOnly ? 'Hiện tất cả' : 'Gần tôi'}</button></div>{alerts.length === 0 ? <p className="rounded-xl border border-dashed border-border p-5 text-sm text-muted">{nearbyOnly ? 'Không có cảnh báo trong bán kính của cảnh báo gần bạn.' : 'Chưa có cảnh báo đang hoạt động.'}</p> : alerts.map((alert) => <article key={alert.id} className="rounded-2xl border border-primary/30 bg-surface p-4"><h3 className="font-bold">{alert.title}</h3><p className="mt-1 text-sm text-muted">Bán kính chia sẻ {alert.radius_m} mét. {alert.description}</p>{isAuthenticated && <button type="button" onClick={() => void respondToAlert(alert.id)} className="mt-3 min-h-10 rounded-lg border border-primary px-3 text-sm font-semibold text-primary">Tôi đã gọi 115</button>}</article>)}</section>
-    <section className="flex flex-col gap-3"><h2 className="flex items-center gap-2 text-xl font-bold"><MessageCircle className="size-5" aria-hidden="true" />Bài đăng mới</h2>{posts.length === 0 ? <p className="rounded-xl border border-dashed border-border p-5 text-sm text-muted">Chưa có bài đăng. Hãy là người đầu tiên chia sẻ.</p> : posts.map((post) => <article key={post.id} className="rounded-2xl border border-border bg-surface p-4"><h3 className="font-bold">{post.title}</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">{post.body}</p>{post.media && post.media.length > 0 && <div className="mt-3 grid grid-cols-2 gap-2">{post.media.map((item) => item.type === 'video' ? <video key={item.url} src={item.url} controls preload="metadata" className="aspect-video w-full rounded-xl object-cover" aria-label={item.name} /> : <img key={item.url} src={item.url} alt={item.name} loading="lazy" className="aspect-video w-full rounded-xl object-cover" />)}</div>}</article>)}</section>
+    <section className="flex flex-col gap-3"><h2 className="flex items-center gap-2 text-xl font-bold"><MessageCircle className="size-5" aria-hidden="true" />Bài đăng mới</h2>{posts.length === 0 ? <p className="rounded-xl border border-dashed border-border p-5 text-sm text-muted">Chưa có bài đăng. Hãy là người đầu tiên chia sẻ.</p> : posts.map((post) => <article key={post.id} className="rounded-2xl border border-border bg-surface p-4">{editingPostId === post.id ? <div className="flex flex-col gap-3"><input value={editingTitle} onChange={(event) => setEditingTitle(event.target.value)} className="min-h-11 rounded-xl border border-border bg-background px-3" aria-label="Tiêu đề bài đăng" /><textarea value={editingBody} onChange={(event) => setEditingBody(event.target.value)} rows={4} className="rounded-xl border border-border bg-background p-3" aria-label="Nội dung bài đăng" /><div className="flex gap-2"><button type="button" onClick={() => void updatePost(post.id)} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Lưu thay đổi</button><button type="button" onClick={cancelEditingPost} className="rounded-xl border border-border px-4 py-2 text-sm font-semibold">Hủy</button></div></div> : <><div className="flex items-start justify-between gap-3"><h3 className="font-bold">{post.title}</h3>{post.author_uid === authUser?.id && <div className="flex gap-2"><button type="button" onClick={() => startEditingPost(post)} className="text-xs font-semibold text-primary">Sửa</button><button type="button" onClick={() => void deletePost(post)} className="text-xs font-semibold text-destructive">Xóa</button></div>}</div><p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">{post.body}</p>{post.media && post.media.length > 0 && <div className="mt-3 grid grid-cols-2 gap-2">{post.media.map((item) => item.type === 'video' ? <video key={item.url} src={item.url} controls preload="metadata" className="aspect-video w-full rounded-xl object-cover" aria-label={item.name} /> : <img key={item.url} src={item.url} alt={item.name} loading="lazy" className="aspect-video w-full rounded-xl object-cover" />)}</div>}</>}</article>)}</section>
     <p className="flex items-start gap-2 border-t border-border pt-4 text-xs leading-relaxed text-muted"><Users className="size-4 shrink-0" aria-hidden="true" />Không đăng thông tin nhận diện người bệnh hoặc địa chỉ riêng tư. Cảnh báo giả sẽ bị gỡ.</p>
   </main>;
 }
