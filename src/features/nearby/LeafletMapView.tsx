@@ -139,7 +139,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
       const sourceBadge =
         fac.source === 'verified_official'
           ? '<span class="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[11px] font-semibold">Có hồ sơ xác minh nguồn</span>'
-          : '<span class="inline-block px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[11px] font-semibold">Nguồn bản đồ công khai · chưa xác minh</span>';
+          : '<span class="inline-block px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[11px] font-semibold">Thông tin địa điểm từ OpenStreetMap</span>';
 
       const popupHtml = `
         <div class="font-sans text-left max-w-[220px] p-0.5 space-y-1.5">
