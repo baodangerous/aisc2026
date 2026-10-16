@@ -29,11 +29,14 @@ export const COMMUNITY_COPY = {
 export type PostCategory = typeof POST_CATEGORIES[number]['value'];
 export type AlertKind = typeof ALERT_KINDS[number]['value'];
 
+export type CommunityMedia = { url: string; type: 'image' | 'video'; name: string };
+
 export type CommunityPost = {
   id: string;
   title: string;
   body: string;
   category: string;
+  media?: CommunityMedia[];
   created_at: string;
 };
 
