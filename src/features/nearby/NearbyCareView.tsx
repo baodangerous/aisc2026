@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { MapPin, ExternalLink, PhoneCall, Search } from 'lucide-react';
+import { MapPin, PhoneCall, Search } from 'lucide-react';
 import { LeafletMapView } from './LeafletMapView';
 import { FacilitySchema } from '../../domain/schemas/persistence';
 
@@ -31,6 +31,15 @@ export function NearbyCareView() {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
     );
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!navigator.permissions?.query) return;
+    navigator.permissions.query({ name: 'geolocation' }).then((permission) => {
+      if (!cancelled && permission.state === 'granted') requestLocation();
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
   const { data = [], error, isLoading, mutate } = useSWR('verified-facilities', async () => {
     const response = await fetch('/api/facilities');
     if (!response.ok) throw new Error('Không thể tải danh bạ.');
@@ -44,7 +53,10 @@ export function NearbyCareView() {
   ];
   const verifiedFacilities: CareFacility[] = data.map((item) => ({ ...item, source: 'verified_official' as const }));
   const sourceFacilities: CareFacility[] = data.length ? verifiedFacilities : demoFacilities;
-  const facilities = sourceFacilities.filter((item) => `${item.name} ${item.address}`.toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi')));
+  const facilities = useMemo(() => sourceFacilities
+    .filter((item) => `${item.name} ${item.address}`.toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi')))
+    .map((item) => ({ ...item, distanceKm: userCoords ? distanceInKm(userCoords.lat, userCoords.lng, item.lat, item.lng) : undefined }))
+    .sort((a, b) => (a.distanceKm ?? Number.POSITIVE_INFINITY) - (b.distanceKm ?? Number.POSITIVE_INFINITY)), [data, query, userCoords]);
   const center = facilities.find((item) => item.id === selected) || facilities[0];
   return (
     <div className="min-h-screen bg-background pb-24 font-sans text-foreground">
@@ -59,10 +71,18 @@ export function NearbyCareView() {
           {data.length === 0 && <div role="note" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><p className="font-bold">Bản đồ minh họa — chưa có địa điểm đã xác minh</p><p className="mt-1 leading-relaxed">Các điểm bên dưới chỉ mô phỏng cách GoldenMinutes sẽ hiển thị bệnh viện, trạm hỗ trợ và AED khi có dữ liệu chính thức. Không dùng địa chỉ này để chỉ đường; hãy gọi 115.</p></div>}
           <label className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4"><Search className="size-5 text-muted" aria-hidden="true" /><span className="sr-only">Tìm cơ sở y tế</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tên cơ sở hoặc địa chỉ" className="min-h-12 w-full bg-transparent text-foreground" /></label>
           {center && <LeafletMapView center={userCoords || center} facilities={facilities} selectedFacilityId={selected} onSelectFacility={setSelected} userCoords={userCoords} />}
-          {facilities.map((facility) => <article key={facility.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5"><button type="button" onClick={() => setSelected(facility.id)} className="text-left text-lg font-semibold">{facility.name}</button><p className="text-sm text-muted">{facility.address}</p>{facility.verifiedAt ? <p className="text-sm text-muted">Xác minh: {new Date(facility.verifiedAt).toLocaleDateString('vi-VN')}</p> : <p className="text-sm text-amber-700">Chưa có xác minh — dữ liệu minh họa</p>}{facility.sourceUrl && <a href={facility.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary">Nguồn địa điểm<ExternalLink className="size-4" aria-hidden="true" /></a>}</article>)}
+          {facilities.map((facility) => <article key={facility.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5"><button type="button" onClick={() => setSelected(facility.id)} className="text-left text-lg font-semibold">{facility.name}</button><p className="text-sm text-muted">{facility.address}</p>{facility.distanceKm !== undefined && <p className="text-sm font-semibold text-primary">Cách vị trí của bạn khoảng {facility.distanceKm < 1 ? `${Math.round(facility.distanceKm * 1000)} m` : `${facility.distanceKm.toFixed(1)} km`}</p>}{facility.verifiedAt ? <p className="text-sm text-muted">Xác minh: {new Date(facility.verifiedAt).toLocaleDateString('vi-VN')}</p> : <p className="text-sm text-amber-700">Chưa có xác minh — dữ liệu minh họa</p>}<p className="text-xs text-muted">Dữ liệu dùng trong ứng dụng; hãy gọi 115 để xác nhận khả năng tiếp nhận.</p></article>)}
           {!facilities.length && <p>Không tìm thấy cơ sở phù hợp.</p>}
         </>}
       </div>
     </div>
   );
+}
+
+function distanceInKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const earthRadiusKm = 6371;
+  const latDelta = (lat2 - lat1) * Math.PI / 180;
+  const lngDelta = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(latDelta / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(lngDelta / 2) ** 2;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

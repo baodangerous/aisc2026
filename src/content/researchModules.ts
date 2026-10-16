@@ -43,7 +43,7 @@ export const RESEARCH_MODULES: ResearchModule[] = [
   },
 ];
 
-export const RESEARCH_NOTE = 'GoldenMinutes chỉ dùng các nguồn trên để nghiên cứu ý tưởng và liên kết tham khảo; không sao chép mã nguồn, media hoặc nội dung corpus có bản quyền.';
+export const RESEARCH_NOTE = 'GoldenMinutes chỉ dùng các ý tưởng tổng quát để xây dựng trải nghiệm riêng; không yêu cầu người dùng cài thêm app, tạo tài khoản khác hoặc rời khỏi GoldenMinutes.';
 
 export function getResearchModule(id: string) {
   return RESEARCH_MODULES.find((module) => module.id === id);
