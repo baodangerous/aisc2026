@@ -43,15 +43,15 @@ export function NearbyCareView() {
   }, []);
   const { data = [], isLoading } = useSWR('verified-facilities', async () => {
     if (!supabase) return [];
-    const { data: rows, error } = await supabase.from('medical_facilities').select('id,name,type,address,province,latitude,longitude,operating_hours,phone,source_url,verified_at').eq('status', 'verified').order('name');
+    const { data: rows, error } = await supabase.from('medical_facilities').select('id,name,type,address,province,latitude,longitude,operating_hours,phone,source_url,verified_at,status').in('status', ['verified', 'pending']).order('name');
     if (error) return [];
     return FacilitySchema.array().parse((rows ?? []).map((row) => ({
       id: row.id, name: row.name, type: row.type, address: row.address, province: row.province ?? 'Chưa cập nhật', district: 'Chưa cập nhật', lat: row.latitude, lng: row.longitude,
       regionCell: row.province ?? 'Chưa cập nhật', isPublicAccess: true, operatingHours: row.operating_hours, phone: row.phone ?? undefined, sourceUrl: row.source_url ?? 'https://supabase.com',
-      verifiedAt: row.verified_at ?? new Date().toISOString(), status: 'verified', disclaimer: 'Dữ liệu đã được xác minh trong cơ sở dữ liệu.',
+      verifiedAt: row.verified_at ?? undefined, status: row.status, disclaimer: row.status === 'verified' ? 'Dữ liệu đã được xác minh trong cơ sở dữ liệu.' : 'Nguồn bản đồ công khai, chưa được GoldenMinutes xác minh.',
     })));
   }, { shouldRetryOnError: false, fallbackData: [] });
-  const verifiedFacilities: CareFacility[] = data.map((item) => ({ ...item, source: 'verified_official' as const }));
+  const verifiedFacilities: CareFacility[] = data.map((item) => ({ ...item, source: item.status === 'verified' ? 'verified_official' as const : 'demo' as const }));
   const sourceFacilities: CareFacility[] = verifiedFacilities;
   const facilities = useMemo(() => sourceFacilities
     .filter((item) => `${item.name} ${item.address}`.toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi')))

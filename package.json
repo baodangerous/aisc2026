@@ -12,7 +12,8 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "data:generate-demo": "tsx scripts/generate-demo-dataset.ts",
-    "data:ingest": "tsx scripts/ingest-ai-dataset.ts"
+    "data:ingest": "tsx scripts/ingest-ai-dataset.ts",
+    "facilities:import-osm": "tsx scripts/import-osm-facilities.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.146",
