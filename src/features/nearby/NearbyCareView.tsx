@@ -50,13 +50,8 @@ export function NearbyCareView() {
       return [];
     }
   }, { shouldRetryOnError: false, fallbackData: [] });
-  const demoFacilities: CareFacility[] = [
-    { id: 'demo-aed-community', name: 'Điểm AED cộng đồng (minh họa)', type: 'aed', address: 'Mô phỏng tại trung tâm cộng đồng · chưa phải địa chỉ dẫn đường', lat: 10.7769, lng: 106.7009, operatingHours: 'Mô phỏng 24/7', source: 'demo', disclaimer: 'Dữ liệu minh họa để trình diễn giao diện; không dùng cho điều hướng cấp cứu.', phone: '115' },
-    { id: 'demo-hospital', name: 'Bệnh viện tiếp nhận cấp cứu (minh họa)', type: 'hospital', address: 'Mô phỏng mạng lưới y tế · cần xác nhận với 115', lat: 10.7829, lng: 106.6956, operatingHours: 'Mô phỏng', source: 'demo', disclaimer: 'Dữ liệu minh họa; khả năng tiếp nhận thực tế cần được xác nhận.', phone: '115' },
-    { id: 'demo-station', name: 'Trạm hỗ trợ cộng đồng (minh họa)', type: 'emergency_station', address: 'Mô phỏng điểm hỗ trợ · không phải địa chỉ thật', lat: 10.7712, lng: 106.7042, operatingHours: 'Mô phỏng', source: 'demo', disclaimer: 'Dữ liệu minh họa; gọi 115 trong tình huống khẩn cấp.', phone: '115' },
-  ];
   const verifiedFacilities: CareFacility[] = data.map((item) => ({ ...item, source: 'verified_official' as const }));
-  const sourceFacilities: CareFacility[] = data.length ? verifiedFacilities : demoFacilities;
+  const sourceFacilities: CareFacility[] = verifiedFacilities;
   const facilities = useMemo(() => sourceFacilities
     .filter((item) => `${item.name} ${item.address}`.toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi')))
     .map((item) => ({ ...item, distanceKm: userCoords ? distanceInKm(userCoords.lat, userCoords.lng, item.lat, item.lng) : undefined }))
@@ -72,11 +67,11 @@ export function NearbyCareView() {
         </div>
         {locationState === 'denied' && <p role="status" className="text-sm text-amber-700">Không thể lấy vị trí. Bạn có thể bật quyền vị trí hoặc tìm theo tên địa điểm.</p>}
         {isLoading ? <p role="status">Đang tải danh bạ…</p> : <>
-          {data.length === 0 && <div role="note" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><p className="font-bold">Bản đồ minh họa — chưa có địa điểm đã xác minh</p><p className="mt-1 leading-relaxed">Các điểm bên dưới chỉ mô phỏng cách GoldenMinutes sẽ hiển thị bệnh viện, trạm hỗ trợ và AED khi có dữ liệu chính thức. Không dùng địa chỉ này để chỉ đường; hãy gọi 115.</p></div>}
+          {data.length === 0 && <div role="note" className="rounded-2xl border border-border bg-surface p-5 text-sm text-muted"><p className="font-bold text-foreground">Chưa có địa điểm được xác minh</p><p className="mt-1 leading-relaxed">GoldenMinutes chưa hiển thị bệnh viện, trạm hỗ trợ hoặc AED khi chưa có dữ liệu chính thức. Khi cần cấp cứu, hãy gọi 115.</p></div>}
           <label className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4"><Search className="size-5 text-muted" aria-hidden="true" /><span className="sr-only">Tìm cơ sở y tế</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tên cơ sở hoặc địa chỉ" className="min-h-12 w-full bg-transparent text-foreground" /></label>
-          {center && <LeafletMapView center={userCoords || center} facilities={facilities} selectedFacilityId={selected} onSelectFacility={setSelected} userCoords={userCoords} />}
+          {center && facilities.length > 0 && <LeafletMapView center={userCoords || center} facilities={facilities} selectedFacilityId={selected} onSelectFacility={setSelected} userCoords={userCoords} />}
           {facilities.map((facility) => <article key={facility.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5"><button type="button" onClick={() => setSelected(facility.id)} className="text-left text-lg font-semibold">{facility.name}</button><p className="text-sm text-muted">{facility.address}</p>{facility.distanceKm !== undefined && <p className="text-sm font-semibold text-primary">Cách vị trí của bạn khoảng {facility.distanceKm < 1 ? `${Math.round(facility.distanceKm * 1000)} m` : `${facility.distanceKm.toFixed(1)} km`}</p>}{facility.verifiedAt ? <p className="text-sm text-muted">Xác minh: {new Date(facility.verifiedAt).toLocaleDateString('vi-VN')}</p> : <p className="text-sm text-amber-700">Chưa có xác minh — dữ liệu minh họa</p>}<p className="text-xs text-muted">Dữ liệu dùng trong ứng dụng; hãy gọi 115 để xác nhận khả năng tiếp nhận.</p></article>)}
-          {!facilities.length && <p>Không tìm thấy cơ sở phù hợp.</p>}
+          {!facilities.length && data.length > 0 && <p>Không tìm thấy cơ sở phù hợp.</p>}
         </>}
       </div>
     </div>

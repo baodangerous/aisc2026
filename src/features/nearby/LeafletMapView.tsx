@@ -41,7 +41,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
       // Free OpenStreetMap Tile Layer
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
+        attribution: '&copy; OpenStreetMap contributors',
       }).addTo(map);
 
       mapInstanceRef.current = map;
@@ -225,9 +225,8 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   return (
     <div className="w-full h-full relative">
       <div ref={mapContainerRef} className="w-full h-full z-0" />
-      {/* OpenStreetMap watermark & attribution badge */}
       <div className="absolute bottom-1 left-2 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded text-[11px] text-[#475467] shadow-xs border border-[#EAECF0] pointer-events-none z-10">
-        🗺️ Bản đồ mở <strong>OpenStreetMap</strong> (Hoàn toàn miễn phí)
+        Bản đồ chỉ hiển thị dữ liệu đã xác minh
       </div>
     </div>
   );
