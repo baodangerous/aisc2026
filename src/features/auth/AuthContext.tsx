@@ -67,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogle = async () => {
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
-    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    const redirectTo = import.meta.env.VITE_SUPABASE_REDIRECT_URL || `${window.location.origin}${window.location.pathname}`;
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },
@@ -91,18 +91,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithPassword = async (email: string, password: string) => {
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
     const normalizedEmail = email.trim().toLowerCase();
-    if (!/^\\S+@\\S+\\.\\S+$/.test(normalizedEmail) || password.length < 8) throw new Error('Nhập email hợp lệ và mật khẩu tối thiểu 8 ký tự.');
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail) || password.length < 8) throw new Error('Nhập email hợp lệ và mật khẩu tối thiểu 8 ký tự.');
     const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
-    if (error) throw new Error('Email hoặc mật khẩu không đúng.');
+    if (error) {
+      const message = error.message.toLowerCase();
+      if (message.includes('email not confirmed')) throw new Error('Email chưa được xác nhận. Hãy kiểm tra hộp thư rồi thử lại.');
+      if (message.includes('rate limit')) throw new Error('Bạn thử quá nhiều lần. Vui lòng chờ một lát rồi thử lại.');
+      throw new Error('Email hoặc mật khẩu không đúng.');
+    }
   };
 
   const signUpWithPassword = async (email: string, password: string) => {
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
     const normalizedEmail = email.trim().toLowerCase();
-    if (!/^\\S+@\\S+\\.\\S+$/.test(normalizedEmail) || password.length < 8) throw new Error('Nhập email hợp lệ và mật khẩu tối thiểu 8 ký tự.');
-    const { data, error } = await supabase.auth.signUp({ email: normalizedEmail, password });
-    if (error) throw error;
-    if (!data.session) throw new Error('Đăng ký thành công. Hãy kiểm tra email để xác nhận tài khoản rồi đăng nhập.');
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail) || password.length < 8) throw new Error('Nhập email hợp lệ và mật khẩu tối thiểu 8 ký tự.');
+    const { data, error } = await supabase.auth.signUp({
+      email: normalizedEmail,
+      password,
+      options: {
+        emailRedirectTo: import.meta.env.VITE_SUPABASE_REDIRECT_URL || `${window.location.origin}${window.location.pathname}`,
+        data: { display_name: normalizedEmail.split('@')[0] },
+      },
+    });
+    if (error) {
+      const message = error.message.toLowerCase();
+      if (message.includes('already') || message.includes('registered')) throw new Error('Email này đã được đăng ký. Hãy đăng nhập hoặc dùng email khác.');
+      if (message.includes('password')) throw new Error('Mật khẩu cần tối thiểu 8 ký tự và đủ an toàn.');
+      throw new Error('Chưa thể tạo tài khoản. Vui lòng thử lại sau.');
+    }
+    if (!data.session) throw new Error('Tạo tài khoản thành công. Hãy kiểm tra email xác nhận rồi đăng nhập.');
   };
 
   const sendPhoneOtp = async (phone: string) => {
