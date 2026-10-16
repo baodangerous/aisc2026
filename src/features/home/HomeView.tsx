@@ -41,7 +41,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
               { href: '/training', label: 'Tập luyện phản xạ', caption: 'Luyện theo tình huống', metric: '03:00', icon: Timer, tone: 'bg-[#eef4ff] text-[#1849a9]' },
-              { href: '/library', label: 'Thư viện sơ cứu', caption: 'Học nhanh, nhớ lâu', metric: '12 bài', icon: LibraryBig, tone: 'bg-[#fff4e8] text-[#b54708]' },
+              { href: '/library', label: 'Thư viện sơ cứu', caption: 'Học nhanh, nhớ lâu', metric: `${REFERENCE_LEARNING_RESOURCES.length} bài`, icon: LibraryBig, tone: 'bg-[#fff4e8] text-[#b54708]' },
               { href: '/nearby', label: 'Điểm hỗ trợ gần bạn', caption: 'AED và cơ sở y tế', metric: 'Bản đồ', icon: Navigation, tone: 'bg-[#ecfdf3] text-[#027a48]' },
               { href: '/emergency', label: 'Tình huống thật', caption: 'Hướng dẫn từng bước', metric: '115', icon: Activity, tone: 'bg-[#fff1f0] text-primary' },
             ].map(({ href, label, caption, metric, icon: Icon, tone }) => (
