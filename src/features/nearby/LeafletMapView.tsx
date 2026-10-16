@@ -139,7 +139,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
       const sourceBadge =
         fac.source === 'verified_official'
           ? '<span class="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[11px] font-semibold">Có hồ sơ xác minh nguồn</span>'
-          : '<span class="inline-block px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[11px] font-semibold">Dữ liệu minh họa</span>';
+          : '<span class="inline-block px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[11px] font-semibold">Thông tin địa điểm từ OpenStreetMap</span>';
 
       const popupHtml = `
         <div class="font-sans text-left max-w-[220px] p-0.5 space-y-1.5">
@@ -226,7 +226,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
     <div className="w-full h-full relative">
       <div ref={mapContainerRef} className="w-full h-full z-0" />
       <div className="absolute bottom-1 left-2 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded text-[11px] text-[#475467] shadow-xs border border-[#EAECF0] pointer-events-none z-10">
-        Bản đồ chỉ hiển thị dữ liệu đã xác minh
+        Bệnh viện/phòng khám từ nguồn bản đồ công khai; hãy gọi 115 để xác nhận
       </div>
     </div>
   );

@@ -230,7 +230,7 @@ export interface CommunityFacility {
   operatingHours: string;
   sourceUrl?: string;
   verifiedAt?: string;
-  status: 'verified' | 'synthetic_simulation';
+  status: 'verified' | 'pending' | 'synthetic_simulation';
   disclaimer: string;
 }
 
