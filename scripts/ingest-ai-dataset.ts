@@ -8,7 +8,8 @@ if (!supabaseUrl || !serviceKey) throw new Error('SUPABASE_URL and SUPABASE_SERV
 
 const supabase = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
 const sources = JSON.parse(await readFile(new URL('../data/goldenminutes_sources.json', import.meta.url), 'utf8')) as { pipeline_version: string; sources: Array<Record<string, string>> };
-const lines = (await readFile(new URL('../data/goldenminutes_ai_training.jsonl', import.meta.url), 'utf8')).trim().split('\n').filter(Boolean);
+const datasetUrl = new URL('../data/goldenminutes_demo_500.jsonl', import.meta.url);
+const lines = (await readFile(datasetUrl, 'utf8')).trim().split('\n').filter(Boolean);
 const examples = lines.map((line) => JSON.parse(line) as Record<string, unknown>);
 const summaries: Record<string, string> = {
   'aha-cpr-guidelines': 'Tài liệu chính thức về nhận diện ngừng tim, CPR và sử dụng AED. Ứng dụng chỉ dùng phần tóm tắt có dẫn nguồn và luôn hướng người dùng gọi dịch vụ cấp cứu.',
@@ -19,7 +20,7 @@ const summaries: Record<string, string> = {
 
 const documents = sources.sources.map((source) => {
   const content = summaries[source.external_id] ?? '';
-  return { external_id: source.external_id, title: source.title, topic: source.topic, language: 'vi', source_name: source.source_name, source_url: source.source_url, content, content_hash: createHash('sha256').update(content).digest('hex'), metadata: { provenance: 'official_source_summary', pipeline_version: sources.pipeline_version }, status: 'approved' };
+  return { external_id: source.external_id, title: source.title, topic: source.topic, language: 'vi', source_name: source.source_name, source_url: source.source_url, content, content_hash: createHash('sha256').update(content).digest('hex'), metadata: { provenance: 'official_source_summary', pipeline_version: sources.pipeline_version }, status: 'pending' };
 });
 const { data: insertedDocuments, error: documentError } = await supabase.from('knowledge_documents').upsert(documents, { onConflict: 'external_id' }).select('id,external_id');
 if (documentError) throw documentError;
@@ -27,6 +28,6 @@ const documentIds = new Map((insertedDocuments ?? []).map((doc) => [doc.external
 const trainingRows = examples.map((example) => ({ external_id: example.external_id, task: example.task, input: example.input, expected_output: example.expected_output, source_document_id: documentIds.get(example.source_document_external_id as string) ?? null, quality_label: example.quality_label, split: example.split }));
 const { error: exampleError } = await supabase.from('ai_training_examples').upsert(trainingRows, { onConflict: 'external_id' });
 if (exampleError) throw exampleError;
-const { error: qualityError } = await supabase.from('data_quality_runs').insert({ pipeline_version: sources.pipeline_version, source_name: 'goldenminutes_curated_seed', input_rows: examples.length, accepted_rows: trainingRows.length, rejected_rows: 0, duplicate_rows: 0, pii_redactions: 0, metrics: { documents: documents.length, tasks: [...new Set(examples.map((example) => example.task))] } });
+const { error: qualityError } = await supabase.from('data_quality_runs').insert({ pipeline_version: `${sources.pipeline_version}-demo-500`, source_name: 'public_curated_seed_expansion_demo', input_rows: examples.length, accepted_rows: trainingRows.length, rejected_rows: 0, duplicate_rows: 0, pii_redactions: 0, metrics: { documents: documents.length, pending_review: true, synthetic_examples: examples.length, splits: { train: 400, validation: 50, test: 50 }, tasks: [...new Set(examples.map((example) => example.task))] } });
 if (qualityError) throw qualityError;
 console.log(JSON.stringify({ pipeline_version: sources.pipeline_version, documents: documents.length, examples: trainingRows.length, status: 'imported' }));
