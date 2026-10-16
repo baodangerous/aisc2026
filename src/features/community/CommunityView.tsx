@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, ImagePlus, MessageCircle, Send, Users, X } from 'lucide-react';
+import { AlertTriangle, Flag, Heart, ImagePlus, MessageCircle, Send, Users, X } from 'lucide-react';
 import { supabase } from '../../services/supabase/client';
 import { useAuth } from '../auth/AuthContext';
 import { ALERT_KINDS, ALERT_RADII, COMMUNITY_COPY, COMMUNITY_TABLES, POST_CATEGORIES, CommunityAlert, CommunityMedia, CommunityPost, distanceInMeters } from '../../config/communityContent';
@@ -28,6 +28,10 @@ export function CommunityView() {
   const [notice, setNotice] = useState('');
   const [nearbyOnly, setNearbyOnly] = useState(false);
   const [currentPosition, setCurrentPosition] = useState<GeolocationCoordinates | null>(null);
+  const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({});
+  const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [openReplies, setOpenReplies] = useState<Record<string, { id: string; author_uid: string; body: string }[]>>({});
 
   const load = async () => {
     if (!supabase) return;
@@ -37,6 +41,20 @@ export function CommunityView() {
     ]);
     if (postsError || alertsError) { setError('Chưa thể tải dữ liệu cộng đồng. Vui lòng thử lại.'); return; }
     setPosts(postData || []);
+    const postIds = (postData || []).map((post) => post.id);
+    if (postIds.length > 0) {
+      const [{ data: reactions }, { data: replies }] = await Promise.all([
+        supabase.from('post_reactions').select('post_id,user_id').in('post_id', postIds),
+        supabase.from('forum_replies').select('id,post_id,author_uid,body').in('post_id', postIds).order('created_at', { ascending: true }),
+      ]);
+      const counts: Record<string, number> = {};
+      (reactions || []).forEach((reaction) => { counts[reaction.post_id] = (counts[reaction.post_id] || 0) + 1; });
+      setReactionCounts(counts);
+      if (authUser) setLikedPosts(Object.fromEntries((reactions || []).filter((reaction) => reaction.user_id === authUser.id).map((reaction) => [reaction.post_id, true])));
+      const grouped: Record<string, { id: string; author_uid: string; body: string }[]> = {};
+      (replies || []).forEach((reply) => { (grouped[reply.post_id] ||= []).push(reply); });
+      setOpenReplies(grouped);
+    }
     setAlerts((alertData || []).filter((alert) => !nearbyOnly || !currentPosition || distanceInMeters(currentPosition, alert.latitude, alert.longitude) <= alert.radius_m));
   };
   useEffect(() => {
@@ -72,6 +90,30 @@ export function CommunityView() {
     const { error: updateError } = await supabase.from(COMMUNITY_TABLES.posts).update({ title: editingTitle.trim(), body: editingBody.trim() }).eq('id', postId).eq('author_uid', authUser.id);
     if (updateError) { setError('Không thể cập nhật bài đăng.'); return; }
     cancelEditingPost(); setNotice('Bài đăng đã được cập nhật.'); await load();
+  };
+  const toggleReaction = async (postId: string) => {
+    if (!supabase || !authUser) return;
+    const liked = likedPosts[postId];
+    const query = liked
+      ? supabase.from('post_reactions').delete().eq('post_id', postId).eq('user_id', authUser.id).eq('reaction', 'like')
+      : supabase.from('post_reactions').insert({ post_id: postId, user_id: authUser.id, reaction: 'like' });
+    const { error: reactionError } = await query;
+    if (reactionError) { setError('Không thể cập nhật lượt thích.'); return; }
+    setLikedPosts((current) => ({ ...current, [postId]: !liked }));
+    setReactionCounts((current) => ({ ...current, [postId]: Math.max(0, (current[postId] || 0) + (liked ? -1 : 1)) }));
+  };
+  const addReply = async (postId: string) => {
+    if (!supabase || !authUser || !replyDrafts[postId]?.trim()) return;
+    const { error: replyError } = await supabase.from('forum_replies').insert({ post_id: postId, author_uid: authUser.id, body: replyDrafts[postId].trim() });
+    if (replyError) { setError('Không thể gửi bình luận.'); return; }
+    setReplyDrafts((current) => ({ ...current, [postId]: '' })); setNotice('Bình luận đã được gửi.'); await load();
+  };
+  const reportPost = async (postId: string) => {
+    if (!supabase || !authUser) return;
+    const reason = window.prompt('Lý do báo cáo bài đăng?');
+    if (!reason?.trim()) return;
+    const { error: reportError } = await supabase.from('forum_reports').insert({ post_id: postId, reporter_uid: authUser.id, reason: reason.trim() });
+    if (reportError?.code === '23505') setNotice('Bạn đã báo cáo bài đăng này.'); else if (reportError) setError('Không thể gửi báo cáo.'); else setNotice('Báo cáo đã được gửi để kiểm duyệt.');
   };
   const deletePost = async (post: Post) => {
     if (!supabase || !authUser || !window.confirm('Xóa bài đăng này?')) return;
@@ -119,7 +161,7 @@ export function CommunityView() {
     {error && <p role="alert" className="text-sm text-primary">{error}</p>}
     {notice && <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300">{notice}</p>}
     <section className="flex flex-col gap-3"><div className="flex items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-xl font-bold"><AlertTriangle className="size-5 text-primary" aria-hidden="true" />Cảnh báo đang hoạt động</h2><button type="button" onClick={nearbyOnly ? () => { setNearbyOnly(false); setCurrentPosition(null); } : enableNearbyAlerts} className="min-h-10 rounded-lg border border-border px-3 text-xs font-semibold">{nearbyOnly ? 'Hiện tất cả' : 'Gần tôi'}</button></div>{alerts.length === 0 ? <p className="rounded-xl border border-dashed border-border p-5 text-sm text-muted">{nearbyOnly ? 'Không có cảnh báo trong bán kính của cảnh báo gần bạn.' : 'Chưa có cảnh báo đang hoạt động.'}</p> : alerts.map((alert) => <article key={alert.id} className="rounded-2xl border border-primary/30 bg-surface p-4"><h3 className="font-bold">{alert.title}</h3><p className="mt-1 text-sm text-muted">Bán kính chia sẻ {alert.radius_m} mét. {alert.description}</p>{isAuthenticated && <button type="button" onClick={() => void respondToAlert(alert.id)} className="mt-3 min-h-10 rounded-lg border border-primary px-3 text-sm font-semibold text-primary">Tôi đã gọi 115</button>}</article>)}</section>
-    <section className="flex flex-col gap-3"><h2 className="flex items-center gap-2 text-xl font-bold"><MessageCircle className="size-5" aria-hidden="true" />Bài đăng mới</h2>{posts.length === 0 ? <p className="rounded-xl border border-dashed border-border p-5 text-sm text-muted">Chưa có bài đăng. Hãy là người đầu tiên chia sẻ.</p> : posts.map((post) => <article key={post.id} className="rounded-2xl border border-border bg-surface p-4">{editingPostId === post.id ? <div className="flex flex-col gap-3"><input value={editingTitle} onChange={(event) => setEditingTitle(event.target.value)} className="min-h-11 rounded-xl border border-border bg-background px-3" aria-label="Tiêu đề bài đăng" /><textarea value={editingBody} onChange={(event) => setEditingBody(event.target.value)} rows={4} className="rounded-xl border border-border bg-background p-3" aria-label="Nội dung bài đăng" /><div className="flex gap-2"><button type="button" onClick={() => void updatePost(post.id)} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Lưu thay đổi</button><button type="button" onClick={cancelEditingPost} className="rounded-xl border border-border px-4 py-2 text-sm font-semibold">Hủy</button></div></div> : <><div className="flex items-start justify-between gap-3"><h3 className="font-bold">{post.title}</h3>{post.author_uid === authUser?.id && <div className="flex gap-2"><button type="button" onClick={() => startEditingPost(post)} className="text-xs font-semibold text-primary">Sửa</button><button type="button" onClick={() => void deletePost(post)} className="text-xs font-semibold text-destructive">Xóa</button></div>}</div><p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">{post.body}</p>{post.media && post.media.length > 0 && <div className="mt-3 grid grid-cols-2 gap-2">{post.media.map((item) => item.type === 'video' ? <video key={item.url} src={item.url} controls preload="metadata" className="aspect-video w-full rounded-xl object-cover" aria-label={item.name} /> : <img key={item.url} src={item.url} alt={item.name} loading="lazy" className="aspect-video w-full rounded-xl object-cover" />)}</div>}</>}</article>)}</section>
+    <section className="flex flex-col gap-3"><h2 className="flex items-center gap-2 text-xl font-bold"><MessageCircle className="size-5" aria-hidden="true" />Bài đăng mới</h2>{posts.length === 0 ? <p className="rounded-xl border border-dashed border-border p-5 text-sm text-muted">Chưa có bài đăng. Hãy là người đầu tiên chia sẻ.</p> : posts.map((post) => <article key={post.id} className="rounded-2xl border border-border bg-surface p-4">{editingPostId === post.id ? <div className="flex flex-col gap-3"><input value={editingTitle} onChange={(event) => setEditingTitle(event.target.value)} className="min-h-11 rounded-xl border border-border bg-background px-3" aria-label="Tiêu đề bài đăng" /><textarea value={editingBody} onChange={(event) => setEditingBody(event.target.value)} rows={4} className="rounded-xl border border-border bg-background p-3" aria-label="Nội dung bài đăng" /><div className="flex gap-2"><button type="button" onClick={() => void updatePost(post.id)} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Lưu thay đổi</button><button type="button" onClick={cancelEditingPost} className="rounded-xl border border-border px-4 py-2 text-sm font-semibold">Hủy</button></div></div> : <><div className="flex items-start justify-between gap-3"><h3 className="font-bold">{post.title}</h3>{post.author_uid === authUser?.id && <div className="flex gap-2"><button type="button" onClick={() => startEditingPost(post)} className="text-xs font-semibold text-primary">Sửa</button><button type="button" onClick={() => void deletePost(post)} className="text-xs font-semibold text-destructive">Xóa</button></div>}</div><p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">{post.body}</p>{post.media && post.media.length > 0 && <div className="mt-3 grid grid-cols-2 gap-2">{post.media.map((item) => item.type === 'video' ? <video key={item.url} src={item.url} controls preload="metadata" className="aspect-video w-full rounded-xl object-cover" aria-label={item.name} /> : <img key={item.url} src={item.url} alt={item.name} loading="lazy" className="aspect-video w-full rounded-xl object-cover" />)}</div>}<div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3"><button type="button" onClick={() => void toggleReaction(post.id)} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold ${likedPosts[post.id] ? 'bg-primary/10 text-primary' : 'border border-border text-muted'}`}><Heart className="size-4" fill={likedPosts[post.id] ? 'currentColor' : 'none'} />{reactionCounts[post.id] || 0}</button><button type="button" onClick={() => setOpenReplies((current) => ({ ...current, [post.id]: current[post.id] ? [] : (current[post.id] || []) }))} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted"><MessageCircle className="size-4" />{openReplies[post.id]?.length || 0}</button>{authUser && <button type="button" onClick={() => void reportPost(post.id)} className="ml-auto flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted"><Flag className="size-4" />Báo cáo</button>}</div>{openReplies[post.id] && <div className="mt-3 flex flex-col gap-2">{openReplies[post.id].map((reply) => <p key={reply.id} className="rounded-lg bg-muted/40 px-3 py-2 text-sm"><span className="font-semibold">Thành viên</span> {reply.body}</p>)}{authUser && <div className="flex gap-2"><input value={replyDrafts[post.id] || ''} onChange={(event) => setReplyDrafts((current) => ({ ...current, [post.id]: event.target.value }))} placeholder="Viết bình luận..." className="min-h-10 min-w-0 flex-1 rounded-lg border border-border bg-background px-3 text-sm" /><button type="button" onClick={() => void addReply(post.id)} className="rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground">Gửi</button></div>}</div>}</>}</article>)}</section>
     <p className="flex items-start gap-2 border-t border-border pt-4 text-xs leading-relaxed text-muted"><Users className="size-4 shrink-0" aria-hidden="true" />Không đăng thông tin nhận diện người bệnh hoặc địa chỉ riêng tư. Cảnh báo giả sẽ bị gỡ.</p>
   </main>;
 }
