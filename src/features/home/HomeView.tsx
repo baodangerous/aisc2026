@@ -62,7 +62,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
             <span className="hidden text-xs text-muted sm:inline">Nguồn mở đã đối chiếu</span>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
-            {RESEARCH_MODULES.map((module) => <article key={module.id} className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 shadow-[0_10px_25px_rgba(23,33,43,0.05)]"><div className="flex items-center justify-between gap-3"><span className="rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-primary">{module.mode === 'offline' ? 'Offline' : 'Trong app'}</span><CircleCheck className="size-4 text-primary" aria-hidden="true" /></div><div><h3 className="text-base font-bold">{module.title}</h3><p className="mt-2 text-sm leading-6 text-muted">{module.summary}</p></div><div className="mt-auto flex items-center justify-between gap-3"><Link to={module.href} className="text-sm font-bold text-primary">{module.action} <ChevronRight className="inline size-4" aria-hidden="true" /></Link><span className="text-right text-[11px] text-muted">Đã biên soạn trong app</span></div></article>)}
+            {RESEARCH_MODULES.map((module) => <article key={module.id} className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 shadow-[0_10px_25px_rgba(23,33,43,0.05)]"><div className="flex items-center justify-between gap-3"><span className="rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-primary">{module.mode === 'offline' ? 'Offline' : 'Trong app'}</span><CircleCheck className="size-4 text-primary" aria-hidden="true" /></div><div><h3 className="text-base font-bold">{module.title}</h3><p className="mt-2 text-sm leading-6 text-muted">{module.summary}</p></div><div className="mt-auto flex items-center justify-between gap-3"><Link to={module.href} className="text-sm font-bold text-primary">{module.action} <ChevronRight className="inline size-4" aria-hidden="true" /></Link><span className="text-right text-[11px] text-muted">Mở ngay trong ứng dụng</span></div></article>)}
           </div>
           <p className="text-xs leading-relaxed text-muted">{RESEARCH_NOTE}</p>
         </section>
@@ -72,7 +72,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
           <div className="flex items-start gap-3">
             <ShieldAlert className="size-6 shrink-0 flex-shrink-0" aria-hidden="true" />
             <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-bold">Có ngư���i cần cấp cứu ngay?</h2>
+              <h2 className="text-lg font-bold">Có người cần cấp cứu ngay?</h2>
               <p className="text-sm leading-relaxed opacity-95">Gọi <strong>115</strong> ngay và làm theo hướng dẫn của tổng đài.</p>
             </div>
           </div>
