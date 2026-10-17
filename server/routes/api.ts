@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { dataRepository, RepositoryError } from '../repository';
 import { DocumentIdSchema, SessionEventSchema, normalizeEvents } from '../../src/domain/schemas/persistence';
@@ -801,4 +802,174 @@ routes.post('/ai/insights', async (req: Request, res: Response) => {
       requestId: req.headers['x-request-id'] || 'req_ai_err',
     });
   }
+});
+
+// 15. Verified Emergency Resources & Submissions (Safe / Nearby)
+routes.get('/resources/emergency', async (req: Request, res: Response) => {
+  const includeUnverifiedOsm = req.query.include_osm === 'true';
+  // NEVER return synthetic_seed or rejected resources to public / nearby
+  const resources = await dataRepository.listEmergencyResources({
+    onlyVerified: !includeUnverifiedOsm,
+    excludeSynthetic: true,
+  });
+  res.json({ resources });
+});
+
+const SubmitResourceSchema = z.object({
+  resourceType: z.enum(['aed', 'first_aid_kit', 'emergency_cabinet', 'bleeding_control_kit']),
+  name: z.string().min(2).max(200),
+  address: z.string().min(5).max(500),
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+  evidenceUrl: z.string().max(1000).optional(),
+  managingOrgName: z.string().max(200).optional(),
+});
+
+routes.post('/resources/submissions', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
+  const parsed = SubmitResourceSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'INVALID_SUBMISSION', errors: parsed.error.issues });
+  }
+  const submission = await dataRepository.createResourceSubmission({
+    ...parsed.data,
+    submittedBy: req.authUid,
+  });
+  await dataRepository.logAudit({
+    actorUid: req.authUid!,
+    actorRole: req.user ? req.user.role : 'citizen',
+    action: 'RESOURCE_SUBMISSION_CREATE',
+    targetResource: `resourceSubmissions/${submission.id}`,
+    details: { resourceType: submission.resourceType, name: submission.name },
+    ipAddressMasked: 'not_collected',
+  });
+  res.status(201).json({ success: true, submission });
+});
+
+routes.get('/admin/resources/submissions', authenticateRequired, requireRole(['platform_admin', 'org_admin']), async (req: AuthenticatedRequest, res: Response) => {
+  const { status } = req.query;
+  const submissions = await dataRepository.listResourceSubmissions({ status: status as string });
+  res.json({ submissions });
+});
+
+routes.post('/admin/resources/submissions/:id/review', authenticateRequired, requireRole(['platform_admin']), async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { status, rejectionReason } = req.body;
+  if (!['approved', 'rejected'].includes(status)) {
+    return res.status(400).json({ code: 'INVALID_STATUS', message: 'Trạng thái xét duyệt không hợp lệ.' });
+  }
+  const reviewed = await dataRepository.reviewResourceSubmission(id, req.authUid!, status, rejectionReason);
+  if (!reviewed) {
+    return res.status(404).json({ code: 'NOT_FOUND', message: 'Không tìm thấy hồ sơ đề xuất.' });
+  }
+  await dataRepository.logAudit({
+    actorUid: req.authUid!,
+    actorRole: 'platform_admin',
+    action: 'RESOURCE_SUBMISSION_REVIEW',
+    targetResource: `resourceSubmissions/${id}`,
+    details: { status, rejectionReason: rejectionReason || null },
+    ipAddressMasked: 'not_collected',
+  });
+  res.json({ success: true, submission: reviewed });
+});
+
+// 16. Digital Proofs (Cryptographically Signed Immutable Evidence)
+const CreateProofSchema = z.object({
+  incidentId: z.string().min(1),
+  summary: z.record(z.string(), z.any()),
+  consentSnapshot: z.record(z.string(), z.any()),
+});
+
+routes.post('/proofs', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
+  const parsed = CreateProofSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'INVALID_INPUT', errors: parsed.error.issues });
+  }
+  const payloadString = JSON.stringify({
+    incidentId: parsed.data.incidentId,
+    userId: req.authUid,
+    summary: parsed.data.summary,
+    consent: parsed.data.consentSnapshot,
+  });
+  const payloadHash = createHash('sha256').update(payloadString).digest('hex');
+
+  const proof = await dataRepository.createDigitalProof({
+    incidentId: parsed.data.incidentId,
+    userId: req.authUid!,
+    summary: parsed.data.summary,
+    payloadHash,
+    consentSnapshot: parsed.data.consentSnapshot,
+  });
+
+  await dataRepository.logAudit({
+    actorUid: req.authUid!,
+    actorRole: req.user ? req.user.role : 'citizen',
+    action: 'CREATE_DIGITAL_PROOF',
+    targetResource: `digitalProofs/${payloadHash}`,
+    details: { incidentId: proof.incidentId, payloadHash },
+    ipAddressMasked: 'not_collected',
+  });
+
+  res.status(201).json({ success: true, proof });
+});
+
+routes.get('/proofs/:hash', async (req: Request, res: Response) => {
+  const { hash } = req.params;
+  const proof = await dataRepository.getDigitalProofByHash(hash);
+  if (!proof) {
+    return res.status(404).json({ code: 'PROOF_NOT_FOUND', message: 'Chứng chỉ số không tồn tại hoặc mã băm không đúng.' });
+  }
+  res.json({ proof });
+});
+
+// 17. Regional ADI Metrics & Interventions
+routes.get('/analytics/regional-adi', async (req: Request, res: Response) => {
+  const metrics = await dataRepository.getRegionalAdiMetrics();
+  res.json({ regions: metrics });
+});
+
+routes.get('/analytics/interventions', async (req: Request, res: Response) => {
+  const { orgId } = req.query;
+  const interventions = await dataRepository.listInterventions(orgId as string);
+  res.json({ interventions });
+});
+
+routes.post('/analytics/interventions', authenticateRequired, requireRole(['platform_admin', 'org_admin']), async (req: AuthenticatedRequest, res: Response) => {
+  const intervention = await dataRepository.createIntervention(req.body);
+  await dataRepository.logAudit({
+    actorUid: req.authUid!,
+    actorRole: req.user?.role || 'org_admin',
+    action: 'INTERVENTION_CREATE',
+    targetResource: `interventions/${intervention.id}`,
+    details: { type: intervention.type, title: intervention.title },
+    ipAddressMasked: 'not_collected',
+  });
+  res.status(201).json({ success: true, intervention });
+});
+
+// 18. Pilot Surveys (Pre/Post with Likert 1-5 & SUS)
+const PilotSurveyInputSchema = z.object({
+  sessionId: z.string().min(1),
+  deviceHash: z.string().min(8).max(64),
+  surveyType: z.enum(['pre', 'post']),
+  scenarioId: z.string().min(1),
+  confidenceScore: z.number().int().min(1).max(5),
+  preparednessScore: z.number().int().min(1).max(5),
+  anxietyScore: z.number().int().min(1).max(5),
+  susScores: z.record(z.string(), z.number().int().min(1).max(5)).optional(),
+  susFinalScore: z.number().min(0).max(100).optional(),
+  consent: z.boolean().default(true),
+});
+
+routes.post('/surveys/pilot', async (req: Request, res: Response) => {
+  const parsed = PilotSurveyInputSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'INVALID_SURVEY', errors: parsed.error.issues });
+  }
+  const record = await dataRepository.savePilotSurvey(parsed.data);
+  res.status(201).json({ success: true, survey: record });
+});
+
+routes.get('/admin/surveys/pilot', authenticateRequired, requireRole(['platform_admin']), async (req: AuthenticatedRequest, res: Response) => {
+  const surveys = await dataRepository.listPilotSurveys();
+  res.json({ surveys });
 });

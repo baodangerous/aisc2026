@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
     'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(env.SUPABASE_PUBLISHABLE_KEY || env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''),
     'import.meta.env.VITE_SUPABASE_REDIRECT_URL': JSON.stringify(env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || ''),
   },
-  base: './',
+  base: '/',
   build: { outDir: 'dist/client' },
   plugins: [react(), tailwindcss(), {
     name: 'goldenminutes-api',
@@ -27,12 +27,13 @@ export default defineConfig(({ mode }) => {
   }],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '.'),
+      '@': path.resolve(process.cwd(), '.'),
     },
   },
   server: {
     port: 3000,
     host: '0.0.0.0',
+    allowedHosts: true,
     hmr: process.env.DISABLE_HMR !== 'true',
   },
   };

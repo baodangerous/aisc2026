@@ -1,0 +1,13 @@
+{
+  "version": "v1.0.0",
+  "totalRecords": 222,
+  "holdoutEvalCount": 52,
+  "splits": {
+    "train": 152,
+    "validation": 35,
+    "test": 35
+  },
+  "scenarioGroupsCount": 26,
+  "checksumSha256": "7bb28eaa4cb902dfe355d9a21c29a7236633b232a726e2fdd32878476b16cd1d",
+  "created_at": "2026-10-17T19:04:42.474Z"
+}

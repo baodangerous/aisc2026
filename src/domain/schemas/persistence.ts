@@ -86,6 +86,66 @@ export const DailyAggregateSchema = z.object({
   sampleSize: z.number().int().nonnegative(), computedAt: timestamp, schemaVersion: shortText,
 });
 
+export const EmergencyResourceSchema = z.object({
+  id: z.string().min(1),
+  resourceType: z.enum(['aed', 'first_aid_kit', 'emergency_cabinet', 'bleeding_control_kit']),
+  name: shortText,
+  address: z.string().max(500),
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+  geohash7: shortText.optional(),
+  siteId: z.string().uuid().optional().nullable(),
+  managingOrgId: z.string().uuid().optional().nullable(),
+  source: z.enum(['osm', 'admin', 'org_submission', 'synthetic']),
+  origin: z.enum(['training_user', 'synthetic_seed', 'pilot_verified', 'osm_import']),
+  verificationStatus: z.enum(['unverified', 'pending', 'verified', 'rejected', 'expired']),
+  verifiedAt: timestamp.optional().nullable(),
+  expiresAt: timestamp.optional().nullable(),
+  notes: z.string().max(500).optional().nullable(),
+});
+
+export const ResourceSubmissionSchema = z.object({
+  id: z.string().min(1),
+  submittedBy: z.string().optional().nullable(),
+  resourceType: z.enum(['aed', 'first_aid_kit', 'emergency_cabinet', 'bleeding_control_kit']),
+  name: shortText,
+  address: z.string().max(500),
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+  evidenceUrl: z.string().max(1000).optional().nullable(),
+  managingOrgName: shortText.optional().nullable(),
+  status: z.enum(['pending', 'approved', 'rejected']),
+  rejectionReason: z.string().max(500).optional().nullable(),
+  createdAt: timestamp,
+});
+
+export const DigitalProofSchema = z.object({
+  id: z.string().min(1),
+  incidentId: z.string().min(1),
+  userId: z.string().min(1),
+  summary: z.record(z.string(), z.any()),
+  payloadHash: z.string().length(64),
+  consentSnapshot: z.record(z.string(), z.any()),
+  version: z.string().max(20),
+  legalDisclaimer: z.string().max(500),
+  createdAt: timestamp,
+});
+
+export const PilotSurveySchema = z.object({
+  id: z.string().min(1),
+  sessionId: z.string().min(1),
+  deviceHash: z.string().min(8).max(64),
+  surveyType: z.enum(['pre', 'post']),
+  scenarioId: z.string().min(1),
+  confidenceScore: z.number().int().min(1).max(5),
+  preparednessScore: z.number().int().min(1).max(5),
+  anxietyScore: z.number().int().min(1).max(5),
+  susScores: z.record(z.string(), z.number().int().min(1).max(5)).optional().nullable(),
+  susFinalScore: z.number().min(0).max(100).optional().nullable(),
+  consent: z.boolean(),
+  createdAt: timestamp,
+});
+
 export const COLLECTION_MODELS = {
   users: { schema: UserProfileSchema, ownerField: 'uid', access: 'owner', source: 'verified_identity' },
   trainingSessions: { schema: TrainingSessionSchema, ownerField: 'ownerUid', access: 'owner', source: 'user_reported_training' },
@@ -94,6 +154,10 @@ export const COLLECTION_MODELS = {
   deletionRequests: { schema: DeletionRequestSchema, ownerField: 'uid', access: 'owner_and_platform_admin', source: 'user_request' },
   aggregates: { schema: DailyAggregateSchema, ownerField: null, access: 'platform_admin', source: 'derived_training_only' },
   facilities: { schema: FacilitySchema, ownerField: null, access: 'public_verified_only', source: 'verified_directory' },
+  emergencyResources: { schema: EmergencyResourceSchema, ownerField: null, access: 'public_verified_only', source: 'verified_directory' },
+  resourceSubmissions: { schema: ResourceSubmissionSchema, ownerField: 'submittedBy', access: 'owner_and_platform_admin', source: 'crowdsourced' },
+  digitalProofs: { schema: DigitalProofSchema, ownerField: 'userId', access: 'public_verify_hash', source: 'cryptographic_immutable' },
+  pilotSurveys: { schema: PilotSurveySchema, ownerField: null, access: 'anon_survey', source: 'pilot_collection' },
 } as const;
 
 export function normalizeEvents(events: unknown[], sessionId: string) {

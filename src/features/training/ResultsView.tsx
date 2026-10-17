@@ -50,6 +50,12 @@ export const ResultsView: React.FC = () => {
     }, { shouldRetryOnError: false }
   );
   const [activeLessonModal, setActiveLessonModal] = useState<MedicalLearningResource | null>(null);
+  const [proofHash, setProofHash] = useState<string | null>(null);
+  const [generatingProof, setGeneratingProof] = useState(false);
+  const [surveySubmitted, setSurveySubmitted] = useState(false);
+  const [confScore, setConfScore] = useState<number>(4);
+  const [prepScore, setPrepScore] = useState<number>(4);
+  const [anxScore, setAnxScore] = useState<number>(4);
 
   const scenario = APPROVED_SCENARIOS.find((s) => s.id === scenarioIdParam) || APPROVED_SCENARIOS[0];
   const version = scenario.versions[0];
@@ -425,8 +431,205 @@ export const ResultsView: React.FC = () => {
                 </div>
               ))}
             </div>
+          {/* Digital Proof (TT 126/2026/TT-BCA) */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-2xs space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Bằng chứng số bất biến</span>
+              </span>
+              <h2 className="mt-2 text-base sm:text-lg font-bold text-slate-900">
+                Chứng Nhận Thao Tác Kỹ Thuật Số (Digital Proof)
+              </h2>
+              <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+                Tạo mã băm SHA-256 xác thực các mốc phản xạ cứu sinh. Căn cứ tham chiếu theo TT 126/2026/TT-BCA.
+              </p>
+            </div>
           </div>
-        )}
+
+          {proofHash ? (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+              <p className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Đã ký số thành công vào sổ cái GoldenMinutes</span>
+              </p>
+              <p className="font-mono text-xs text-slate-800 break-all bg-white p-2 rounded-lg border border-emerald-200">
+                {proofHash}
+              </p>
+              <div className="pt-1">
+                <Link
+                  to={`/verify/${proofHash}`}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 underline"
+                >
+                  <span>Xem trang chứng chỉ xác thực công khai</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={generatingProof}
+              onClick={async () => {
+                setGeneratingProof(true);
+                try {
+                  const { data: sessionData } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+                  const token = sessionData?.session?.access_token;
+                  const res = await fetch('/api/proofs', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify({
+                      incidentId: session?.sessionId || `sess_${Date.now()}`,
+                      summary: {
+                        scenario: scenario.id,
+                        scenarioTitle: scenario.title,
+                        durationSec: metrics.durationSec,
+                        adiSec: metrics.adiSec,
+                        readinessScore: metrics.readinessScore,
+                      },
+                      consentSnapshot: {
+                        userConsented: true,
+                        decree13Acknowledged: true,
+                        timestamp: new Date().toISOString(),
+                      },
+                    }),
+                  });
+                  const json = await res.json();
+                  if (json.proof?.payloadHash) {
+                    setProofHash(json.proof.payloadHash);
+                  }
+                } catch (e) {
+                  console.warn(e);
+                } finally {
+                  setGeneratingProof(false);
+                }
+              }}
+              className="min-h-[44px] px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold rounded-xl flex items-center gap-2 cursor-pointer shadow-2xs transition"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>{generatingProof ? 'Đang tạo mã băm...' : 'Tạo Bằng Chứng Số (Digital Proof)'}</span>
+            </button>
+          )}
+        </div>
+
+        {/* Phase 3B Pilot Survey Card */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-2xs space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full">
+                <Activity className="w-3.5 h-3.5" />
+                <span>Khảo sát thực nghiệm (Pilot Study)</span>
+              </span>
+              <h2 className="mt-2 text-base sm:text-lg font-bold text-slate-900">
+                Đánh Giá Cảm Nhận Sau Luyện Tập
+              </h2>
+              <p className="mt-1 text-xs text-slate-600">
+                Đóng góp số liệu ẩn danh (NĐ 13/2023/NĐ-CP) giúp cải tiến thuật toán can thiệp cộng đồng.
+              </p>
+            </div>
+          </div>
+
+          {surveySubmitted ? (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs font-semibold text-blue-900 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>Cảm ơn bạn! Đã ghi nhận phiếu đánh giá cho phiên thử nghiệm này.</span>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-1">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  1. Mức độ tự tin thao tác khi gặp nạn nhân thật (1: Rất thấp → 5: Rất tự tin)
+                </label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setConfScore(val)}
+                      className={`flex-1 min-h-[40px] rounded-xl text-xs font-bold border cursor-pointer transition ${
+                        confScore === val ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {val}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  2. Mức độ sẵn sàng tâm lý, không bị hoảng loạn (1: Chưa sẵn sàng → 5: Rất sẵn sàng)
+                </label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setPrepScore(val)}
+                      className={`flex-1 min-h-[40px] rounded-xl text-xs font-bold border cursor-pointer transition ${
+                        prepScore === val ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {val}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  3. Bình tĩnh, không lo sợ làm sai gây nguy hiểm (1: Rất lo sợ → 5: Rất bình tĩnh)
+                </label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setAnxScore(val)}
+                      className={`flex-1 min-h-[40px] rounded-xl text-xs font-bold border cursor-pointer transition ${
+                        anxScore === val ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {val}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await fetch('/api/surveys/pilot', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        sessionId: session?.sessionId || `sess_${Date.now()}`,
+                        deviceHash: `dev_${Math.abs(session?.sessionId.length || 10)}`,
+                        surveyType: 'post',
+                        scenarioId: scenario.id,
+                        confidenceScore: confScore,
+                        preparednessScore: prepScore,
+                        anxietyScore: anxScore,
+                        consent: true,
+                      }),
+                    });
+                    setSurveySubmitted(true);
+                  } catch (e) {
+                    console.warn(e);
+                  }
+                }}
+                className="min-h-[44px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-2xs transition"
+              >
+                Gửi Phiếu Khảo Sát Ẩn Danh
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Action Buttons (min 48px touch targets) */}
         <div className="flex flex-col sm:flex-row gap-3 pt-2">

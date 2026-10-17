@@ -30,6 +30,9 @@ const CommunityView = lazyWithRetry(() =>
 const OrganizationDashboardView = lazyWithRetry(() =>
   import('./features/organization/OrganizationDashboardView').then((m) => ({ default: m.OrganizationDashboardView }))
 );
+const DigitalProofVerifyView = lazyWithRetry(() =>
+  import('./features/emergency/DigitalProofVerifyView').then((m) => ({ default: m.DigitalProofVerifyView }))
+);
 
 const RouteLoadingFallback: React.FC = () => (
   <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-3 text-[#667085]">
@@ -65,6 +68,7 @@ export const App: React.FC = () => {
                   <Route path="/volunteer" element={<Navigate to="/" replace />} />
                   <Route path="/volunteers" element={<Navigate to="/" replace />} />
                   <Route path="/dashboard" element={<OrganizationDashboardView />} />
+                  <Route path="/verify/:hash" element={<DigitalProofVerifyView />} />
                   <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>

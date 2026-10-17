@@ -1,9 +1,21 @@
 {
   "framework": "vite",
-  "buildCommand": "pnpm build",
+  "buildCommand": "npm run build:vercel",
   "outputDirectory": "dist/client",
+  "regions": ["sin1"],
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/healthz", "destination": "/api" },
+    { "source": "/readyz", "destination": "/api" },
     { "source": "/((?!assets/|api/|healthz|readyz).*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(sw.js|manifest.json)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
   ],
   "cleanUrls": true
 }

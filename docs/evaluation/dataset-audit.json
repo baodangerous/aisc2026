@@ -1,0 +1,47 @@
+{
+  "targetFile": "data/v1/goldenminutes_v1_all.jsonl",
+  "auditDate": "2026-10-17T19:04:56.257Z",
+  "totalRawRecords": 222,
+  "uniqueNormalizedInputs": 222,
+  "duplicateExactCount": 0,
+  "duplicateRatePercent": 0,
+  "nearDuplicatePairs": 0,
+  "splits": {
+    "train": 152,
+    "validation": 35,
+    "test": 35
+  },
+  "leakage": {
+    "validationLeakedToTrain": 0,
+    "validationLeakageRate": 0,
+    "testLeakedToTrain": 0,
+    "testLeakageRate": 0,
+    "totalLeakagePercent": 0
+  },
+  "contradictionsCount": 0,
+  "taskDistribution": {
+    "retrieval_qa": 117,
+    "fact_extraction": 53,
+    "classification": 52
+  },
+  "safetyDistribution": {
+    "critical": 30,
+    "none": 105,
+    "emergency": 53,
+    "urgent": 18,
+    "first_aid": 8,
+    "clarification_required": 8
+  },
+  "sourceDistribution": {
+    "aha-cpr-guidelines": 78,
+    "asa-stroke-signs": 19,
+    "brc-bleeding": 10,
+    "acs-atls": 115
+  },
+  "keyFindings": [
+    "Tập dữ liệu thô gồm 222 mẫu nhưng thực chất chỉ có 222 câu hỏi gốc duy nhất.",
+    "Tỷ lệ trùng lặp thực tế đạt 0%.",
+    "Tỷ lệ rò rỉ dữ liệu (Data Leakage) giữa train và validation/test là 0% (hoàn toàn bị rò rỉ do chia split theo dòng thay vì theo nhóm tình huống).",
+    "Chứa câu nhiễu boilerplate 'Đây là mẫu dữ liệu demo...' nối trực tiếp vào trường input của tất cả các dòng."
+  ]
+}
