@@ -66,6 +66,24 @@ export const OrganizationDashboardView: React.FC = () => {
 
   useEffect(() => { void loadData(); }, [authUser?.id]);
 
+  useEffect(() => {
+    if (!supabase || !selectedOrg) {
+      setAnalytics({ completed: 0, consented: 0, adiMedian: null, mroRate: null });
+      return;
+    }
+    let cancelled = false;
+    const loadSelectedOrgAnalytics = async () => {
+      const { data: sessionRows } = await supabase.from('training_sessions').select('status,consent_to_organization_analytics,metrics').eq('organization_id', selectedOrg.id).eq('consent_to_organization_analytics', true);
+      if (cancelled) return;
+      const completedRows = (sessionRows ?? []).filter((row) => row.status === 'completed');
+      const adiValues = completedRows.map((row) => Number((row.metrics as Record<string, unknown> | null)?.adi ?? (row.metrics as Record<string, unknown> | null)?.ADI)).filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
+      const mroValues = completedRows.map((row) => (row.metrics as Record<string, unknown> | null)?.mro).filter((value) => typeof value === 'boolean');
+      setAnalytics({ completed: completedRows.length, consented: sessionRows?.length ?? 0, adiMedian: adiValues.length ? adiValues[Math.floor(adiValues.length / 2)] : null, mroRate: mroValues.length ? mroValues.filter(Boolean).length / mroValues.length : null });
+    };
+    void loadSelectedOrgAnalytics();
+    return () => { cancelled = true; };
+  }, [selectedOrg?.id]);
+
   const filteredSites = useMemo(() => selectedOrg ? sites.filter((site) => site.organization_id === selectedOrg.id) : [], [selectedOrg, sites]);
 
   const createOrganization = async (event: React.FormEvent) => {
@@ -93,7 +111,7 @@ export const OrganizationDashboardView: React.FC = () => {
     if (organizationError || !organization) { setError('Không thể tạo không gian mẫu trong cơ sở dữ liệu.'); setSeeding(false); return; }
     const { data: createdSites, error: sitesError } = await supabase.from('sites').insert([
       { organization_id: organization.id, name: 'Văn phòng trung tâm', site_type: 'office', address: 'Dữ liệu mẫu — chưa dùng để điều hướng', province: 'Hồ Chí Minh', status: 'active' },
-      { organization_id: organization.id, name: 'Điểm đào tạo cộng đồng', site_type: 'public_area', address: 'Dữ liệu mẫu — cần thay bằng địa chỉ thật', province: 'Hà Nội', status: 'active' },
+      { organization_id: organization.id, name: 'Điểm đào tạo cộng đ���ng', site_type: 'public_area', address: 'Dữ liệu mẫu — cần thay bằng địa chỉ thật', province: 'Hà Nội', status: 'active' },
     ]).select('id');
     const { error: partnershipError } = await supabase.from('data_partnerships').insert({ organization_id: organization.id, partnership_type: 'api', name: 'Kết nối dữ liệu mẫu', status: 'draft', config: { sample: true } });
     if (sitesError || partnershipError) { setError('Không gian đã tạo nhưng dữ liệu phụ chưa hoàn tất. Vui lòng tải lại để kiểm tra.'); }
