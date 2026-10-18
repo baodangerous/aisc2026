@@ -129,22 +129,20 @@ export function generateSyntheticTimeline(totalIncidents: number = 2000, seed: n
     const eventList = [
       { eventType: 'recognized', elapsedSec: rng.nextLogNormal(6, 0.25) },
     ];
-    if (ttg !== null) eventList.push({ eventType: 'guidance_opened', elapsedSec: ttg });
+    if (ttg !== null) eventList.push({ eventType: 'detected', elapsedSec: ttg });
     if (ttc !== null) eventList.push({ eventType: 'called_115', elapsedSec: ttc });
     if (tta !== null) eventList.push({ eventType: 'first_action', elapsedSec: tta });
 
-    // Responder & EMS timeline events
+    // Responder & EMS timeline events. Keep event types aligned with the SQL enum.
     const responderDispatchedSec = Math.max(ttc || 40, rng.nextLogNormal(45, 0.2));
-    eventList.push({ eventType: 'responder_dispatched', elapsedSec: responderDispatchedSec });
-
-    // Responder arrival depends on region areaType (commercial/dense vs outer)
     const travelMinutesMedian = region.district.includes('Thủ Đức') || region.district.includes('Quận 7') ? 7 : 4.5;
     const responderArrivedSec = responderDispatchedSec + rng.nextLogNormal(travelMinutesMedian * 60, 0.3);
     eventList.push({ eventType: 'responder_arrived', elapsedSec: responderArrivedSec });
 
-    // Ambulance 115 arrival (typically 12-25 mins in urban VN)
+    // Ambulance 115 arrival (typically 12-25 mins in urban VN).
     const ambulanceArrivedSec = (ttc || 40) + rng.nextLogNormal(15 * 60, 0.3);
-    eventList.push({ eventType: 'ambulance_arrived', elapsedSec: ambulanceArrivedSec });
+    eventList.push({ eventType: 'medical_access', elapsedSec: ambulanceArrivedSec });
+    eventList.push({ eventType: 'resolved', elapsedSec: ambulanceArrivedSec + rng.nextLogNormal(20 * 60, 0.25) });
 
     // Store incident row
     incidents.push({
