@@ -431,7 +431,10 @@ export const ResultsView: React.FC = () => {
                 </div>
               ))}
             </div>
-          {/* Digital Proof (TT 126/2026/TT-BCA) */}
+          </div>
+        )}
+
+        {/* Digital Proof (TT 126/2026/TT-BCA) */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-2xs space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div>

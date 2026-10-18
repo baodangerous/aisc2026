@@ -84,14 +84,14 @@ GoldenMinutes was built for AISC 2026 to close that gap. People rehearse short, 
 ```bash
 git clone https://github.com/baodangerous/aisc2026.git
 cd aisc2026
-npm install
+pnpm install
 cp .env.example .env.local
 ```
 
 Fill in `.env.local` (see [Configuration](#configuration)), then start the dev server:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 The app runs at [http://localhost:3000](http://localhost:3000).
@@ -100,7 +100,7 @@ The app runs at [http://localhost:3000](http://localhost:3000).
 
 | Command | Description |
 | --- | --- |
-| `npm run dev` | Start the Vite dev server on port 3000 |
+| `pnpm dev` | Start the Vite dev server on port 3000 |
 | `npm run build` | Build the client and bundle the server into `dist/` |
 | `npm start` | Run the production server from `dist/server.js` |
 | `npm run lint` | Type-check the project with `tsc --noEmit` |
@@ -199,8 +199,9 @@ The suite covers API routing and content types, CORS policy, role escalation, se
 
 1. Fork the repository and create a branch from `main`.
 2. Keep changes focused and add tests where behaviour changes.
-3. Run `npm run lint` and `pnpm test` before opening a pull request.
+3. Run `pnpm lint && pnpm test && pnpm build` before opening a pull request.
 4. Any change to medical content in `src/content` must cite its source in the pull request description.
+5. Read `docs/proposal-alignment.md` before describing prototype evidence as production or clinical evidence.
 
 ## License
 

@@ -13,6 +13,14 @@ declare global {
 
 window.__GM_MAIN_STARTED__ = true;
 
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((error) => {
+      console.warn('[GoldenMinutes] Offline shell registration failed', error);
+    });
+  });
+}
+
 const rootElement = document.getElementById('root');
 
 if (!rootElement) {

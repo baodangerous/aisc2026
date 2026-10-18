@@ -13,7 +13,9 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "data:generate-demo": "tsx scripts/generate-demo-dataset.ts",
+    "data:generate-timeline": "tsx scripts/generate-incident-timeline.ts",
     "data:ingest": "tsx scripts/ingest-ai-dataset.ts",
+    "data:ingest-timeline": "tsx scripts/ingest-incident-timeline.ts",
     "facilities:import-osm": "tsx scripts/import-osm-facilities.ts"
   },
   "dependencies": {
