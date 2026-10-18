@@ -137,7 +137,7 @@ describe('RLS & Security Matrix for Emergency Resources, Submissions & Audit Log
         createdAt: new Date().toISOString(),
       };
       mockProofs.set(p.payloadHash, proof);
-      return proof;
+      return proof as any;
     });
 
     vi.spyOn(dataRepository, 'getDigitalProofByHash').mockImplementation(async (hash: string) => {

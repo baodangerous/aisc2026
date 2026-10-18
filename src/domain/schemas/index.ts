@@ -72,6 +72,7 @@ export interface ScenarioQuestion {
 }
 
 export interface ScenarioThresholds {
+  scenarioCategory?: string;
   timeToGuidanceSec: number; // Target seconds to open guidance
   timeToCallSec: number;     // Target seconds to trigger 115 call
   timeToActionSec: number;   // Target seconds to begin primary action
@@ -132,15 +133,17 @@ export type EventType =
   | 'sync_replayed';
 
 export interface SessionEvent {
-  clientEventId: string;
+  clientEventId?: string;
+  /** Legacy alias accepted when replaying older client events. */
+  eventId?: string;
   sessionId: string;
   type: EventType;
   occurredAtClient: string; // ISO 8601
   receivedAtServer?: string; // ISO 8601
   elapsedMs: number;
-  payloadSafe: Record<string, string | number | boolean | null>;
-  source: 'client' | 'server';
-  schemaVersion: string;
+  payloadSafe?: Record<string, string | number | boolean | null>;
+  source?: 'client' | 'server';
+  schemaVersion?: string;
 }
 
 export interface TrainingSession {
