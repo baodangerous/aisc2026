@@ -1,6 +1,8 @@
 {
   "name": "GoldenMinutes Response Lab",
   "short_name": "GoldenMinutes",
+  "lang": "vi",
+  "dir": "ltr",
   "description": "Nền tảng huấn luyện phản xạ và phân tích sơ cấp cứu trong thời gian vàng",
   "start_url": "/",
   "display": "standalone",
