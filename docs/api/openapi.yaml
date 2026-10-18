@@ -1,0 +1,52 @@
+openapi: 3.0.3
+info:
+  title: GoldenMinutes API
+  version: 0.1.0
+  description: API contract for the educational, safety-focused prototype.
+servers:
+  - url: /api
+paths:
+  /health:
+    get:
+      responses:
+        '200':
+          description: Service health
+  /scenarios:
+    get:
+      responses:
+        '200':
+          description: Approved training scenarios
+  /sessions:
+    post:
+      responses:
+        '201':
+          description: Training session created
+    get:
+      responses:
+        '200':
+          description: Sessions visible to the authenticated user
+  /sessions/{id}/events:
+    post:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '201':
+          description: Event recorded
+  /sessions/{id}/complete:
+    post:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Session results
+  /facilities:
+    get:
+      responses:
+        '200':
+          description: Publicly eligible medical facilities; unverified AED records are excluded
