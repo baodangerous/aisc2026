@@ -36,7 +36,7 @@ export function CommunityView() {
   const load = async () => {
     if (!supabase) return;
     const [{ data: postData, error: postsError }, { data: alertData, error: alertsError }] = await Promise.all([
-      supabase.from(COMMUNITY_TABLES.posts).select('id,author_uid,title,body,category,media,created_at').order('created_at', { ascending: false }).limit(20),
+      supabase.from(COMMUNITY_TABLES.posts).select('id,author_uid,title,body,category,media,created_at').eq('status', 'published').order('created_at', { ascending: false }).limit(20),
       supabase.from(COMMUNITY_TABLES.alerts).select('id,title,description,kind,radius_m,latitude,longitude,created_at').order('created_at', { ascending: false }).limit(20),
     ]);
     if (postsError || alertsError) { setError('Chưa thể tải dữ liệu cộng đồng. Vui lòng thử lại.'); return; }
@@ -44,15 +44,15 @@ export function CommunityView() {
     const postIds = (postData || []).map((post) => post.id);
     if (postIds.length > 0) {
       const [{ data: reactions }, { data: replies }] = await Promise.all([
-        supabase.from('post_reactions').select('post_id,user_id').in('post_id', postIds),
-        supabase.from('forum_replies').select('id,post_id,author_uid,body').in('post_id', postIds).order('created_at', { ascending: true }),
+        supabase.from('post_reactions').select('post_id,user_id,reaction_type').in('post_id', postIds),
+        supabase.from('forum_comments').select('id,post_id,author_uid,content,created_at').in('post_id', postIds).eq('status', 'published').order('created_at', { ascending: true }),
       ]);
       const counts: Record<string, number> = {};
       (reactions || []).forEach((reaction) => { counts[reaction.post_id] = (counts[reaction.post_id] || 0) + 1; });
       setReactionCounts(counts);
       if (authUser) setLikedPosts(Object.fromEntries((reactions || []).filter((reaction) => reaction.user_id === authUser.id).map((reaction) => [reaction.post_id, true])));
       const grouped: Record<string, { id: string; author_uid: string; body: string }[]> = {};
-      (replies || []).forEach((reply) => { (grouped[reply.post_id] ||= []).push(reply); });
+      (replies || []).forEach((reply) => { (grouped[reply.post_id] ||= []).push({ id: reply.id, author_uid: reply.author_uid, body: reply.content }); });
       setOpenReplies(grouped);
     }
     setAlerts((alertData || []).filter((alert) => !nearbyOnly || !currentPosition || distanceInMeters(currentPosition, alert.latitude, alert.longitude) <= alert.radius_m));
@@ -78,7 +78,7 @@ export function CommunityView() {
         const { data } = supabase.storage.from('community-media').getPublicUrl(path);
         media.push({ url: data.publicUrl, type: file.type.startsWith('video/') ? 'video' : 'image', name: file.name });
       }
-      const { error: insertError } = await supabase.from(COMMUNITY_TABLES.posts).insert({ author_uid: authUser.id, title: title.trim(), body: body.trim(), category, media });
+      const { error: insertError } = await supabase.from(COMMUNITY_TABLES.posts).insert({ author_uid: authUser.id, author_id: authUser.id, title: title.trim(), content: body.trim(), body: body.trim(), category, media });
       if (insertError) throw insertError;
       setTitle(''); setBody(''); setMediaFiles([]); setNotice('Bài viết đã được đăng.'); await load();
     } catch (uploadError) { setError(uploadError instanceof Error ? uploadError.message : 'Không thể đăng bài lúc này. Vui lòng thử lại.'); } finally { setIsUploading(false); }
@@ -87,7 +87,7 @@ export function CommunityView() {
   const cancelEditingPost = () => { setEditingPostId(null); setEditingTitle(''); setEditingBody(''); };
   const updatePost = async (postId: string) => {
     if (!supabase || !authUser || editingTitle.trim().length < 5 || editingBody.trim().length < 10) { setError('Tiêu đề cần ít nhất 5 ký tự và nội dung cần ít nhất 10 ký tự.'); return; }
-    const { error: updateError } = await supabase.from(COMMUNITY_TABLES.posts).update({ title: editingTitle.trim(), body: editingBody.trim() }).eq('id', postId).eq('author_uid', authUser.id);
+    const { error: updateError } = await supabase.from(COMMUNITY_TABLES.posts).update({ title: editingTitle.trim(), content: editingBody.trim(), body: editingBody.trim() }).eq('id', postId).eq('author_uid', authUser.id);
     if (updateError) { setError('Không thể cập nhật bài đăng.'); return; }
     cancelEditingPost(); setNotice('Bài đăng đã được cập nhật.'); await load();
   };
@@ -95,8 +95,8 @@ export function CommunityView() {
     if (!supabase || !authUser) return;
     const liked = likedPosts[postId];
     const query = liked
-      ? supabase.from('post_reactions').delete().eq('post_id', postId).eq('user_id', authUser.id).eq('reaction', 'like')
-      : supabase.from('post_reactions').insert({ post_id: postId, user_id: authUser.id, reaction: 'like' });
+      ? supabase.from('post_reactions').delete().eq('post_id', postId).eq('user_id', authUser.id).eq('reaction_type', 'like')
+      : supabase.from('post_reactions').insert({ post_id: postId, user_id: authUser.id, reaction_type: 'like' });
     const { error: reactionError } = await query;
     if (reactionError) { setError('Không thể cập nhật lượt thích.'); return; }
     setLikedPosts((current) => ({ ...current, [postId]: !liked }));
@@ -104,7 +104,7 @@ export function CommunityView() {
   };
   const addReply = async (postId: string) => {
     if (!supabase || !authUser || !replyDrafts[postId]?.trim()) return;
-    const { error: replyError } = await supabase.from('forum_replies').insert({ post_id: postId, author_uid: authUser.id, body: replyDrafts[postId].trim() });
+    const { error: replyError } = await supabase.from('forum_comments').insert({ post_id: postId, author_uid: authUser.id, author_id: authUser.id, content: replyDrafts[postId].trim() });
     if (replyError) { setError('Không thể gửi bình luận.'); return; }
     setReplyDrafts((current) => ({ ...current, [postId]: '' })); setNotice('Bình luận đã được gửi.'); await load();
   };
@@ -112,7 +112,7 @@ export function CommunityView() {
     if (!supabase || !authUser) return;
     const reason = window.prompt('Lý do báo cáo bài đăng?');
     if (!reason?.trim()) return;
-    const { error: reportError } = await supabase.from('forum_reports').insert({ post_id: postId, reporter_uid: authUser.id, reason: reason.trim() });
+    const { error: reportError } = await supabase.from('forum_reports').insert({ target_type: 'post', target_id: postId, reporter_id: authUser.id, reason: reason.trim() });
     if (reportError?.code === '23505') setNotice('Bạn đã báo cáo bài đăng này.'); else if (reportError) setError('Không thể gửi báo cáo.'); else setNotice('Báo cáo đã được gửi để kiểm duyệt.');
   };
   const deletePost = async (post: Post) => {
@@ -153,8 +153,8 @@ export function CommunityView() {
     }).catch(() => setError('Chưa lấy được vị trí. Hãy cấp quyền vị trí hoặc gọi 115 trực tiếp.'));
   };
 
-  return <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 pb-24">
-    <header><p className="text-sm font-semibold text-primary">GOLDENMINUTES</p><h1 className="mt-1 text-3xl font-bold">{COMMUNITY_COPY.title}</h1><p className="mt-2 text-sm leading-relaxed text-muted">{COMMUNITY_COPY.description}</p></header>
+  return <main className="community-shell mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 pb-24">
+    <header className="community-hero"><div><p className="text-sm font-bold uppercase tracking-[0.18em] text-primary">GOLDENMINUTES · CỘNG ĐỒNG</p><h1 className="mt-2 text-3xl font-bold sm:text-4xl">{COMMUNITY_COPY.title}</h1><p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">{COMMUNITY_COPY.description}</p></div><div className="community-hero__mark" aria-hidden="true"><Users className="size-8" /></div></header>
     {!isAuthenticated && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">Đăng nhập để đăng bài hoặc gửi cảnh báo cho cộng đồng.</div>}
     {isAuthenticated && <section className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4"><h2 className="font-bold">Đăng chia sẻ</h2><select value={category} onChange={(event) => setCategory(event.target.value)} className="min-h-11 rounded-xl border border-border bg-background px-3">{POST_CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Bạn muốn chia sẻ điều gì?" className="min-h-12 rounded-xl border border-border bg-background px-3" /><textarea value={body} onChange={(event) => setBody(event.target.value)} placeholder="Viết nội dung tối thiểu 10 ký tự" rows={3} className="rounded-xl border border-border bg-background p-3" /><label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-sm font-semibold text-primary"><ImagePlus className="size-5" aria-hidden="true" />Thêm ảnh hoặc video<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" multiple className="sr-only" onChange={(event) => selectMedia(event.target.files)} /></label>{mediaFiles.length > 0 && <div className="flex flex-wrap gap-2">{mediaFiles.map((file, index) => <span key={`${file.name}-${index}`} className="flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs">{file.name}<button type="button" onClick={() => setMediaFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`Xóa ${file.name}`}><X className="size-3" /></button></span>)}</div>}<button type="button" disabled={isUploading} onClick={createPost} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 font-semibold text-primary-foreground disabled:opacity-60"><Send className="size-4" aria-hidden="true" />{isUploading ? 'Đang đăng…' : 'Đăng bài'}</button></section>}
     {isAuthenticated && <section className="flex flex-col gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4"><h2 className="flex items-center gap-2 font-bold"><AlertTriangle className="size-5 text-primary" aria-hidden="true" />Thông báo khẩn cấp</h2><p className="text-xs leading-relaxed text-muted">Gọi 115 trước. Ứng dụng chỉ chia sẻ cảnh báo với người dùng đã đăng nhập và không thay thế tổng đài.</p><select value={alertKind} onChange={(event) => setAlertKind(event.target.value)} className="min-h-11 rounded-xl border border-border bg-background px-3">{ALERT_KINDS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><input value={alertTitle} onChange={(event) => setAlertTitle(event.target.value)} placeholder="Ví dụ: Cần hỗ trợ CPR" className="min-h-11 rounded-xl border border-border bg-background px-3" /><textarea value={alertDescription} onChange={(event) => setAlertDescription(event.target.value)} placeholder="Mô tả ngắn tình huống và điểm nhận biết" rows={2} className="rounded-xl border border-border bg-background p-3" /><label className="text-xs font-semibold">Bán kính chia sẻ<select value={alertRadius} onChange={(event) => setAlertRadius(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-background px-3">{ALERT_RADII.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label><button type="button" onClick={createAlert} className="min-h-11 rounded-xl bg-primary px-3 font-semibold text-primary-foreground">Gửi cảnh báo và chia sẻ vị trí</button></section>}

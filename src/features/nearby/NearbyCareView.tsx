@@ -11,6 +11,7 @@ export interface CareFacility {
   name: string;
   type: 'aed' | 'hospital' | 'emergency_station' | 'clinic' | 'pharmacy';
   address: string;
+  province?: string;
   lat: number;
   lng: number;
   operatingHours: string;
@@ -73,19 +74,19 @@ export function NearbyCareView() {
   }, []);
 
   // 1. Fetch Medical Facilities
-  const { data: medicalData = [], isLoading: loadingMedical } = useSWR('verified-facilities', async () => {
+  const { data: medicalData = [], error: medicalError, isLoading: loadingMedical } = useSWR('verified-facilities-vietnam', async () => {
     if (!supabase) return [];
-    const { data: rows, error } = await supabase.from('medical_facilities').select('id,name,type,address,province,latitude,longitude,operating_hours,phone,source_url,verified_at,status').in('status', ['verified', 'pending']).order('name');
-    if (error) return [];
+    const { data: rows, error } = await supabase.from('medical_facilities').select('id,name,type,address,province,latitude,longitude,operating_hours,phone,source_url,verified_at,status').in('status', ['verified', 'pending']).order('province').order('name');
+    if (error) throw error;
     return FacilitySchema.array().parse((rows ?? []).map((row) => ({
       id: row.id, name: row.name, type: row.type, address: row.address, province: row.province ?? 'Việt Nam', district: row.province ?? 'Việt Nam', lat: row.latitude, lng: row.longitude,
-      regionCell: row.province ?? 'Chưa cập nhật', isPublicAccess: true, operatingHours: row.operating_hours || 'Mở cửa theo thông tin cơ sở', phone: row.phone ?? undefined, sourceUrl: row.source_url ?? 'https://www.openstreetmap.org/copyright',
-      verifiedAt: row.verified_at ?? undefined, status: row.status, disclaimer: row.status === 'verified' ? 'Thông tin cơ sở đã được xác minh.' : 'Thông tin địa điểm từ OpenStreetMap.',
+      regionCell: row.province ?? 'Chưa cập nhật', isPublicAccess: true, operatingHours: row.operating_hours || 'Chưa có giờ hoạt động xác minh', phone: row.phone ?? undefined, sourceUrl: row.source_url ?? 'https://www.openstreetmap.org/copyright',
+      verifiedAt: row.verified_at ?? undefined, status: row.status, disclaimer: row.status === 'verified' ? 'Thông tin cơ sở đã được xác minh.' : 'Thông tin địa điểm đang chờ xác minh.',
     })));
   }, { shouldRetryOnError: false, fallbackData: [] });
 
   // 2. Fetch Verified Emergency Resources (AEDs & Cabinets)
-  const { data: emergencyData = [], isLoading: loadingEmergency } = useSWR('verified-emergency-resources', async () => {
+  const { data: emergencyData = [], error: emergencyError, isLoading: loadingEmergency } = useSWR('verified-emergency-resources', async () => {
     try {
       const res = await fetch('/api/resources/emergency');
       if (!res.ok) return [];
@@ -125,7 +126,7 @@ export function NearbyCareView() {
     .map((item) => ({ ...item, distanceKm: userCoords ? distanceInKm(userCoords.lat, userCoords.lng, item.lat, item.lng) : undefined }))
     .sort((a, b) => (a.distanceKm ?? Number.POSITIVE_INFINITY) - (b.distanceKm ?? Number.POSITIVE_INFINITY)), [filteredByType, query, userCoords]);
 
-  const nearbyFacilities = useMemo(() => userCoords ? facilities.filter((facility) => (facility.distanceKm ?? Infinity) <= 3) : [], [facilities, userCoords]);
+  const nearbyFacilities = useMemo(() => userCoords ? facilities.filter((facility) => (facility.distanceKm ?? Infinity) <= 5) : [], [facilities, userCoords]);
   const prioritizedFacilities = userCoords && nearbyFacilities.length > 0 ? nearbyFacilities : facilities;
   const center = prioritizedFacilities.find((item) => item.id === selected) || prioritizedFacilities[0];
   const nearestFacility = prioritizedFacilities[0];
@@ -176,7 +177,7 @@ export function NearbyCareView() {
               </span>
               <h1 className="mt-4 max-w-xl text-3xl font-extrabold tracking-tight sm:text-4xl">Tìm nơi cấp cứu & AED gần bạn</h1>
               <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted">
-                Tra cứu bệnh viện, phòng khám và các điểm máy sốc tim tự động (AED) đã xác minh tại TP.HCM.
+                Tra cứu cơ sở y tế trên toàn Việt Nam, ưu tiên TP.HCM khi bạn ở khu vực này, cùng các điểm AED đã xác minh.
               </p>
             </div>
             <div className="hidden size-16 shrink-0 items-center justify-center rounded-3xl bg-primary text-primary-foreground shadow-lg sm:flex">
@@ -248,7 +249,9 @@ export function NearbyCareView() {
         )}
 
         {isLoading ? (
-          <p role="status">Đang tải danh bạ cứu hộ…</p>
+          <div role="status" className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">Đang tải danh bạ cơ sở y tế toàn quốc…</div>
+        ) : medicalError || emergencyError ? (
+          <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100">Không thể cập nhật danh bạ trực tuyến. Vui lòng thử tải lại trang hoặc gọi 115 khi khẩn cấp.</div>
         ) : (
           <>
             <label className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4">
@@ -262,7 +265,7 @@ export function NearbyCareView() {
                 <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
                   <div>
                     <h2 className="font-bold">Bản đồ lân cận</h2>
-                    <p className="text-xs text-muted">{locationState === 'ready' ? 'Khoảng cách được tính từ vị trí GPS của bạn' : 'Bấm “Dùng vị trí của tôi” để tính khoảng cách'}</p>
+                    <p className="text-xs text-muted">{locationState === 'ready' ? 'Khoảng cách tính từ GPS · đang lọc trong bán kính 5 km' : 'Bấm “Dùng vị trí của tôi” để tìm trong bán kính 5 km'}</p>
                   </div>
                   <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{prioritizedFacilities.length} địa điểm hiển thị</span>
                 </div>
@@ -290,7 +293,8 @@ export function NearbyCareView() {
                           </span>
                         )}
                       </div>
-                      {isUsefulAddress(facility.address) && <p className="mt-1 text-sm text-muted">{facility.address}</p>}
+                      {isUsefulAddress(facility.address) && <p className="mt-1 text-sm text-muted">{facility.address}{facility.province && facility.province !== 'Việt Nam' ? ` · ${facility.province}` : ''}</p>}
+                      <p className="mt-2 text-sm font-semibold text-foreground">Giờ hoạt động: <span className="font-medium text-muted">{facility.operatingHours}</span></p>
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
                         <span className={`rounded-full px-2.5 py-1 font-semibold ${facility.type === 'aed' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted/50 text-muted'}`}>
                           {facility.type === 'aed' ? 'Máy sốc tim AED' : facility.type === 'hospital' ? 'Bệnh viện' : 'Phòng khám'}
