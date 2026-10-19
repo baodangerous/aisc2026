@@ -23,8 +23,8 @@ import { useAuth } from '../auth/AuthContext';
 import { supabase } from '../../services/supabase/client';
 
 type Organization = { id: string; name: string; organization_type: string; plan: string; status: string };
-type Site = { id: string; organization_id: string; name: string; site_type: string; address: string | null; province: string | null; status: string };
-type Partnership = { id: string; name: string; partnership_type: string; status: string };
+type Site = { id: string; organization_id: string; name: string; address: string | null; is_active: boolean };
+type Partnership = { id: string; name: string; agreement_type: string; status: string };
 
 interface RegionMetric {
   region_id: string;
@@ -90,6 +90,8 @@ export const OrganizationDashboardView: React.FC = () => {
   // Data view mode: Synthetic simulation vs Real pilot study
   const [dataMode, setDataMode] = useState<'synthetic' | 'pilot'>('synthetic');
   const [regionalMetrics, setRegionalMetrics] = useState<RegionMetric[]>([]);
+  const [regionalLoading, setRegionalLoading] = useState(true);
+  const [regionalError, setRegionalError] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('all');
 
   const [interventionForm, setInterventionForm] = useState({
@@ -134,7 +136,7 @@ export const OrganizationDashboardView: React.FC = () => {
   });
 
   const canManage = role === 'owner' || role === 'admin' || role === 'site_manager';
-  const activeSites = sites.filter((site) => site.status === 'active').length;
+  const activeSites = sites.filter((site) => site.is_active).length;
   const activePartnerships = partnerships.filter((item) => item.status === 'active').length;
 
   const loadData = async () => {
@@ -159,22 +161,33 @@ export const OrganizationDashboardView: React.FC = () => {
     }
     const [{ data: orgs }, { data: siteRows }, { data: partnershipRows }, { count }] = await Promise.all([
       supabase.from('organizations').select('id,name,organization_type,plan,status').in('id', orgIds).order('created_at'),
-      supabase.from('sites').select('id,organization_id,name,site_type,address,province,status').in('organization_id', orgIds).order('name'),
-      supabase.from('data_partnerships').select('id,name,partnership_type,status').in('organization_id', orgIds).order('created_at', { ascending: false }),
+      supabase.from('sites').select('id,organization_id,name,address,is_active').in('organization_id', orgIds).order('name'),
+      supabase.from('data_partnerships').select('id,partner_name,agreement_type,status').in('organization_id', orgIds).order('created_at', { ascending: false }),
       supabase.from('organization_members').select('user_id', { count: 'exact', head: true }).in('organization_id', orgIds),
     ]);
     const nextOrgs = (orgs ?? []) as Organization[];
     setOrganizations(nextOrgs);
     setSites((siteRows ?? []) as Site[]);
-    setPartnerships((partnershipRows ?? []) as Partnership[]);
+    setPartnerships((partnershipRows ?? []).map((item) => ({
+      id: item.id,
+      name: item.partner_name,
+      agreement_type: item.agreement_type,
+      status: item.status,
+    })) as Partnership[]);
     setMemberCount(count ?? 0);
     const activeOrgId = selectedOrg?.id && orgIds.includes(selectedOrg.id) ? selectedOrg.id : nextOrgs[0]?.id ?? orgIds[0];
     if (activeOrgId) {
-      const { data: sessionRows } = await supabase
-        .from('training_sessions')
-        .select('status,consent_to_organization_analytics,metrics')
-        .eq('organization_id', activeOrgId)
-        .eq('consent_to_organization_analytics', true);
+      const [{ data: sessionRows }, { count: incidentCount }] = await Promise.all([
+        supabase
+          .from('training_sessions')
+          .select('status,consent_to_organization_analytics,metrics')
+          .eq('organization_id', activeOrgId)
+          .eq('consent_to_organization_analytics', true),
+        supabase
+          .from('incidents')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', activeOrgId),
+      ]);
       const completedRows = (sessionRows ?? []).filter((row) => row.status === 'completed');
       const adiValues = completedRows
         .map((row) => Number((row.metrics as Record<string, unknown> | null)?.adi ?? (row.metrics as Record<string, unknown> | null)?.ADI))
@@ -188,7 +201,7 @@ export const OrganizationDashboardView: React.FC = () => {
         consented: sessionRows?.length ?? 0,
         adiMedian: adiValues.length ? adiValues[Math.floor(adiValues.length / 2)] : null,
         mroRate: mroValues.length ? mroValues.filter(Boolean).length / mroValues.length : null,
-        incidents: 0,
+        incidents: incidentCount ?? 0,
         medianRecognitionSeconds: null,
       });
     }
@@ -204,14 +217,18 @@ export const OrganizationDashboardView: React.FC = () => {
   // Load Regional ADI Metrics
   useEffect(() => {
     const fetchRegional = async () => {
+      setRegionalLoading(true);
+      setRegionalError('');
       try {
         const res = await fetch('/api/analytics/regional-adi');
-        if (res.ok) {
-          const json = await res.json();
-          setRegionalMetrics(json.regions || []);
-        }
+        if (!res.ok) throw new Error(`regional analytics ${res.status}`);
+        const json = await res.json();
+        setRegionalMetrics(Array.isArray(json.regions) ? json.regions : []);
       } catch (err) {
         console.warn('Error fetching regional ADI:', err);
+        setRegionalError('Chưa thể tải phân tích theo khu vực. Vui lòng thử lại.');
+      } finally {
+        setRegionalLoading(false);
       }
     };
     void fetchRegional();
@@ -421,15 +438,19 @@ export const OrganizationDashboardView: React.FC = () => {
       {notice && <p role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{notice}</p>}
 
       {loading ? (
-        <div className="flex min-h-64 items-center justify-center text-muted">Đang tải không gian quản lý…</div>
+        <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-muted">
+          <div className="size-9 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" aria-hidden="true" />
+          <span>Đang tải dữ liệu tổ chức từ Supabase…</span>
+        </div>
       ) : (
         <>
           {/* Top KPI Cards */}
           <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <article className="rounded-2xl border border-border bg-surface p-5 shadow-2xs">
+            <article className="dashboard-kpi rounded-2xl border border-border bg-surface p-5 shadow-2xs">
+              <span className="dashboard-kpi__bar bg-blue-600" aria-hidden="true" />
               <Activity className="size-5 text-primary" />
               <p className="mt-4 text-3xl font-extrabold text-foreground">
-                {dataMode === 'synthetic' ? '2.000' : '40'}
+                {dataMode === 'synthetic' ? analytics.incidents.toLocaleString('vi-VN') : analytics.completed.toLocaleString('vi-VN')}
               </p>
               <p className="mt-1 text-sm text-muted">
                 {dataMode === 'synthetic' ? 'Tổng sự cố mô phỏng (90 ngày)' : 'Phiên thực nghiệm (Phase 3B)'}
@@ -439,7 +460,7 @@ export const OrganizationDashboardView: React.FC = () => {
             <article className="rounded-2xl border border-border bg-surface p-5 shadow-2xs">
               <TrendingDown className="size-5 text-emerald-600" />
               <p className="mt-4 text-3xl font-extrabold text-emerald-700">
-                {dataMode === 'synthetic' ? '65s' : '12.5s'}
+                {analytics.adiMedian == null ? '—' : `${analytics.adiMedian.toFixed(1)}s`}
               </p>
               <p className="mt-1 text-sm text-muted">ADI Trung vị (Độ trễ có thể phòng tránh)</p>
             </article>
@@ -447,7 +468,7 @@ export const OrganizationDashboardView: React.FC = () => {
             <article className="rounded-2xl border border-border bg-surface p-5 shadow-2xs">
               <AlertTriangle className="size-5 text-amber-600" />
               <p className="mt-4 text-3xl font-extrabold text-amber-700">
-                {dataMode === 'synthetic' ? '74.7%' : '2.5%'}
+                {analytics.mroRate == null ? '—' : `${(analytics.mroRate * 100).toFixed(1)}%`}
               </p>
               <p className="mt-1 text-sm text-muted">Tỷ lệ nguy cơ lọt thời gian vàng (MRO)</p>
             </article>
@@ -458,7 +479,7 @@ export const OrganizationDashboardView: React.FC = () => {
                 {dataMode === 'synthetic' ? '17' : '82.8/100'}
               </p>
               <p className="mt-1 text-sm text-muted">
-                {dataMode === 'synthetic' ? 'Phường/Quận trọng điểm TP.HCM' : 'Điểm khả dụng SUS chuẩn (Hạng A)'}
+                {memberCount.toLocaleString('vi-VN')} thành viên có quyền truy cập
               </p>
             </article>
           </section>
@@ -492,6 +513,13 @@ export const OrganizationDashboardView: React.FC = () => {
               </div>
             </div>
 
+            {regionalError && <p role="alert" className="border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-700">{regionalError}</p>}
+            {regionalLoading ? (
+              <div className="flex min-h-48 items-center justify-center gap-3 text-sm text-muted">
+                <div className="size-7 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" aria-hidden="true" />
+                Đang tải dữ liệu khu vực…
+              </div>
+            ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 border-b border-border text-xs uppercase font-bold text-muted">
@@ -536,7 +564,9 @@ export const OrganizationDashboardView: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+              {!filteredRegions.length && <p className="px-5 py-8 text-center text-sm text-muted">Chưa có dữ liệu khu vực đủ điều kiện hiển thị.</p>}
             </div>
+            )}
           </section>
 
           {/* Decision -> Action -> Measure Closed Loop (Interventions) */}
@@ -614,10 +644,10 @@ export const OrganizationDashboardView: React.FC = () => {
                     <div key={site.id} className="flex items-center justify-between gap-4 rounded-2xl border border-border p-4">
                       <div className="min-w-0">
                         <p className="font-bold">{site.name}</p>
-                        <p className="mt-1 truncate text-sm text-muted">{site.address || site.province || 'Chưa cập nhật địa chỉ'}</p>
+                        <p className="mt-1 truncate text-sm text-muted">{site.address || 'Chưa cập nhật địa chỉ'}</p>
                       </div>
-                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${site.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                        {site.status === 'active' ? 'Đang hoạt động' : 'Tạm dừng'}
+                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${site.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                        {site.is_active ? 'Đang hoạt động' : 'Tạm dừng'}
                       </span>
                     </div>
                   ))
