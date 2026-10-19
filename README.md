@@ -61,6 +61,8 @@ GoldenMinutes was built for AISC 2026 to close that gap. People rehearse short, 
 | **Results and metrics** | Avoidable Delay Index (ADI), per-step timing, and personalised feedback after each session. |
 | **Nearby care** | Map of hospitals and public AED locations. Falls back to an offline directory when no Maps key is set. |
 | **Learning library** | Curated lessons on CPR, bleeding control, AED access, and the FAST stroke check. |
+| **Marketplace** | Organization storefronts, categorized first-aid products and training programs, photo uploads, inventory, carts, and order requests. |
+| **Organization controls** | Only active organization owners/admins can publish storefronts, manage catalog items, upload product photos, and process paid orders. |
 | **Offline-friendly** | Sessions are cached in IndexedDB and synced once the connection returns. |
 
 ## Tech stack
@@ -95,6 +97,22 @@ pnpm dev
 ```
 
 The app runs at [http://localhost:3000](http://localhost:3000).
+
+### Supabase database and marketplace catalog
+
+The marketplace is backed by the versioned SQL migrations under `supabase/migrations/`. The new catalog migration adds searchable categories, product details/SKUs, a public product-image bucket with organization-scoped upload policies, and an initial GoldenMinutes storefront with eight catalog entries. The entries include first-aid equipment and in-person training options. Their initial price and stock values are starter catalog data; confirm them with the supplier before accepting real orders.
+
+Apply all pending migrations to the Supabase project before expecting cloud catalog, sign-in, image upload, or order data to load. From a linked Supabase CLI project, run:
+
+```bash
+supabase login
+supabase link --project-ref YOUR_PROJECT_REF
+supabase db push
+```
+
+Alternatively, run the migration SQL in order from `supabase/migrations/` in the Supabase SQL editor. Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` for local development. Do not put the service-role key in a `VITE_` variable or browser code.
+
+The migration seeds a public `GoldenMinutes Safety` catalog but does not assign organization ownership to an arbitrary auth user. To manage it, an administrator must add the signed-in user to `organization_members` for organization `4f79f7ac-8b92-4e02-98d4-3526c8f66701` with role `owner` or `admin`. Never grant those roles to a public or unverified account. The storefront can create pending order requests; no payment provider, tax invoice, shipping provider, or refund flow is configured in this repository, and pending orders do not collect money.
 
 ### Scripts
 
