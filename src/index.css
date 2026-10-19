@@ -292,3 +292,17 @@
 @media (prefers-reduced-motion: reduce) {
   .hero-editorial, .film-card, .film-card-image { animation: none; }
 }
+
+/* Nearby map pins */
+.gm-facility-pin, .gm-origin-pin { background: transparent; border: 0; }
+.gm-pin { display: flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 9999px; border: 2px solid #fff; background: var(--pin); color: #fff; font: 700 10px/1 var(--font-sans); box-shadow: 0 4px 10px rgba(23,33,43,.25); transition: transform .15s ease; }
+.gm-pin.is-selected { transform: scale(1.25); box-shadow: 0 0 0 4px color-mix(in srgb, var(--pin) 30%, transparent), 0 6px 14px rgba(23,33,43,.3); }
+.gm-origin-dot { display: block; width: 22px; height: 22px; border-radius: 9999px; border: 3px solid #fff; background: #475569; box-shadow: 0 0 0 6px rgba(71,85,105,.2); }
+.gm-origin-dot.is-gps { background: #155eef; box-shadow: 0 0 0 6px rgba(21,94,239,.22); }
+.gm-popup { min-width: 180px; font-family: var(--font-sans); }
+.gm-popup p { margin: 0; }
+.gm-popup__type { font-size: 11px; font-weight: 600; color: #475569; }
+.gm-popup__name { margin-top: 2px !important; font-size: 14px; font-weight: 700; color: #17212b; }
+.gm-popup__addr { margin-top: 4px !important; font-size: 12px; color: #475569; }
+.gm-popup__status { margin-top: 6px !important; font-size: 11px; font-weight: 600; color: #155eef; }
+@media (prefers-reduced-motion: reduce) { .gm-pin { transition: none; } }
