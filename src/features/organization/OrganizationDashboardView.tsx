@@ -18,18 +18,39 @@ import {
   Layers,
   ArrowRight,
   Filter,
+  CalendarDays,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { supabase } from '../../services/supabase/client';
+import { useFacilities } from '../nearby/useFacilities';
+import { findProvince } from '../nearby/geo';
+import { calculateMedian } from '../../domain/metrics/calculator';
 
 type Organization = { id: string; name: string; organization_type: string; plan: string; status: string };
 type Site = { id: string; organization_id: string; name: string; address: string | null; is_active: boolean };
 type Partnership = { id: string; name: string; agreement_type: string; status: string };
+type TrainingEvent = {
+  id: string;
+  organization_id: string;
+  title: string;
+  description: string;
+  starts_at: string;
+  ends_at: string;
+  venue: string;
+  delivery_mode: 'onsite' | 'online' | 'hybrid';
+  meeting_url: string | null;
+  capacity: number | null;
+  registeredCount: number;
+  registeredByMe: boolean;
+};
 
 interface RegionMetric {
   region_id: string;
   name: string;
   district: string;
+  province?: string;
+  incident_date?: string;
+  origin?: string;
   incident_count: number;
   suppressed: boolean;
   avg_response_time_sec: number | null;
@@ -45,10 +66,10 @@ interface InterventionItem {
   title: string;
   description: string;
   startedAt: string;
-  beforeADI: number;
-  afterADI: number;
-  beforeMRO: number;
-  afterMRO: number;
+  beforeADI: number | null;
+  afterADI: number | null;
+  beforeMRO: number | null;
+  afterMRO: number | null;
 }
 
 const typeLabels: Record<string, string> = {
@@ -67,8 +88,31 @@ const roleLabels: Record<string, string> = {
   viewer: 'Người xem',
 };
 
+const escapeIcsText = (value: string) => value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+const toIcsDate = (value: string) => new Date(value).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+function downloadTrainingEvent(event: TrainingEvent) {
+  const lines = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GoldenMinutes//Training Events//VI', 'BEGIN:VEVENT',
+    `UID:${event.id}@goldenminutes`, `DTSTAMP:${toIcsDate(new Date().toISOString())}`,
+    `DTSTART:${toIcsDate(event.starts_at)}`, `DTEND:${toIcsDate(event.ends_at)}`,
+    `SUMMARY:${escapeIcsText(event.title)}`, `DESCRIPTION:${escapeIcsText(event.description)}`,
+    `LOCATION:${escapeIcsText(event.venue || event.meeting_url || '')}`,
+    ...(event.meeting_url ? [`URL:${event.meeting_url}`] : []),
+    'END:VEVENT', 'END:VCALENDAR',
+  ];
+  const file = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(file);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${event.title.trim().replace(/[^\p{L}\p{N}-]+/gu, '-') || 'goldenminutes-training'}.ics`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 export const OrganizationDashboardView: React.FC = () => {
   const { isAuthenticated, authUser } = useAuth();
+  const { data: facilityData, isLoading: facilityLoading } = useFacilities();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [partnerships, setPartnerships] = useState<Partnership[]>([]);
@@ -78,7 +122,7 @@ export const OrganizationDashboardView: React.FC = () => {
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showInterventionModal, setShowInterventionModal] = useState(false);
-  const [seeding, setSeeding] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -87,8 +131,6 @@ export const OrganizationDashboardView: React.FC = () => {
   const [inviteRole, setInviteRole] = useState('viewer');
   const [inviting, setInviting] = useState(false);
 
-  // Data view mode: Synthetic simulation vs Real pilot study
-  const [dataMode, setDataMode] = useState<'synthetic' | 'pilot'>('synthetic');
   const [regionalMetrics, setRegionalMetrics] = useState<RegionMetric[]>([]);
   const [regionalLoading, setRegionalLoading] = useState(true);
   const [regionalError, setRegionalError] = useState('');
@@ -98,42 +140,49 @@ export const OrganizationDashboardView: React.FC = () => {
     title: '',
     type: 'cpr_training',
     description: '',
-    regionId: 'QTD-P01',
+    regionId: '',
   });
 
-  const [interventions, setInterventions] = useState<InterventionItem[]>([
-    {
-      id: 'itv_1',
-      title: 'Tập huấn CPR & Kỹ năng FAST tại Làng Đại Học',
-      type: 'cpr_training',
-      description: 'Đào tạo 450 sinh viên tại Ký túc xá ĐHQG (TP. Thủ Đức).',
-      startedAt: '2026-09-01',
-      beforeADI: 32,
-      afterADI: 19,
-      beforeMRO: 42,
-      afterMRO: 22,
-    },
-    {
-      id: 'itv_2',
-      title: 'Lắp đặt 3 trạm AED công cộng tại Phường Bến Nghé',
-      type: 'aed_verification',
-      description: 'Phối hợp cùng khách sạn và ban quản lý phố đi bộ Nguyễn Huệ.',
-      startedAt: '2026-08-15',
-      beforeADI: 24,
-      afterADI: 14,
-      beforeMRO: 28,
-      afterMRO: 12,
-    },
-  ]);
+  const [interventions, setInterventions] = useState<InterventionItem[]>([]);
+  const [trainingEvents, setTrainingEvents] = useState<TrainingEvent[]>([]);
+  const [eventLoading, setEventLoading] = useState(false);
+  const [eventError, setEventError] = useState('');
+  const [eventForm, setEventForm] = useState({
+    title: '',
+    description: '',
+    startsAt: '',
+    endsAt: '',
+    venue: '',
+    deliveryMode: 'onsite' as TrainingEvent['delivery_mode'],
+    meetingUrl: '',
+    capacity: '',
+  });
 
   const [analytics, setAnalytics] = useState({
     completed: 0,
     consented: 0,
     adiMedian: null as number | null,
     mroRate: null as number | null,
-    incidents: 0,
     medianRecognitionSeconds: null as number | null,
   });
+
+  const publicOverview = useMemo(() => {
+    const facilities = facilityData?.facilities ?? [];
+    const provinces = new Map<string, number>();
+    for (const facility of facilities) {
+      const province = findProvince(facility.province ?? '')?.name ?? facility.province ?? 'Khác';
+      provinces.set(province, (provinces.get(province) ?? 0) + 1);
+    }
+    const ranked = [...provinces.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+    return {
+      total: facilities.length,
+      aed: facilities.filter((facility) => facility.type === 'aed').length,
+      medical: facilities.filter((facility) => facility.type !== 'aed').length,
+      verifiedAed: facilities.filter((facility) => facility.type === 'aed' && facility.verification === 'verified').length,
+      provinces: ranked,
+      max: Math.max(1, ...ranked.map(([, count]) => count)),
+    };
+  }, [facilityData]);
 
   const canManage = role === 'owner' || role === 'admin' || role === 'site_manager';
   const activeSites = sites.filter((site) => site.is_active).length;
@@ -177,16 +226,12 @@ export const OrganizationDashboardView: React.FC = () => {
     setMemberCount(count ?? 0);
     const activeOrgId = selectedOrg?.id && orgIds.includes(selectedOrg.id) ? selectedOrg.id : nextOrgs[0]?.id ?? orgIds[0];
     if (activeOrgId) {
-      const [{ data: sessionRows }, { count: incidentCount }] = await Promise.all([
+      const [{ data: sessionRows }] = await Promise.all([
         supabase
           .from('training_sessions')
           .select('status,consent_to_organization_analytics,metrics')
           .eq('organization_id', activeOrgId)
           .eq('consent_to_organization_analytics', true),
-        supabase
-          .from('incidents')
-          .select('id', { count: 'exact', head: true })
-          .eq('organization_id', activeOrgId),
       ]);
       const completedRows = (sessionRows ?? []).filter((row) => row.status === 'completed');
       const adiValues = completedRows
@@ -199,9 +244,8 @@ export const OrganizationDashboardView: React.FC = () => {
       setAnalytics({
         completed: completedRows.length,
         consented: sessionRows?.length ?? 0,
-        adiMedian: adiValues.length ? adiValues[Math.floor(adiValues.length / 2)] : null,
+        adiMedian: adiValues.length ? calculateMedian(adiValues) : null,
         mroRate: mroValues.length ? mroValues.filter(Boolean).length / mroValues.length : null,
-        incidents: incidentCount ?? 0,
         medianRecognitionSeconds: null,
       });
     }
@@ -213,6 +257,148 @@ export const OrganizationDashboardView: React.FC = () => {
   useEffect(() => {
     void loadData();
   }, [authUser?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadInterventions = async () => {
+      if (!supabase || !selectedOrg) {
+        setInterventions([]);
+        return;
+      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch(`/api/analytics/interventions?orgId=${encodeURIComponent(selectedOrg.id)}`, {
+          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+        });
+        if (!response.ok) throw new Error(`interventions ${response.status}`);
+        const { interventions: rows } = await response.json();
+        if (cancelled) return;
+        setInterventions((rows ?? []).map((row: Record<string, any>) => {
+          const evaluations = Array.isArray(row.intervention_evaluations) ? row.intervention_evaluations : [];
+          const adi = evaluations.find((item: Record<string, unknown>) => item.metric_key === 'adi');
+          const mro = evaluations.find((item: Record<string, unknown>) => item.metric_key === 'mro_rate');
+          return {
+            id: row.id,
+            title: row.title,
+            type: row.type,
+            description: row.description ?? '',
+            startedAt: row.started_at ?? row.startedAt,
+            beforeADI: adi ? Number(adi.value_before) : null,
+            afterADI: adi ? Number(adi.value_after) : null,
+            beforeMRO: mro ? Number(mro.value_before) : null,
+            afterMRO: mro ? Number(mro.value_after) : null,
+          };
+        }));
+      } catch {
+        if (!cancelled) setError('Không thể tải các can thiệp đã ghi nhận.');
+      }
+    };
+    void loadInterventions();
+    return () => { cancelled = true; };
+  }, [authUser?.id, selectedOrg?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadEvents = async () => {
+      if (!supabase || !selectedOrg) {
+        setTrainingEvents([]);
+        setEventLoading(false);
+        return;
+      }
+      setEventLoading(true);
+      setEventError('');
+      const { data, error: queryError } = await supabase
+        .from('organization_training_events')
+        .select('id,organization_id,title,description,starts_at,ends_at,venue,delivery_mode,meeting_url,capacity')
+        .eq('organization_id', selectedOrg.id)
+        .eq('status', 'published')
+        .gte('starts_at', new Date().toISOString())
+        .order('starts_at', { ascending: true })
+        .limit(12);
+      if (cancelled) return;
+      if (queryError) setEventError('Chưa tải được lịch tập huấn. Hãy áp dụng migration lịch tập huấn rồi thử lại.');
+      else {
+        const rows = data ?? [];
+        const eventIds = rows.map((row) => row.id);
+        let attendeeRows: Array<{ event_id: string }> = [];
+        let ownEventIds = new Set<string>();
+        if (eventIds.length) {
+          const [attendeesResult, ownResult] = await Promise.all([
+            supabase.from('organization_training_event_attendees').select('event_id').in('event_id', eventIds),
+            supabase.from('organization_training_event_attendees').select('event_id').in('event_id', eventIds).eq('user_id', authUser?.id ?? ''),
+          ]);
+          attendeeRows = (attendeesResult.data ?? []) as Array<{ event_id: string }>;
+          ownEventIds = new Set((ownResult.data ?? []).map((row) => row.event_id));
+        }
+        if (cancelled) return;
+        setTrainingEvents(rows.map((row) => ({
+          ...row,
+          registeredCount: attendeeRows.filter((attendee) => attendee.event_id === row.id).length,
+          registeredByMe: ownEventIds.has(row.id),
+        })) as TrainingEvent[]);
+      }
+      setEventLoading(false);
+    };
+    void loadEvents();
+    return () => { cancelled = true; };
+  }, [authUser?.id, selectedOrg?.id]);
+
+  const createTrainingEvent = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!supabase || !authUser || !selectedOrg || !canManage) return;
+    const startsAt = new Date(eventForm.startsAt);
+    const endsAt = new Date(eventForm.endsAt);
+    if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt) {
+      setEventError('Thời gian kết thúc phải sau thời gian bắt đầu.');
+      return;
+    }
+    const meetingUrl = eventForm.meetingUrl.trim();
+    if (meetingUrl && !/^https?:\/\//i.test(meetingUrl)) {
+      setEventError('Liên kết phòng họp phải bắt đầu bằng http:// hoặc https://.');
+      return;
+    }
+    setEventError('');
+    const { data, error: insertError } = await supabase.from('organization_training_events').insert({
+      organization_id: selectedOrg.id,
+      created_by: authUser.id,
+      title: eventForm.title.trim(),
+      description: eventForm.description.trim(),
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
+      venue: eventForm.venue.trim(),
+      delivery_mode: eventForm.deliveryMode,
+      meeting_url: meetingUrl || null,
+      capacity: eventForm.capacity ? Number(eventForm.capacity) : null,
+    }).select('id,organization_id,title,description,starts_at,ends_at,venue,delivery_mode,meeting_url,capacity').single();
+    if (insertError || !data) {
+      setEventError('Không thể lưu lịch. Kiểm tra quyền quản lý và cấu hình cơ sở dữ liệu.');
+      return;
+    }
+    setTrainingEvents((current) => [...current, { ...data, registeredCount: 0, registeredByMe: false } as TrainingEvent].sort((a, b) => a.starts_at.localeCompare(b.starts_at)));
+    setEventForm({ title: '', description: '', startsAt: '', endsAt: '', venue: '', deliveryMode: 'onsite', meetingUrl: '', capacity: '' });
+    setShowEventModal(false);
+    setNotice('Đã lên lịch tập huấn. Tải lịch để thêm lời nhắc vào ứng dụng lịch của bạn.');
+  };
+
+  const toggleEventRegistration = async (event: TrainingEvent) => {
+    if (!supabase || !authUser) return;
+    setEventError('');
+    if (event.registeredByMe) {
+      const { error: deleteError } = await supabase.from('organization_training_event_attendees').delete().eq('event_id', event.id).eq('user_id', authUser.id);
+      if (deleteError) {
+        setEventError('Chưa thể hủy đăng ký. Vui lòng thử lại.');
+        return;
+      }
+      setTrainingEvents((current) => current.map((item) => item.id === event.id ? { ...item, registeredByMe: false, registeredCount: Math.max(0, item.registeredCount - 1) } : item));
+      return;
+    }
+    const { data, error: registerError } = await supabase.rpc('register_for_training_event', { p_event_id: event.id });
+    if (registerError) {
+      setEventError(registerError.message.includes('EVENT_FULL') ? 'Buổi tập huấn đã đủ chỗ.' : 'Chưa thể đăng ký. Kiểm tra tư cách thành viên tổ chức và thử lại.');
+      return;
+    }
+    setTrainingEvents((current) => current.map((item) => item.id === event.id ? { ...item, registeredByMe: true, registeredCount: Number(data ?? item.registeredCount + 1) } : item));
+  };
 
   // Load Regional ADI Metrics
   useEffect(() => {
@@ -282,77 +468,86 @@ export const OrganizationDashboardView: React.FC = () => {
     setInviting(false);
   };
 
-  const createSampleWorkspace = async () => {
-    if (!supabase || !authUser) return;
-    setSeeding(true);
-    setError('');
-    const { data: organization, error: organizationError } = await supabase
-      .from('organizations')
-      .insert({
-        name: 'GoldenMinutes Demo Workspace',
-        organization_type: 'enterprise',
-        plan: 'pilot',
-        created_by: authUser.id,
-      })
-      .select('id')
-      .single();
-    if (organizationError || !organization) {
-      setError('Không thể tạo không gian mẫu trong cơ sở dữ liệu.');
-      setSeeding(false);
+  const handleCreateIntervention = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase || !selectedOrg) {
+      setError('Chọn tổ chức trước khi tạo can thiệp.');
       return;
     }
-    const { data: createdSites, error: sitesError } = await supabase.from('sites').insert([
-      { organization_id: organization.id, name: 'Văn phòng trung tâm', site_type: 'office', address: 'Dữ liệu mẫu — chưa dùng để điều hướng', province: 'Hồ Chí Minh', status: 'active' },
-      { organization_id: organization.id, name: 'Điểm đào tạo cộng đồng', site_type: 'public_area', address: 'Dữ liệu mẫu — cần thay bằng địa chỉ thật', province: 'Hà Nội', status: 'active' },
-    ]).select('id');
-    const { error: partnershipError } = await supabase.from('data_partnerships').insert({
-      organization_id: organization.id,
-      partnership_type: 'api',
-      name: 'Kết nối dữ liệu mẫu',
-      status: 'draft',
-      config: { sample: true },
-    });
-    if (sitesError || partnershipError) {
-      setError('Không gian đã tạo nhưng dữ liệu phụ chưa hoàn tất. Vui lòng tải lại để kiểm tra.');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/analytics/interventions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({
+          organizationId: selectedOrg.id,
+          regionId: interventionForm.regionId || null,
+          type: interventionForm.type,
+          title: interventionForm.title.trim(),
+          description: interventionForm.description.trim(),
+          startedAt: new Date().toISOString(),
+        }),
+      });
+      if (!response.ok) throw new Error(`intervention ${response.status}`);
+      const { intervention } = await response.json();
+      setInterventions((current) => [{
+        id: intervention.id,
+        title: intervention.title,
+        type: intervention.type,
+        description: intervention.description ?? '',
+        startedAt: intervention.startedAt ?? intervention.started_at ?? new Date().toISOString(),
+        beforeADI: null,
+        afterADI: null,
+        beforeMRO: null,
+        afterMRO: null,
+      }, ...current]);
+      setShowInterventionModal(false);
+      setInterventionForm({ title: '', type: 'cpr_training', description: '', regionId: '' });
+      setNotice('Đã ghi nhận can thiệp. Chỉ số trước và sau sẽ xuất hiện khi có đủ dữ liệu đánh giá.');
+    } catch {
+      setError('Không thể lưu can thiệp. Kiểm tra quyền quản lý tổ chức và thử lại.');
     }
-    if (createdSites?.length) {
-      await supabase.from('site_subscriptions').insert(createdSites.map((site) => ({ organization_id: organization.id, site_id: site.id, plan: 'pilot', status: 'trial' })));
-    }
-    await loadData();
-    setSeeding(false);
-  };
-
-  const handleCreateIntervention = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newItv: InterventionItem = {
-      id: `itv_${Date.now()}`,
-      title: interventionForm.title,
-      type: interventionForm.type,
-      description: interventionForm.description,
-      startedAt: new Date().toISOString().split('T')[0],
-      beforeADI: 28,
-      afterADI: 17,
-      beforeMRO: 35,
-      afterMRO: 18,
-    };
-    setInterventions([newItv, ...interventions]);
-    setShowInterventionModal(false);
-    setInterventionForm({ title: '', type: 'cpr_training', description: '', regionId: 'QTD-P01' });
-    setNotice('Đã thiết lập can thiệp mới vào hệ thống theo dõi.');
   };
 
   if (!isAuthenticated) {
     return (
-      <main className="mx-auto flex min-h-[70vh] max-w-3xl items-center px-4 py-12 font-sans">
-        <div className="w-full rounded-3xl border border-border bg-surface p-8 text-center shadow-sm">
-          <ShieldCheck className="mx-auto size-12 text-primary" />
-          <h1 className="mt-4 text-3xl font-bold">Cổng quản lý tổ chức</h1>
-          <p className="mx-auto mt-3 max-w-lg text-muted">
-            Đăng nhập để theo dõi chỉ số ADI, quản lý điểm an toàn và quy hoạch tài nguyên cấp cứu.
-          </p>
-          <Link to="/" className="mt-6 inline-flex min-h-12 items-center rounded-xl bg-primary px-5 font-bold text-primary-foreground">
-            Về trang chủ
-          </Link>
+      <main className="mx-auto flex min-h-[calc(100vh-var(--header-height))] w-full max-w-6xl flex-col gap-6 px-4 py-8 pb-24 font-sans sm:px-6">
+        <header className="rounded-3xl border border-border bg-gradient-to-br from-primary-soft via-surface to-surface p-6 sm:p-8">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">GoldenMinutes · Toàn quốc</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Mạng lưới hỗ trợ cộng đồng</h1>
+          <p className="mt-3 max-w-2xl leading-6 text-muted">Tổng quan danh bạ cơ sở y tế và AED, cùng khả năng khám phá theo tỉnh, thành phố.</p>
+        </header>
+        <section aria-label="Tổng quan danh bạ" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            ['Điểm trong danh bạ', publicOverview.total],
+            ['Điểm AED', publicOverview.aed],
+            ['Cơ sở y tế', publicOverview.medical],
+            ['AED đã xác minh', publicOverview.verifiedAed],
+          ].map(([label, value]) => <article key={label} className="rounded-2xl border border-border bg-surface p-5 shadow-2xs">
+            <p className="text-sm text-muted">{label}</p>
+            <p className="mt-2 font-mono text-3xl font-bold tabular-nums text-foreground">{facilityLoading ? '—' : Number(value).toLocaleString('vi-VN')}</p>
+          </article>)}
+        </section>
+        <section className="rounded-3xl border border-border bg-surface p-5 sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Phân bố địa lý</p><h2 className="mt-1 text-xl font-bold">Điểm hỗ trợ theo tỉnh, thành</h2></div>
+            <Link to="/nearby" className="text-sm font-bold text-primary hover:underline">Mở bản đồ toàn quốc <ChevronRight className="inline size-4" aria-hidden="true" /></Link>
+          </div>
+          {publicOverview.provinces.length ? <ul className="mt-5 grid gap-4 sm:grid-cols-2">
+            {publicOverview.provinces.map(([province, count]) => <li key={province}>
+              <Link to={`/nearby?province=${encodeURIComponent(province)}`} className="group block rounded-xl bg-background p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                <div className="mb-2 flex items-center justify-between gap-3 text-sm"><span className="font-semibold group-hover:text-primary">{province}</span><span className="font-mono tabular-nums text-muted">{count}</span></div>
+                <span className="block h-2 overflow-hidden rounded-full bg-border"><span className="block h-full rounded-full bg-primary transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${(count / publicOverview.max) * 100}%` }} /></span>
+              </Link>
+            </li>)}
+          </ul> : <p className="mt-5 rounded-xl bg-background p-4 text-sm text-muted">Danh bạ đang được cập nhật.</p>}
+        </section>
+        <div className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div><h2 className="font-bold">Dành cho tổ chức</h2><p className="mt-1 text-sm text-muted">Đăng nhập để xem dữ liệu riêng, quản lý cơ sở và theo dõi chỉ số tổ chức.</p></div>
+          <Link to="/" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold hover:border-primary">Về trang chủ</Link>
         </div>
       </main>
     );
@@ -360,49 +555,13 @@ export const OrganizationDashboardView: React.FC = () => {
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-7 pb-24 sm:px-6 lg:px-8 font-sans">
-      {/* Explicit Provenance Banner */}
-      <div className={`mb-6 flex items-start justify-between gap-4 rounded-2xl border p-4 text-sm ${
-        dataMode === 'synthetic'
-          ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100'
-          : 'border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-500/30 dark:bg-emerald-950/30 dark:text-emerald-100'
-      }`}>
+      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950 dark:border-blue-500/30 dark:bg-blue-950/30 dark:text-blue-100">
         <div className="flex items-start gap-3">
           <Layers className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
           <div>
-            <p className="font-bold flex items-center gap-2">
-              <span>{dataMode === 'synthetic' ? 'Lớp Dữ Liệu Mô Phỏng (Synthetic Timeline — 2.000 ca)' : 'Lớp Dữ Liệu Thực Nghiệm (Phase 3B Pilot — 40 phiên)'}</span>
-              <span className="text-[11px] px-2 py-0.5 rounded-full font-mono bg-white/60 uppercase">
-                {dataMode === 'synthetic' ? 'origin=synthetic_seed' : 'origin=training_user'}
-              </span>
-            </p>
-            <p className="mt-1 leading-relaxed">
-              {dataMode === 'synthetic'
-                ? 'Dữ liệu mô phỏng dựa trên phân phối Log-Normal để minh họa luồng ra quyết định can thiệp; không phản ánh ca cấp cứu thực tế ngoài đời.'
-                : 'Dữ liệu thực nghiệm thu thập từ ng��ời học tình nguyện có phiếu đồng thuận (Informed Consent theo NĐ 13/2023/NĐ-CP).'}
-            </p>
+            <p className="font-bold">Phạm vi dữ liệu tổ chức</p>
+            <p className="mt-1 leading-relaxed">Chỉ số bên dưới được tính từ phiên luyện tập hoàn tất có đồng thuận chia sẻ trong tổ chức; không đại diện cho ca cấp cứu thực tế.</p>
           </div>
-        </div>
-
-        {/* Toggle between synthetic and pilot study */}
-        <div className="flex shrink-0 items-center gap-1 rounded-xl bg-white/80 p-1 border border-border shadow-2xs">
-          <button
-            type="button"
-            onClick={() => setDataMode('synthetic')}
-            className={`rounded-lg px-3 py-1 text-xs font-bold transition ${
-              dataMode === 'synthetic' ? 'bg-amber-600 text-white' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Mô phỏng
-          </button>
-          <button
-            type="button"
-            onClick={() => setDataMode('pilot')}
-            className={`rounded-lg px-3 py-1 text-xs font-bold transition ${
-              dataMode === 'pilot' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Thực nghiệm (Pilot)
-          </button>
         </div>
       </div>
 
@@ -415,14 +574,14 @@ export const OrganizationDashboardView: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
+          {canManage && <button
             type="button"
             onClick={() => setShowInterventionModal(true)}
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 font-bold text-white shadow-2xs hover:bg-emerald-700"
           >
             <Plus className="size-4" />
             Thiết lập can thiệp
-          </button>
+          </button>}
           <button
             type="button"
             onClick={() => setShowCreate(true)}
@@ -450,10 +609,10 @@ export const OrganizationDashboardView: React.FC = () => {
               <span className="dashboard-kpi__bar bg-blue-600" aria-hidden="true" />
               <Activity className="size-5 text-primary" />
               <p className="mt-4 text-3xl font-extrabold text-foreground">
-                {dataMode === 'synthetic' ? analytics.incidents.toLocaleString('vi-VN') : analytics.completed.toLocaleString('vi-VN')}
+                {analytics.completed.toLocaleString('vi-VN')}
               </p>
               <p className="mt-1 text-sm text-muted">
-                {dataMode === 'synthetic' ? 'Tổng sự cố mô phỏng (90 ngày)' : 'Phiên thực nghiệm (Phase 3B)'}
+                Phiên luyện tập hoàn tất
               </p>
             </article>
 
@@ -489,9 +648,9 @@ export const OrganizationDashboardView: React.FC = () => {
             <div className="flex flex-col gap-4 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Regional Hotspots</p>
-                <h2 className="mt-1 text-xl font-bold">Phân Tích ADI Theo Phường / Quận TP.HCM</h2>
+                <h2 className="mt-1 text-xl font-bold">Phân tích ADI theo khu vực có dữ liệu</h2>
                 <p className="mt-1 max-w-2xl text-sm text-muted">
-                  Bảng tổng hợp từ view <code className="font-mono text-xs bg-slate-100 px-1 py-0.5 rounded">v_region_daily_adi</code> với cơ chế ẩn ô dưới 5 ca (k-anonymity).
+                  Dữ liệu hiện có được ghi nhận tại các khu vực TP.HCM. Mỗi dòng là một ngày và nguồn dữ liệu; các ô dưới 5 ca được ẩn để bảo vệ quyền riêng tư.
                 </p>
               </div>
 
@@ -503,7 +662,7 @@ export const OrganizationDashboardView: React.FC = () => {
                   onChange={(e) => setSelectedDistrict(e.target.value)}
                   className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold"
                 >
-                  <option value="all">Tất cả quận / huyện ({regionalMetrics.length} điểm)</option>
+                  <option value="all">Tất cả khu vực ({regionalMetrics.length} điểm)</option>
                   {uniqueDistricts.map((d) => (
                     <option key={d} value={d}>
                       {d}
@@ -524,7 +683,7 @@ export const OrganizationDashboardView: React.FC = () => {
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 border-b border-border text-xs uppercase font-bold text-muted">
                   <tr>
-                    <th className="px-5 py-3.5">Mã vùng / Tên phường</th>
+                    <th className="px-5 py-3.5">Khu vực / Ngày</th>
                     <th className="px-5 py-3.5">Quận / Huyện</th>
                     <th className="px-5 py-3.5 text-right">Số lượng ca</th>
                     <th className="px-5 py-3.5 text-right">TTG Trung bình</th>
@@ -535,13 +694,14 @@ export const OrganizationDashboardView: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredRegions.map((r) => (
-                    <tr key={r.region_id} className="hover:bg-slate-50/50 transition">
+                    <tr key={`${r.region_id}-${r.incident_date ?? ''}-${r.origin ?? ''}`} className="hover:bg-slate-50/50 transition">
                       <td className="px-5 py-4 font-bold">
                         <span className="font-mono text-xs text-muted mr-2">{r.region_id}</span>
-                        <span>{r.name}</span>
+                        <span>{r.name || 'Khu vực chưa định danh'}</span>
+                        {r.incident_date && <span className="mt-1 block text-xs font-normal text-muted">{new Date(`${r.incident_date}T00:00:00`).toLocaleDateString('vi-VN')}{r.origin ? ` · ${r.origin}` : ''}</span>}
                       </td>
-                      <td className="px-5 py-4 text-muted">{r.district}</td>
-                      <td className="px-5 py-4 text-right font-semibold">{r.incident_count} ca</td>
+                      <td className="px-5 py-4 text-muted">{r.district || '—'}</td>
+                      <td className="px-5 py-4 text-right font-semibold">{r.suppressed ? 'Đã ẩn' : `${r.incident_count} ca`}</td>
                       {r.suppressed ? (
                         <td colSpan={4} className="px-5 py-4 text-center italic text-xs text-amber-700 bg-amber-50/40">
                           * Dưới 5 ca — Đã ẩn số liệu nhằm bảo vệ quyền riêng tư (k-anonymity NĐ 13/2023/NĐ-CP)
@@ -569,6 +729,38 @@ export const OrganizationDashboardView: React.FC = () => {
             )}
           </section>
 
+          <section className="mt-8 rounded-3xl border border-border bg-surface p-5 shadow-2xs sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary"><CalendarDays className="size-4" aria-hidden="true" />Hoạt động tổ chức</p>
+                <h2 className="mt-1 text-xl font-bold">Lịch tập huấn sắp tới</h2>
+                <p className="mt-1 text-sm text-muted">Lên lịch CPR, sử dụng AED và diễn tập; thêm buổi tập huấn vào lịch cá nhân chỉ với một tệp.</p>
+              </div>
+              {canManage && <button type="button" onClick={() => { setEventError(''); setShowEventModal(true); }} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground hover:bg-primary-dark"><Plus className="size-4" aria-hidden="true" />Lên lịch tập huấn</button>}
+            </div>
+            {eventError && <p role="alert" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{eventError}</p>}
+            {eventLoading ? <p className="mt-4 animate-pulse rounded-xl bg-background p-5 text-sm text-muted">Đang tải lịch…</p> : trainingEvents.length ? (
+              <ul className="mt-4 grid gap-3 lg:grid-cols-2">
+                {trainingEvents.map((item) => <li key={item.id} className="rounded-2xl border border-border bg-background p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-bold text-primary">{item.delivery_mode === 'online' ? 'Trực tuyến' : item.delivery_mode === 'hybrid' ? 'Kết hợp' : 'Trực tiếp'}</span>
+                      <h3 className="mt-3 font-bold">{item.title}</h3>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => void toggleEventRegistration(item)} disabled={!item.registeredByMe && item.capacity != null && item.registeredCount >= item.capacity} className="min-h-10 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50">{item.registeredByMe ? 'Hủy đăng ký' : 'Đăng ký'}</button>
+                      <button type="button" onClick={() => downloadTrainingEvent(item)} className="min-h-10 rounded-lg border border-border bg-surface px-3 text-xs font-semibold hover:border-primary">Thêm vào lịch</button>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm font-semibold text-foreground">{new Date(item.starts_at).toLocaleString('vi-VN', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                  <p className="mt-1 text-sm text-muted">{item.venue || (item.meeting_url ? 'Liên kết tham gia được cung cấp bởi tổ chức' : 'Địa điểm đang cập nhật')} · {item.registeredCount}{item.capacity ? `/${item.capacity}` : ''} người đăng ký</p>
+                  {item.description && <p className="mt-3 text-sm leading-6 text-muted">{item.description}</p>}
+                  {item.meeting_url && <a href={item.meeting_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex text-sm font-semibold text-primary underline underline-offset-4">Mở phòng tập huấn trực tuyến</a>}
+                </li>)}
+              </ul>
+            ) : <p className="mt-4 rounded-xl bg-background p-5 text-sm text-muted">Chưa có buổi tập huấn sắp tới được lên lịch.</p>}
+          </section>
+
           {/* Decision -> Action -> Measure Closed Loop (Interventions) */}
           <section className="mt-8 rounded-3xl border border-border bg-surface p-5 sm:p-6 shadow-2xs">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
@@ -579,18 +771,18 @@ export const OrganizationDashboardView: React.FC = () => {
                   Chu trình: <strong>DECISION → ACTION → MEASURE → NEW DATA</strong> đánh giá độ trễ trước vs sau can thiệp.
                 </p>
               </div>
-              <button
+              {canManage && <button
                 type="button"
                 onClick={() => setShowInterventionModal(true)}
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:underline"
               >
                 <span>+ Thêm can thiệp mới</span>
                 <ChevronRight className="size-3.5" />
-              </button>
+              </button>}
             </div>
 
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
-              {interventions.map((itv) => (
+              {interventions.length ? interventions.map((itv) => (
                 <article key={itv.id} className="rounded-2xl border border-border bg-slate-50/50 p-5 space-y-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -607,25 +799,29 @@ export const OrganizationDashboardView: React.FC = () => {
                     <div className="rounded-xl bg-white p-3 border border-border">
                       <p className="text-[11px] font-semibold text-muted uppercase">ADI Trung vị (Trước → Sau)</p>
                       <div className="mt-1 flex items-baseline gap-2">
-                        <span className="text-sm font-semibold text-slate-400 line-through">{itv.beforeADI}s</span>
-                        <ArrowRight className="size-3 text-slate-400" />
-                        <span className="text-lg font-extrabold text-emerald-700">{itv.afterADI}s</span>
-                        <span className="text-xs font-bold text-emerald-600">(-{Math.round(((itv.beforeADI - itv.afterADI) / itv.beforeADI) * 100)}%)</span>
+                        {itv.beforeADI != null && itv.afterADI != null ? <>
+                          <span className="text-sm font-semibold text-slate-400 line-through">{itv.beforeADI}s</span>
+                          <ArrowRight className="size-3 text-slate-400" />
+                          <span className="text-lg font-extrabold text-emerald-700">{itv.afterADI}s</span>
+                          <span className="text-xs font-bold text-emerald-600">(-{Math.round(((itv.beforeADI - itv.afterADI) / Math.max(itv.beforeADI, 1)) * 100)}%)</span>
+                        </> : <span className="text-sm text-muted">Chưa có đủ dữ liệu đánh giá</span>}
                       </div>
                     </div>
 
                     <div className="rounded-xl bg-white p-3 border border-border">
                       <p className="text-[11px] font-semibold text-muted uppercase">Tỷ lệ MRO (Trước → Sau)</p>
                       <div className="mt-1 flex items-baseline gap-2">
-                        <span className="text-sm font-semibold text-slate-400 line-through">{itv.beforeMRO}%</span>
-                        <ArrowRight className="size-3 text-slate-400" />
-                        <span className="text-lg font-extrabold text-emerald-700">{itv.afterMRO}%</span>
-                        <span className="text-xs font-bold text-emerald-600">(-{itv.beforeMRO - itv.afterMRO}%)</span>
+                        {itv.beforeMRO != null && itv.afterMRO != null ? <>
+                          <span className="text-sm font-semibold text-slate-400 line-through">{itv.beforeMRO}%</span>
+                          <ArrowRight className="size-3 text-slate-400" />
+                          <span className="text-lg font-extrabold text-emerald-700">{itv.afterMRO}%</span>
+                          <span className="text-xs font-bold text-emerald-600">(-{itv.beforeMRO - itv.afterMRO}%)</span>
+                        </> : <span className="text-sm text-muted">Chưa có đủ dữ liệu đánh giá</span>}
                       </div>
                     </div>
                   </div>
                 </article>
-              ))}
+              )) : <p className="col-span-full rounded-xl bg-background p-5 text-sm text-muted">Chưa có can thiệp nào được ghi nhận.</p>}
             </div>
           </section>
 
@@ -672,6 +868,31 @@ export const OrganizationDashboardView: React.FC = () => {
             </section>
           </div>
         </>
+      )}
+
+      {showEventModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <form onSubmit={createTrainingEvent} className="max-h-[90vh] w-full max-w-xl space-y-4 overflow-y-auto rounded-3xl bg-surface p-6 shadow-xl">
+            <div className="flex items-center justify-between gap-3">
+              <div><p className="text-xs font-bold uppercase tracking-wide text-primary">Lịch tổ chức</p><h2 className="mt-1 text-xl font-bold">Lên lịch tập huấn</h2></div>
+              <button type="button" onClick={() => setShowEventModal(false)} aria-label="Đóng" className="flex size-10 items-center justify-center rounded-full bg-background"><X className="size-5" /></button>
+            </div>
+            <label className="block text-sm font-semibold">Tên buổi tập huấn<input required minLength={3} maxLength={160} value={eventForm.title} onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3" placeholder="CPR và sử dụng AED cơ bản" /></label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm font-semibold">Bắt đầu<input required type="datetime-local" value={eventForm.startsAt} onChange={(e) => setEventForm({ ...eventForm, startsAt: e.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
+              <label className="block text-sm font-semibold">Kết thúc<input required type="datetime-local" value={eventForm.endsAt} onChange={(e) => setEventForm({ ...eventForm, endsAt: e.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm font-semibold">Hình thức<select value={eventForm.deliveryMode} onChange={(e) => setEventForm({ ...eventForm, deliveryMode: e.target.value as TrainingEvent['delivery_mode'] })} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3"><option value="onsite">Trực tiếp</option><option value="online">Trực tuyến</option><option value="hybrid">Kết hợp</option></select></label>
+              <label className="block text-sm font-semibold">Số chỗ<input type="number" min={1} max={10000} value={eventForm.capacity} onChange={(e) => setEventForm({ ...eventForm, capacity: e.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3" placeholder="Không giới hạn" /></label>
+            </div>
+            <label className="block text-sm font-semibold">Địa điểm<input value={eventForm.venue} onChange={(e) => setEventForm({ ...eventForm, venue: e.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3" placeholder="Địa chỉ hoặc tên cơ sở" /></label>
+            {eventForm.deliveryMode !== 'onsite' && <label className="block text-sm font-semibold">Liên kết phòng tập huấn<input type="url" value={eventForm.meetingUrl} onChange={(e) => setEventForm({ ...eventForm, meetingUrl: e.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3" placeholder="https://…" /></label>}
+            <label className="block text-sm font-semibold">Nội dung<textarea rows={3} value={eventForm.description} onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })} className="mt-1.5 w-full rounded-xl border border-border bg-background p-3" placeholder="Mục tiêu, nội dung và điều cần chuẩn bị" /></label>
+            {eventError && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{eventError}</p>}
+            <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setShowEventModal(false)} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold">Hủy</button><button type="submit" className="min-h-11 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground">Lưu lịch tập huấn</button></div>
+          </form>
+        </div>
       )}
 
       {/* Create Intervention Modal */}
@@ -721,7 +942,8 @@ export const OrganizationDashboardView: React.FC = () => {
                   onChange={(e) => setInterventionForm({ ...interventionForm, regionId: e.target.value })}
                   className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm"
                 >
-                  {regionalMetrics.map((r) => (
+                  <option value="">Chọn khu vực</option>
+                  {[...new Map(regionalMetrics.map((r) => [r.region_id, r])).values()].map((r) => (
                     <option key={r.region_id} value={r.region_id}>
                       {r.name} ({r.district})
                     </option>

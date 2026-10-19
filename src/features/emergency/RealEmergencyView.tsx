@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   PhoneCall,
   AlertOctagon,
@@ -7,6 +7,9 @@ import {
   Droplets,
   Activity,
   CheckCircle2,
+  Video,
+  MapPin,
+  LoaderCircle,
 } from 'lucide-react';
 import { CPRMetronome } from '../../components/CPRMetronome';
 import { Call115Modal } from '../../components/Call115Modal';
@@ -14,12 +17,22 @@ import { MEDICAL_DISCLAIMER_VI } from '../../content/approvedScenarios';
 import { MetadataRow } from '../../components/common/MetadataSeparators';
 import { EmergencyAIAssistant } from './EmergencyAIAssistant';
 import { FirstAidChatbot } from '../ai/FirstAidChatbot';
+import { supabase } from '../../services/supabase/client';
+import { useAuth } from '../auth/AuthContext';
 
 type EmergencyType = 'ohca' | 'stroke' | 'bleeding' | 'choking';
 
 export const RealEmergencyView: React.FC = () => {
   const [selectedEmergency, setSelectedEmergency] = useState<EmergencyType>('ohca');
   const [isCallModalOpen, setIsCallModalOpen] = useState<boolean>(false);
+  const { authUser, isAuthenticated } = useAuth();
+  const [remoteConsent, setRemoteConsent] = useState(false);
+  const [shareLocation, setShareLocation] = useState(false);
+  const [requestingGuide, setRequestingGuide] = useState(false);
+  const [guideStatus, setGuideStatus] = useState('');
+  const [guideRequestId, setGuideRequestId] = useState<string | null>(null);
+  const [guideRoomUrl, setGuideRoomUrl] = useState<string | null>(null);
+  const [guideRoomToken, setGuideRoomToken] = useState<string | null>(null);
 
   const emergencyOptions = [
     {
@@ -52,6 +65,62 @@ export const RealEmergencyView: React.FC = () => {
     },
   ];
 
+  const requestRemoteGuide = async () => {
+    setGuideStatus('');
+    if (!supabase || !authUser) { setGuideStatus('Đăng nhập để gửi yêu cầu hỗ trợ. Nếu không thể đăng nhập, tiếp tục trao đổi trực tiếp với tổng đài 115.'); return; }
+    if (!remoteConsent) { setGuideStatus('Vui lòng xác nhận đã gọi 115 và đồng ý chia sẻ yêu cầu với người hướng dẫn.'); return; }
+    setRequestingGuide(true);
+    let coordinates: { latitude: number; longitude: number } | null = null;
+    if (shareLocation && navigator.geolocation) {
+      try {
+        coordinates = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(
+          (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }), reject,
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
+        ));
+      } catch { setGuideStatus('Không lấy được vị trí. Bạn vẫn có thể gửi yêu cầu không kèm vị trí.'); setShareLocation(false); }
+    }
+    const { data, error: requestError } = await supabase.from('remote_assistance_requests').insert({
+      requester_id: authUser.id,
+      emergency_type: selectedEmergency,
+      status: 'queued',
+      called_115: true,
+      location_shared: Boolean(coordinates),
+      latitude: coordinates?.latitude ?? null,
+      longitude: coordinates?.longitude ?? null,
+    }).select('id,status').single();
+    setRequestingGuide(false);
+    if (requestError) { setGuideStatus('Chưa gửi được yêu cầu. Hãy tiếp tục theo hướng dẫn 115 và thử lại khi an toàn.'); return; }
+    setGuideRequestId(data.id);
+    setGuideStatus('Yêu cầu đã vào hàng chờ hỗ trợ. Tiếp tục làm theo hướng dẫn của 115; ứng dụng chưa kết nối video trực tiếp.');
+  };
+
+  useEffect(() => {
+    if (!guideRequestId || !supabase) return;
+    const refresh = async () => {
+      const { data } = await supabase.from('remote_assistance_requests').select('status,room_url').eq('id', guideRequestId).maybeSingle();
+      if (!data) return;
+      if (data.status === 'accepted' || data.status === 'in_progress') {
+        if (typeof data.room_url === 'string' && !guideRoomToken) {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const joined = await fetch(`/api/remote-assistance/${guideRequestId}/join`, {
+            method: 'POST', headers: { Authorization: `Bearer ${sessionData.session?.access_token || ''}`, 'Content-Type': 'application/json' },
+          });
+          if (joined.ok) {
+            const credentials = await joined.json();
+            setGuideRoomUrl(credentials.roomUrl);
+            setGuideRoomToken(credentials.token);
+          }
+        }
+        setGuideStatus(data.room_url ? 'Người hướng dẫn đã sẵn sàng. Mở phòng video an toàn bên dưới; giữ liên lạc với 115.' : 'Yêu cầu đã được tiếp nhận. Người hướng dẫn sẽ liên hệ qua kênh được điều phối. Tiếp tục làm theo 115.');
+      } else if (data.status === 'completed' || data.status === 'cancelled') {
+        setGuideStatus(data.status === 'completed' ? 'Phiên hỗ trợ đã kết thúc. Tiếp tục làm theo hướng dẫn của nhân viên y tế.' : 'Yêu cầu hỗ trợ đã đóng. Nếu vẫn khẩn cấp, gọi lại 115.');
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 12000);
+    return () => window.clearInterval(timer);
+  }, [guideRequestId, guideRoomToken]);
+
   return (
     <div className="min-h-[calc(100vh-var(--header-height))] bg-[#F9FAFB] text-slate-800 pb-24 md:pb-16">
       {/* Top Banner - 115 Emergency Warning */}
@@ -83,6 +152,28 @@ export const RealEmergencyView: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
         <EmergencyAIAssistant />
         <FirstAidChatbot />
+
+        <section className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm sm:p-6" aria-labelledby="remote-guide-title">
+          <div className="flex items-start gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white"><Video className="size-5" aria-hidden="true" /></span>
+            <div className="min-w-0 flex-1">
+              <h2 id="remote-guide-title" className="text-lg font-bold text-slate-900">Kết nối người hướng dẫn từ xa</h2>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">Gọi 115 trước. Khi đội điều phối đã tiếp nhận, bạn có thể gửi yêu cầu để người hướng dẫn đủ thẩm quyền liên hệ trong lúc lực lượng đang di chuyển.</p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-3 rounded-xl border border-blue-100 bg-white p-4">
+            <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-700"><input type="checkbox" checked={remoteConsent} onChange={(e) => setRemoteConsent(e.target.checked)} className="mt-0.5 size-4 accent-blue-700"/><span>Tôi đã gọi 115 và đồng ý gửi yêu cầu hỗ trợ cùng loại tình huống đang chọn cho điều phối viên.</span></label>
+            <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-700"><input type="checkbox" checked={shareLocation} onChange={(e) => setShareLocation(e.target.checked)} className="mt-0.5 size-4 accent-blue-700"/><span><MapPin className="mr-1 inline size-4"/>Chia sẻ vị trí GPS hiện tại để điều phối hỗ trợ (không bắt buộc).</span></label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button type="button" onClick={() => setIsCallModalOpen(true)} className="min-h-11 rounded-xl bg-rose-700 px-4 font-bold text-white">Gọi 115 trước</button>
+              <button type="button" disabled={requestingGuide || Boolean(guideRequestId)} onClick={() => void requestRemoteGuide()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 font-bold text-white disabled:opacity-50">{requestingGuide ? <LoaderCircle className="size-4 animate-spin"/> : <Video className="size-4"/>}{guideRequestId ? 'Đã gửi yêu cầu' : 'Yêu cầu người hướng dẫn'}</button>
+            </div>
+            {!isAuthenticated && <p className="text-xs text-amber-800">Yêu cầu điều phối cần tài khoản. Gọi 115 vẫn khả dụng khi chưa đăng nhập.</p>}
+            {guideStatus && <p role="status" className="rounded-lg bg-blue-50 p-3 text-sm text-blue-950">{guideStatus}</p>}
+            {guideRoomUrl && guideRoomToken && <div className="overflow-hidden rounded-xl border border-blue-200 bg-white"><div className="p-3 text-sm font-semibold text-blue-900">Phòng video riêng với người hướng dẫn <span className="ml-1 font-normal text-slate-600">· tiếp tục nghe theo 115</span></div><iframe title="Hỗ trợ video cấp cứu GoldenMinutes" src={`${guideRoomUrl}?t=${encodeURIComponent(guideRoomToken)}`} allow="camera; microphone; fullscreen; display-capture" className="h-[min(60vh,600px)] w-full border-0"/></div>}
+            {guideRequestId && <p className="font-mono text-xs text-slate-500">Mã yêu cầu: {guideRequestId}</p>}
+          </div>
+        </section>
 
         {/* Emergency Type Selector */}
         <div>

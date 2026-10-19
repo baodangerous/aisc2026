@@ -3,8 +3,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Clock, X } from 'lucide-react';
 import { HEALTH_NEWS, type HealthNewsItem } from '../../data/demo/healthNews';
 
-const formatDate = (iso: string) => new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
 export function HealthNewsSection() {
   const [open, setOpen] = useState<HealthNewsItem | null>(null);
   const [featured, ...rest] = HEALTH_NEWS;
@@ -12,8 +10,8 @@ export function HealthNewsSection() {
   return (
     <section aria-labelledby="health-news-title" className="flex flex-col gap-4">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Bản tin sức khỏe</p>
-        <h2 id="health-news-title" className="mt-1 text-2xl font-bold">Kiến thức cần biết tuần này</h2>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Hướng dẫn sức khỏe</p>
+        <h2 id="health-news-title" className="mt-1 text-2xl font-bold">Kiến thức sơ cứu cần nhớ</h2>
       </div>
       <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr]">
         <NewsCard item={featured} featured onOpen={() => setOpen(featured)} />
@@ -35,7 +33,7 @@ function NewsCard({ item, featured, onOpen }: { item: HealthNewsItem; featured?:
       <div className={`flex flex-col gap-1.5 ${featured ? 'p-5' : 'p-3.5'}`}>
         <span className="flex items-center gap-2 text-xs font-semibold text-muted">
           <span className="rounded-full bg-primary-soft px-2 py-0.5 text-primary">{item.category}</span>
-          <span>{formatDate(item.publishedAt)}</span>
+          <span>{item.readMinutes} phút đọc</span>
         </span>
         <h3 className={`font-bold leading-snug text-pretty ${featured ? 'text-xl' : 'text-sm sm:text-base'}`}>{item.title}</h3>
         {featured && <p className="text-sm leading-6 text-muted">{item.summary}</p>}
@@ -80,7 +78,6 @@ function NewsModal({ item, onClose }: { item: HealthNewsItem; onClose: () => voi
         <div className="flex flex-col gap-4 p-6">
           <span className="flex flex-wrap items-center gap-3 text-xs font-semibold text-muted">
             <span className="rounded-full bg-primary-soft px-2 py-0.5 text-primary">{item.category}</span>
-            <span>{formatDate(item.publishedAt)}</span>
             <span className="inline-flex items-center gap-1"><Clock className="size-3.5" aria-hidden="true" />{item.readMinutes} phút đọc</span>
           </span>
           <h2 id="news-modal-title" className="text-2xl font-bold leading-tight text-balance">{item.title}</h2>

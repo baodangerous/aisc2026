@@ -111,7 +111,7 @@ export const ResultsView: React.FC = () => {
         status = 'missed';
         detail = 'Lựa chọn chưa tối ưu về mặt y khoa';
       } else {
-        detail = 'Quyết định lâm sàng chính xác';
+      detail = 'Lựa chọn phù hợp với nội dung luyện tập';
       }
     } else {
       label = `Sự kiện: ${ev.type}`;
@@ -186,12 +186,13 @@ export const ResultsView: React.FC = () => {
               <Zap className="w-4 h-4 text-blue-600" />
             </div>
             <div className="text-2xl sm:text-3xl font-bold font-mono tabular-nums text-slate-900">
-              {metrics.timeToGuidanceSec ?? '—'}{' '}
-              <span className="text-xs font-sans font-normal text-slate-500">giây</span>
+              {metrics.timeToGuidanceSec == null ? 'Chưa ghi nhận' : <>{metrics.timeToGuidanceSec} <span className="text-xs font-sans font-normal text-slate-500">giây</span></>}
             </div>
             <p className="text-xs text-slate-500">
               Mục tiêu: ≤ {version.thresholds.timeToGuidanceSec}s{' '}
-              {metrics.delayBreakdown.guidanceDelaySec > 0 ? (
+              {metrics.timeToGuidanceSec == null ? (
+                <span className="text-amber-700 font-bold">(Chưa ghi nhận mốc này)</span>
+              ) : metrics.delayBreakdown.guidanceDelaySec > 0 ? (
                 <span className="text-amber-700 font-bold">(Trễ {metrics.delayBreakdown.guidanceDelaySec}s)</span>
               ) : (
                 <span className="text-emerald-700 font-bold">(Đạt chuẩn ✓)</span>
@@ -206,12 +207,13 @@ export const ResultsView: React.FC = () => {
               <PhoneCall className="w-4 h-4 text-rose-600" />
             </div>
             <div className="text-2xl sm:text-3xl font-bold font-mono tabular-nums text-slate-900">
-              {metrics.timeToCallSec ?? '—'}{' '}
-              <span className="text-xs font-sans font-normal text-slate-500">giây</span>
+              {metrics.timeToCallSec == null ? 'Chưa ghi nhận' : <>{metrics.timeToCallSec} <span className="text-xs font-sans font-normal text-slate-500">giây</span></>}
             </div>
             <p className="text-xs text-slate-500">
               Mục tiêu: ≤ {version.thresholds.timeToCallSec}s{' '}
-              {metrics.delayBreakdown.callDelaySec > 0 ? (
+              {metrics.timeToCallSec == null ? (
+                <span className="text-amber-700 font-bold">(Chưa ghi nhận mốc này)</span>
+              ) : metrics.delayBreakdown.callDelaySec > 0 ? (
                 <span className="text-amber-700 font-bold">(Trễ {metrics.delayBreakdown.callDelaySec}s)</span>
               ) : (
                 <span className="text-emerald-700 font-bold">(Đạt chuẩn ✓)</span>
@@ -226,12 +228,13 @@ export const ResultsView: React.FC = () => {
               <Clock className="w-4 h-4 text-emerald-600" />
             </div>
             <div className="text-2xl sm:text-3xl font-bold font-mono tabular-nums text-slate-900">
-              {metrics.timeToActionSec ?? '—'}{' '}
-              <span className="text-xs font-sans font-normal text-slate-500">giây</span>
+              {metrics.timeToActionSec == null ? 'Chưa ghi nhận' : <>{metrics.timeToActionSec} <span className="text-xs font-sans font-normal text-slate-500">giây</span></>}
             </div>
             <p className="text-xs text-slate-500">
               Mục tiêu: ≤ {version.thresholds.timeToActionSec}s{' '}
-              {metrics.delayBreakdown.actionDelaySec > 0 ? (
+              {metrics.timeToActionSec == null ? (
+                <span className="text-amber-700 font-bold">(Chưa ghi nhận mốc này)</span>
+              ) : metrics.delayBreakdown.actionDelaySec > 0 ? (
                 <span className="text-amber-700 font-bold">(Trễ {metrics.delayBreakdown.actionDelaySec}s)</span>
               ) : (
                 <span className="text-emerald-700 font-bold">(Đạt chuẩn ✓)</span>
@@ -249,7 +252,7 @@ export const ResultsView: React.FC = () => {
                 <span>Tiến Trình Các Thao Tác Đã Thực Hiện</span>
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Màu sắc phản ánh đ��� chính xác lâm sàng theo phác đồ sơ cấp cứu
+                Màu sắc thể hiện mức độ phù hợp với hướng dẫn trong bài luyện tập
               </p>
             </div>
             <MetadataRow
@@ -311,7 +314,7 @@ export const ResultsView: React.FC = () => {
                 Phân Tích Độ Trễ Có Thể Phòng Tránh (ADI)
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Tổng độ chênh lệch thời gian thực tế so với mốc y khoa chuẩn
+                Tổng điểm trễ theo các mốc của bài luyện tập; mốc chưa ghi nhận cũng được tính là phần cần cải thiện
               </p>
             </div>
 

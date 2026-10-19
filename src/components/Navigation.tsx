@@ -16,6 +16,8 @@ import {
   LogOut,
   Users,
   Building2,
+  ShoppingBag,
+  Video,
 } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
 
@@ -42,6 +44,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
     { path: '/nearby', label: 'Gần bạn' },
     { path: '/library', label: 'Thư viện' },
     { path: '/community', label: 'Cộng đồng' },
+    { path: '/store', label: 'Cửa hàng' },
     { path: '/dashboard', label: 'Tổ chức' },
   ];
 
@@ -264,6 +267,30 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
             {/* Route Links List */}
             <div className="space-y-1">
               <div className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Chức năng nâng cao</div>
+
+              <button
+                type="button"
+                onClick={() => handleNavigateFromSheet('/support')}
+                className={`w-full p-2.5 rounded-xl items-center justify-between hover:bg-slate-50 text-left transition-colors cursor-pointer ${['volunteer', 'clinical_reviewer', 'platform_admin'].includes(user?.role || '') ? 'flex' : 'hidden'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-100"><Video className="w-4 h-4" /></div>
+                  <div><div className="text-xs font-bold text-slate-900">Điều phối hỗ trợ từ xa</div><div className="text-xs text-slate-500">Hàng chờ kết nối video an toàn</div></div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-300" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleNavigateFromSheet('/store')}
+                className="w-full p-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50 text-left transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-100"><ShoppingBag className="w-4 h-4" /></div>
+                  <div><div className="text-xs font-bold text-slate-900">Cửa hàng sơ cứu</div><div className="text-xs text-slate-500">Sản phẩm từ các tổ chức tham gia</div></div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-300" />
+              </button>
 
               <button
                 type="button"

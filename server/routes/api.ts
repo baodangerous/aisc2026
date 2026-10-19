@@ -1,9 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { dataRepository, RepositoryError } from '../repository';
 import { DocumentIdSchema, SessionEventSchema, normalizeEvents } from '../../src/domain/schemas/persistence';
-import { verifySupabaseAccessToken } from '../supabaseAuth';
+import { supabaseAdmin, verifySupabaseAccessToken } from '../supabaseAuth';
 import {
   extractEmergencyFacts,
   generateAnalyticsInsight,
@@ -927,13 +928,31 @@ routes.get('/analytics/regional-adi', async (req: Request, res: Response) => {
   res.json({ regions: metrics });
 });
 
-routes.get('/analytics/interventions', async (req: Request, res: Response) => {
+routes.get('/analytics/interventions', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
   const { orgId } = req.query;
+  if (typeof orgId !== 'string' || !orgId) return res.status(400).json({ code: 'ORG_REQUIRED' });
+  if (req.user?.role !== 'platform_admin') {
+    if (!supabaseAdmin) return res.status(503).json({ code: 'STORAGE_UNAVAILABLE' });
+    const { data: membership } = await supabaseAdmin.from('organization_members')
+      .select('role').eq('organization_id', orgId).eq('user_id', req.authUid!).maybeSingle();
+    if (!membership) return res.status(403).json({ code: 'FORBIDDEN' });
+  }
   const interventions = await dataRepository.listInterventions(orgId as string);
   res.json({ interventions });
 });
 
-routes.post('/analytics/interventions', authenticateRequired, requireRole(['platform_admin', 'org_admin']), async (req: AuthenticatedRequest, res: Response) => {
+routes.post('/analytics/interventions', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
+  const { organizationId, type, title } = req.body ?? {};
+  if (typeof organizationId !== 'string' || !organizationId || typeof title !== 'string' || !title.trim() ||
+      !['cpr_training', 'aed_verification', 'process_change', 'community_campaign'].includes(type)) {
+    return res.status(400).json({ code: 'INVALID_INTERVENTION' });
+  }
+  if (req.user?.role !== 'platform_admin') {
+    if (!supabaseAdmin) return res.status(503).json({ code: 'STORAGE_UNAVAILABLE' });
+    const { data: membership } = await supabaseAdmin.from('organization_members')
+      .select('role').eq('organization_id', organizationId).eq('user_id', req.authUid!).maybeSingle();
+    if (!membership || !['owner', 'admin', 'site_manager'].includes(membership.role)) return res.status(403).json({ code: 'FORBIDDEN' });
+  }
   const intervention = await dataRepository.createIntervention(req.body);
   await dataRepository.logAudit({
     actorUid: req.authUid!,
@@ -944,6 +963,94 @@ routes.post('/analytics/interventions', authenticateRequired, requireRole(['plat
     ipAddressMasked: 'not_collected',
   });
   res.status(201).json({ success: true, intervention });
+});
+
+// Remote video support: private, short-lived rooms are created only after an
+// authorized responder accepts a request. Emergency callers are still directed
+// to 115 first; Daily credentials never leave the server.
+const dailyRequest = async (path: string, body: Record<string, unknown>) => {
+  const apiKey = process.env.DAILY_API_KEY;
+  if (!apiKey) throw new Error('VIDEO_PROVIDER_NOT_CONFIGURED');
+  const response = await fetch(`https://api.daily.co/v1${path}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error('VIDEO_PROVIDER_REQUEST_FAILED');
+  return payload as Record<string, any>;
+};
+const makeDailyToken = async (roomName: string, userName: string, isOwner: boolean) => {
+  const expires = Math.floor(Date.now() / 1000) + 30 * 60;
+  const result = await dailyRequest('/meeting-tokens', { properties: {
+    room_name: roomName, user_name: userName.slice(0, 80), is_owner: isOwner,
+    exp: expires, eject_at_token_exp: true, enable_recording: false,
+  } });
+  return result.token as string;
+};
+
+routes.get('/remote-assistance/queue', authenticateRequired, requireRole(['clinical_reviewer', 'volunteer', 'platform_admin']), async (_req: AuthenticatedRequest, res: Response) => {
+  if (!supabaseAdmin) return res.status(503).json({ code: 'STORAGE_UNAVAILABLE' });
+  const { data, error } = await supabaseAdmin.from('remote_assistance_requests')
+    .select('id,emergency_type,status,latitude,longitude,location_shared,created_at')
+    .in('status', ['queued', 'accepted', 'in_progress']).order('created_at', { ascending: true }).limit(50);
+  if (error) return res.status(503).json({ code: 'QUEUE_UNAVAILABLE' });
+  res.json({ requests: data ?? [] });
+});
+
+routes.post('/remote-assistance/:id/accept', authenticateRequired, requireRole(['clinical_reviewer', 'volunteer', 'platform_admin']), async (req: AuthenticatedRequest, res: Response) => {
+  if (!supabaseAdmin) return res.status(503).json({ code: 'STORAGE_UNAVAILABLE' });
+  const { data: incident, error: readError } = await supabaseAdmin.from('remote_assistance_requests')
+    .select('id,status,called_115').eq('id', req.params.id).maybeSingle();
+  if (readError || !incident) return res.status(404).json({ code: 'REQUEST_NOT_FOUND' });
+  if (incident.status !== 'queued' || incident.called_115 !== true) return res.status(409).json({ code: 'REQUEST_UNAVAILABLE' });
+  const roomName = `gm-${randomUUID().replace(/-/g, '')}`;
+  let room: Record<string, any>;
+  let token: string;
+  try {
+    room = await dailyRequest('/rooms', { name: roomName, privacy: 'private', properties: {
+      exp: Math.floor(Date.now() / 1000) + 30 * 60, max_participants: 2,
+      enable_prejoin_ui: true, enable_knocking: false, enable_chat: false,
+      enable_screenshare: false, enable_recording: false,
+    } });
+    token = await makeDailyToken(roomName, req.user?.displayName || 'Người hướng dẫn', true);
+  } catch (error) {
+    const code = error instanceof Error && error.message === 'VIDEO_PROVIDER_NOT_CONFIGURED' ? 'VIDEO_PROVIDER_NOT_CONFIGURED' : 'VIDEO_ROOM_CREATE_FAILED';
+    return res.status(503).json({ code, message: code === 'VIDEO_PROVIDER_NOT_CONFIGURED' ? 'Chưa cấu hình dịch vụ video.' : 'Chưa tạo được phòng video. Vui lòng thử lại.' });
+  }
+  const { data: updated, error: updateError } = await supabaseAdmin.from('remote_assistance_requests').update({
+    status: 'accepted', responder_id: req.authUid, room_url: room.url, updated_at: new Date().toISOString(),
+  }).eq('id', req.params.id).eq('status', 'queued').select('id').maybeSingle();
+  if (updateError || !updated) {
+    await fetch(`https://api.daily.co/v1/rooms/${encodeURIComponent(roomName)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${process.env.DAILY_API_KEY}` } }).catch(() => undefined);
+    return res.status(409).json({ code: 'REQUEST_UNAVAILABLE' });
+  }
+  res.json({ roomUrl: room.url, token });
+});
+
+routes.post('/remote-assistance/:id/join', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
+  if (!supabaseAdmin) return res.status(503).json({ code: 'STORAGE_UNAVAILABLE' });
+  const { data: incident } = await supabaseAdmin.from('remote_assistance_requests')
+    .select('id,status,requester_id,responder_id,room_url').eq('id', req.params.id).maybeSingle();
+  if (!incident || !['accepted', 'in_progress'].includes(incident.status) || !incident.room_url) return res.status(404).json({ code: 'ROOM_NOT_AVAILABLE' });
+  const isResponder = incident.responder_id === req.authUid;
+  if (incident.requester_id !== req.authUid && !isResponder) return res.status(403).json({ code: 'FORBIDDEN' });
+  const roomName = new URL(incident.room_url).pathname.split('/').filter(Boolean).at(-1);
+  if (!roomName || !/^gm-[a-f0-9]{32}$/.test(roomName)) return res.status(409).json({ code: 'ROOM_INVALID' });
+  try {
+    const token = await makeDailyToken(roomName, req.user?.displayName || (isResponder ? 'Người hướng dẫn' : 'Người cần hỗ trợ'), isResponder);
+    res.json({ roomUrl: incident.room_url, token });
+  } catch {
+    res.status(503).json({ code: 'VIDEO_PROVIDER_UNAVAILABLE' });
+  }
+});
+
+routes.post('/remote-assistance/:id/complete', authenticateRequired, async (req: AuthenticatedRequest, res: Response) => {
+  if (!supabaseAdmin) return res.status(503).json({ code: 'STORAGE_UNAVAILABLE' });
+  const { data, error } = await supabaseAdmin.from('remote_assistance_requests').update({ status: 'completed', updated_at: new Date().toISOString() })
+    .eq('id', req.params.id).eq('responder_id', req.authUid).in('status', ['accepted', 'in_progress']).select('id').maybeSingle();
+  if (error || !data) return res.status(403).json({ code: 'FORBIDDEN' });
+  res.json({ success: true });
 });
 
 // 18. Pilot Surveys (Pre/Post with Likert 1-5 & SUS)

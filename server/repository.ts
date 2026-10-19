@@ -404,58 +404,51 @@ export class SupabaseRepository {
 
   // --- Interventions & Evaluations (Decision -> Action -> Measure Closed Loop) ---
   async listInterventions(orgId?: string) {
-    if (supabaseAdmin) {
-      try {
-        let query = supabaseAdmin.from('interventions').select('*, intervention_evaluations(*)').order('started_at', { ascending: false });
-        if (orgId) query = query.eq('organization_id', orgId);
-        const { data, error } = await query;
-        if (!error && data) return data;
-      } catch {}
-    }
-    return [];
+    if (!supabaseAdmin) throw new RepositoryError('STORAGE_UNAVAILABLE', 503);
+    let query = supabaseAdmin.from('interventions').select('*, intervention_evaluations(*)').order('started_at', { ascending: false });
+    if (orgId) query = query.eq('organization_id', orgId);
+    const { data, error } = await query;
+    if (error || !data) throw new RepositoryError('INTERVENTIONS_LOAD_FAILED', 503);
+    return data;
   }
 
   async createIntervention(intervention: any) {
+    if (!supabaseAdmin) throw new RepositoryError('STORAGE_UNAVAILABLE', 503);
     const id = randomUUID();
-    const record = { ...intervention, id, createdAt: new Date().toISOString() };
-    if (supabaseAdmin) {
-      try {
-        await supabaseAdmin.from('interventions').insert({
-          id,
-          organization_id: intervention.organizationId || null,
-          site_id: intervention.siteId || null,
-          region_id: intervention.regionId || null,
-          type: intervention.type,
-          title: intervention.title,
-          description: intervention.description || '',
-          started_at: intervention.startedAt || new Date().toISOString(),
-        });
-      } catch {}
-    }
-    return record;
+    const { data, error } = await supabaseAdmin.from('interventions').insert({
+      id,
+      organization_id: intervention.organizationId || null,
+      site_id: intervention.siteId || null,
+      region_id: intervention.regionId || null,
+      type: intervention.type,
+      title: intervention.title,
+      description: intervention.description || '',
+      started_at: intervention.startedAt || new Date().toISOString(),
+    }).select('*').single();
+    if (error || !data) throw new RepositoryError('INTERVENTION_SAVE_FAILED', 500);
+    return data;
   }
 
   // --- Regional ADI Metrics with k-anonymity (hide cells < 5) ---
   async getRegionalAdiMetrics() {
     if (supabaseAdmin) {
       try {
-        const { data, error } = await supabaseAdmin.from('v_region_daily_adi').select('*').limit(200);
-        if (!error && data) return data;
+        const [{ data, error }, { data: regions, error: regionsError }] = await Promise.all([
+          supabaseAdmin.from('v_region_daily_adi').select('*').order('incident_date', { ascending: false }).limit(200),
+          supabaseAdmin.from('regions').select('region_id,name,district,province'),
+        ]);
+        if (!error && !regionsError && data) {
+          const byId = new Map((regions ?? []).map((region) => [region.region_id, region]));
+          return data.map((row) => ({
+            ...row,
+            name: byId.get(row.region_id)?.name ?? 'Khu vực chưa định danh',
+            district: byId.get(row.region_id)?.district ?? '',
+            province: byId.get(row.region_id)?.province ?? '',
+          }));
+        }
       } catch {}
     }
-    // Standard mock TP.HCM regions with k-anonymity for standalone / testing
-    return [
-      { region_id: 'Q1-P01', district: 'Quận 1', name: 'Phường Bến Nghé', incident_count: 42, suppressed: false, avg_response_time_sec: 48, adi_avg: 18, avg_ttg_sec: 14, avg_ttc_sec: 38, mro_rate_percent: 24 },
-      { region_id: 'Q1-P02', district: 'Quận 1', name: 'Phường Bến Thành', incident_count: 36, suppressed: false, avg_response_time_sec: 52, adi_avg: 22, avg_ttg_sec: 16, avg_ttc_sec: 42, mro_rate_percent: 28 },
-      { region_id: 'Q3-P01', district: 'Quận 3', name: 'Phường Võ Thị Sáu', incident_count: 29, suppressed: false, avg_response_time_sec: 55, adi_avg: 24, avg_ttg_sec: 17, avg_ttc_sec: 44, mro_rate_percent: 31 },
-      { region_id: 'Q5-P02', district: 'Quận 5', name: 'Phường 2', incident_count: 31, suppressed: false, avg_response_time_sec: 59, adi_avg: 27, avg_ttg_sec: 18, avg_ttc_sec: 49, mro_rate_percent: 35 },
-      { region_id: 'Q10-P01', district: 'Quận 10', name: 'Phường 14', incident_count: 24, suppressed: false, avg_response_time_sec: 61, adi_avg: 29, avg_ttg_sec: 19, avg_ttc_sec: 51, mro_rate_percent: 38 },
-      { region_id: 'QBT-P01', district: 'Quận Bình Thạnh', name: 'Phường 25', incident_count: 33, suppressed: false, avg_response_time_sec: 54, adi_avg: 23, avg_ttg_sec: 15, avg_ttc_sec: 43, mro_rate_percent: 27 },
-      { region_id: 'QTD-P01', district: 'TP. Thủ Đức', name: 'Phường Linh Trung', incident_count: 28, suppressed: false, avg_response_time_sec: 66, adi_avg: 32, avg_ttg_sec: 21, avg_ttc_sec: 55, mro_rate_percent: 42 },
-      { region_id: 'Q7-P01', district: 'Quận 7', name: 'Phường Tân Phú', incident_count: 22, suppressed: false, avg_response_time_sec: 57, adi_avg: 25, avg_ttg_sec: 16, avg_ttc_sec: 46, mro_rate_percent: 30 },
-      { region_id: 'QPN-P01', district: 'Quận Phú Nhuận', name: 'Phường 7', incident_count: 19, suppressed: false, avg_response_time_sec: 50, adi_avg: 20, avg_ttg_sec: 14, avg_ttc_sec: 40, mro_rate_percent: 25 },
-      { region_id: 'QTB-P02', district: 'Quận Tân Bình', name: 'Phường 2', incident_count: 3, suppressed: true, avg_response_time_sec: null, adi_avg: null, avg_ttg_sec: null, avg_ttc_sec: null, mro_rate_percent: null },
-    ];
+    return [];
   }
 }
 

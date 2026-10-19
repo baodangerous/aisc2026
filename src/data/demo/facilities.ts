@@ -29,7 +29,7 @@ const rows: Row[] = [
   ['hcm-a06', 'Điểm AED – Ga xe buýt Thủ Đức Trung tâm', 'aed', 'Võ Văn Ngân, Phường Linh Chiểu, TP. Thủ Đức', 'TP. Hồ Chí Minh', 10.8504, 106.7577],
   ['hcm-a07', 'Điểm AED – Nhà thi đấu Phú Nhuận Mới', 'aed', '3 Hoàng Minh Giám, Quận Phú Nhuận', 'TP. Hồ Chí Minh', 10.8058, 106.6766],
   ['hcm-a08', 'Điểm AED – Thư viện Cộng đồng Quận 3', 'aed', '120 Trần Quốc Thảo, Phường Võ Thị Sáu, Quận 3', 'TP. Hồ Chí Minh', 10.7852, 106.6862],
-  ['hcm-a09', 'Điểm AED – Ký túc xá Khu B Làng Đại học', 'aed', 'Đường Mạc Đĩnh Chi, Phường Đông Hòa, TP. Dĩ An', 'Bình Dương', 10.8845, 106.7822],
+  ['hcm-a09', 'Điểm AED – Ký túc xá Khu B Làng Đại học', 'aed', 'Đường Mạc Đĩnh Chi, Phường Đông Hòa, TP. Dĩ An', 'TP. Hồ Chí Minh', 10.8845, 106.7822],
   ['hcm-a10', 'Điểm AED – Sảnh Bến tàu Bạch Đằng Mới', 'aed', '10B Tôn Đức Thắng, Phường Bến Nghé, Quận 1', 'TP. Hồ Chí Minh', 10.7745, 106.7071],
 
   // Hà Nội
@@ -54,10 +54,36 @@ const rows: Row[] = [
   ['ld-c01', 'Phòng khám Đa khoa Đồi Thông', 'clinic', '5 Trần Phú, Phường 3, Đà Lạt', 'Lâm Đồng', 11.9365, 108.4378, '07:00 – 19:00'],
 
   // Miền Nam khác
-  ['vt-h01', 'Bệnh viện Đa khoa Bãi Trước', 'hospital', '27 Lê Lợi, Phường 1, Vũng Tàu', 'Bà Rịa - Vũng Tàu', 10.3487, 107.0786, 'Cấp cứu 24/7'],
-  ['bd-h01', 'Bệnh viện Đa khoa Thủ Dầu Một Mới', 'hospital', '5 Phạm Ngọc Thạch, TP. Thủ Dầu Một', 'Bình Dương', 10.9802, 106.6561, 'Cấp cứu 24/7'],
+  ['vt-h01', 'Bệnh viện Đa khoa Bãi Trước', 'hospital', '27 Lê Lợi, Phường 1, Vũng Tàu', 'TP. Hồ Chí Minh', 10.3487, 107.0786, 'Cấp cứu 24/7'],
+  ['bd-h01', 'Bệnh viện Đa khoa Thủ Dầu Một Mới', 'hospital', '5 Phạm Ngọc Thạch, TP. Thủ Dầu Một', 'TP. Hồ Chí Minh', 10.9802, 106.6561, 'Cấp cứu 24/7'],
   ['ct-h01', 'Bệnh viện Đa khoa Ninh Kiều Tây Đô', 'hospital', '315 Nguyễn Văn Cừ, Quận Ninh Kiều', 'Cần Thơ', 10.0336, 105.7559, 'Cấp cứu 24/7'],
   ['ct-a01', 'Điểm AED – Bến Ninh Kiều (nhà chờ)', 'aed', 'Hai Bà Trưng, Quận Ninh Kiều', 'Cần Thơ', 10.0341, 105.7881],
+
+  // Nationwide city coverage for the demo directory. These records stay in fixture mode only.
+  ['cb-h01', 'Trung tâm y tế Cao Bằng', 'clinic', 'Khu vực trung tâm, Cao Bằng', 'Cao Bằng', 22.6667, 106.2500],
+  ['tq-h01', 'Trung tâm y tế Tuyên Quang', 'clinic', 'Khu vực trung tâm, Tuyên Quang', 'Tuyên Quang', 21.8236, 105.2142],
+  ['db-h01', 'Trung tâm y tế Điện Biên', 'clinic', 'Khu vực trung tâm, Điện Biên Phủ', 'Điện Biên', 21.3860, 103.0230],
+  ['lc-h01', 'Trung tâm y tế Lai Châu', 'clinic', 'Khu vực trung tâm, Lai Châu', 'Lai Châu', 22.3964, 103.4582],
+  ['sl-h01', 'Trung tâm y tế Sơn La', 'clinic', 'Khu vực trung tâm, Sơn La', 'Sơn La', 21.3280, 103.9140],
+  ['laocai-h01', 'Trung tâm y tế Lào Cai', 'clinic', 'Khu vực trung tâm, Yên Bái', 'Lào Cai', 21.7168, 104.8986],
+  ['tn-h01', 'Trung tâm y tế Thái Nguyên', 'clinic', 'Khu vực trung tâm, Thái Nguyên', 'Thái Nguyên', 21.5942, 105.8482],
+  ['ls-h01', 'Trung tâm y tế Lạng Sơn', 'clinic', 'Khu vực trung tâm, Lạng Sơn', 'Lạng Sơn', 21.8537, 106.7610],
+  ['bn-h01', 'Trung tâm y tế Bắc Ninh', 'clinic', 'Khu vực trung tâm, Bắc Giang', 'Bắc Ninh', 21.2819, 106.1975],
+  ['pt-h01', 'Trung tâm y tế Phú Thọ', 'clinic', 'Khu vực trung tâm, Việt Trì', 'Phú Thọ', 21.3227, 105.4019],
+  ['hy-h01', 'Trung tâm y tế Hưng Yên', 'clinic', 'Khu vực trung tâm, Hưng Yên', 'Hưng Yên', 20.6464, 106.0511],
+  ['nb-h01', 'Trung tâm y tế Ninh Bình', 'clinic', 'Khu vực trung tâm, Ninh Bình', 'Ninh Bình', 20.2506, 105.9745],
+  ['th-h01', 'Trung tâm y tế Thanh Hóa', 'clinic', 'Khu vực trung tâm, Thanh Hóa', 'Thanh Hóa', 19.8067, 105.7852],
+  ['ht-h01', 'Trung tâm y tế Hà Tĩnh', 'clinic', 'Khu vực trung tâm, Hà Tĩnh', 'Hà Tĩnh', 18.3428, 105.9057],
+  ['qt-h01', 'Trung tâm y tế Quảng Trị', 'clinic', 'Khu vực trung tâm, Đồng Hới', 'Quảng Trị', 17.4689, 106.6223],
+  ['qng-h01', 'Trung tâm y tế Quảng Ngãi', 'clinic', 'Khu vực trung tâm, Quảng Ngãi', 'Quảng Ngãi', 15.1205, 108.7923],
+  ['gl-h01', 'Trung tâm y tế Gia Lai', 'clinic', 'Khu vực trung tâm, Quy Nhơn', 'Gia Lai', 13.7820, 109.2190],
+  ['dl-h01', 'Trung tâm y tế Đắk Lắk', 'clinic', 'Khu vực trung tâm, Buôn Ma Thuột', 'Đắk Lắk', 12.6667, 108.0382],
+  ['dnai-h01', 'Trung tâm y tế Đồng Nai', 'clinic', 'Khu vực trung tâm, Biên Hòa', 'Đồng Nai', 10.9574, 106.8426],
+  ['tninh-h01', 'Trung tâm y tế Tây Ninh', 'clinic', 'Khu vực trung tâm, Tân An', 'Tây Ninh', 10.5360, 106.4050],
+  ['dt-h01', 'Trung tâm y tế Đồng Tháp', 'clinic', 'Khu vực trung tâm, Mỹ Tho', 'Đồng Tháp', 10.3590, 106.3600],
+  ['vl-h01', 'Trung tâm y tế Vĩnh Long', 'clinic', 'Khu vực trung tâm, Vĩnh Long', 'Vĩnh Long', 10.2530, 105.9720],
+  ['ag-h01', 'Trung tâm y tế An Giang', 'clinic', 'Khu vực trung tâm, Rạch Giá', 'An Giang', 10.0125, 105.0809],
+  ['cm-h01', 'Trung tâm y tế Cà Mau', 'clinic', 'Khu vực trung tâm, Cà Mau', 'Cà Mau', 9.1769, 105.1524],
 ];
 
 export const FIXTURE_FACILITIES: CareFacility[] = rows.map(([id, name, type, address, province, lat, lng, hours]) => ({

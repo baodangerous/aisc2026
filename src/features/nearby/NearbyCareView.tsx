@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AlertCircle, Crosshair, Loader2, MapPin, PhoneCall, Plus, Search } from 'lucide-react';
 import { LeafletMapView } from './LeafletMapView';
 import { FacilityListItem } from './FacilityListItem';
@@ -26,6 +27,7 @@ const LOCATION_MESSAGE: Partial<Record<LocationState, string>> = {
 };
 
 export function NearbyCareView() {
+  const [searchParams] = useSearchParams();
   const { data, error, isLoading, mutate } = useFacilities();
   const [origin, setOrigin] = useState<{ coords: Coords; source: OriginSource; label: string }>({ coords: DEFAULT_CENTER, source: 'default', label: DEFAULT_CENTER.label });
   const [locationState, setLocationState] = useState<LocationState>('idle');
@@ -34,6 +36,15 @@ export function NearbyCareView() {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showSubmit, setShowSubmit] = useState(false);
+
+  useEffect(() => {
+    const province = searchParams.get('province');
+    if (!province) return;
+    const match = findProvince(province);
+    if (!match) return;
+    setOrigin({ coords: { lat: match.lat, lng: match.lng }, source: 'province', label: match.name });
+    setQuery('');
+  }, [searchParams]);
 
   const requestLocation = () => {
     if (!navigator.geolocation) return setLocationState('unavailable');
@@ -53,11 +64,12 @@ export function NearbyCareView() {
 
   useEffect(() => {
     let cancelled = false;
+    if (searchParams.get('province')) return;
     navigator.permissions?.query({ name: 'geolocation' }).then((p) => {
       if (!cancelled && p.state === 'granted') requestLocation();
     }).catch(() => undefined);
     return () => { cancelled = true; };
-  }, []);
+  }, [searchParams]);
 
   const chooseProvince = (name: string) => {
     const p = PROVINCE_CENTERS.find((item) => item.name === name);

@@ -2,10 +2,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, PhoneCall, MapPin, BookOpen, ShieldAlert, Users, CircleCheck, PlayCircle, Timer, LibraryBig, Navigation, Activity, ChevronRight } from 'lucide-react';
 import { REFERENCE_LEARNING_RESOURCES } from '../../content/curatedLearningCatalog';
 import { RESEARCH_MODULES, RESEARCH_NOTE } from '../../content/researchModules';
-import { HOME_EXERCISES, HOME_HERO, HOME_PHOTO_STORIES } from '../../config/homeContent';
+import { HOME_EXERCISES } from '../../config/homeContent';
 import { LearningResourceCard } from '../library/LearningResourceCard';
 import { HealthNewsSection } from './HealthNewsSection';
 import { AedOverviewSection } from './AedOverviewSection';
+import { NationwideCoverageSection } from './NationwideCoverageSection';
+import aedHeroImage from '../../assets/images/aed_defibrillator_access_1792058948229.jpg';
 
 export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
   const navigate = useNavigate();
@@ -16,21 +18,21 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
         {/* Hero Section */}
         <section className="hero-editorial overflow-hidden rounded-[1.5rem] border border-border bg-surface text-foreground shadow-[0_20px_50px_rgba(23,33,43,0.10)] sm:rounded-[2rem]">
           <div className="hero-editorial-image relative overflow-hidden bg-[#f4f7f8]">
-            <img src={HOME_HERO.image} alt="Đội ngũ cộng đồng giới thiệu tủ AED tại một không gian công cộng" className="h-auto max-h-[24rem] w-full object-contain" />
-            <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-border bg-surface/95 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground shadow-sm"><CircleCheck className="size-3.5 text-primary" aria-hidden="true" />Báo Khánh Hòa</div>
+            <img src={aedHeroImage} alt="Tủ AED được đặt tại khu vực công cộng" className="h-auto max-h-[24rem] w-full object-cover" />
+            <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-border bg-surface/95 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground shadow-sm"><CircleCheck className="size-3.5 text-primary" aria-hidden="true" />GoldenMinutes</div>
           </div>
           <div className="relative flex flex-col gap-6 bg-surface p-5 sm:gap-8 sm:p-8">
             <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted sm:tracking-[0.18em]"><span>Chuẩn bị sẵn sàng</span></div>
             <div className="max-w-2xl space-y-3 sm:space-y-4">
               <p className="text-xs font-semibold text-primary">GOLDENMINUTES</p>
-              <p className="text-sm font-medium leading-5 text-muted">Cộng đồng biết cách cứu người</p>
+              <p className="text-sm font-medium leading-5 text-muted">Sẵn sàng ở mọi tỉnh, thành</p>
               <h1 className="max-w-xl text-3xl font-bold leading-tight text-foreground sm:text-6xl sm:leading-[1.08]">Mỗi phút đều có ý nghĩa.</h1>
-              <p className="max-w-xl text-sm leading-6 text-muted sm:text-base sm:leading-7">Học kỹ năng sơ cứu thật. Nhìn thấy những người đang hành động thật. Sẵn sàng trước khi tình huống khẩn cấp xảy ra.</p>
+              <p className="max-w-xl text-sm leading-6 text-muted sm:text-base sm:leading-7">Học kỹ năng sơ cứu, khám phá điểm hỗ trợ quanh bạn và sẵn sàng trước khi tình huống khẩn cấp xảy ra.</p>
               <Link to="/training" className="mt-2 inline-flex min-h-12 w-fit items-center gap-2 rounded-full bg-[#e31917] px-5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5"><PlayCircle className="size-5 shrink-0" aria-hidden="true" /><span className="whitespace-nowrap">Bắt đầu luyện ngay</span></Link>
             </div>
           </div>
         </section>
-        <p className="text-xs text-muted">Thông tin tham khảo: {HOME_HERO.sourceLabel}. Nội dung cốt lõi của app vẫn dùng được offline.</p>
+        <p className="text-xs text-muted">Kiến thức sơ cứu và danh bạ hỗ trợ được tổ chức để người dùng dễ tra cứu trên toàn quốc.</p>
 
         {/* Visual module dashboard */}
         <section aria-labelledby="module-dashboard-title" className="space-y-4">
@@ -61,6 +63,8 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
 
         <AedOverviewSection />
 
+        <NationwideCoverageSection />
+
         {/* Research-inspired modules */}
         <section aria-labelledby="research-modules-title" className="space-y-4">
           <div className="flex items-end justify-between gap-3">
@@ -79,7 +83,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
             <ShieldAlert className="size-6 shrink-0 flex-shrink-0" aria-hidden="true" />
             <div className="flex flex-col gap-1">
               <h2 className="text-lg font-bold">Có người cần cấp cứu ngay?</h2>
-              <p className="text-sm leading-relaxed opacity-95">Gọi <strong>115</strong> ngay và làm theo hướng dẫn của t��ng đài.</p>
+              <p className="text-sm leading-relaxed opacity-95">Gọi <strong>115</strong> ngay và làm theo hướng dẫn của tổng đài.</p>
             </div>
           </div>
           <button type="button" onClick={onOpenCall115} className="flex h-14 items-center justify-center gap-2 self-start rounded-xl bg-surface px-6 font-bold text-primary hover:bg-background transition-colors">
@@ -97,25 +101,6 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
                 <Icon className="size-6 text-primary" aria-hidden="true" />
                 <span className="text-xs font-medium text-center leading-tight sm:text-sm">{label}</span>
               </button>
-            ))}
-          </div>
-        </section>
-
-        {/* Documentary filmstrip */}
-        <section className="flex flex-col gap-4" aria-labelledby="stories-title">
-          <div className="flex items-end justify-between gap-3">
-            <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Từ Khánh Hòa</p><h2 id="stories-title" className="mt-1 text-2xl font-bold">Những người đang chuẩn bị</h2></div>
-            <span className="text-xs text-muted">Vuốt để xem</span>
-          </div>
-          <div className="filmstrip -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 scrollbar-none sm:-mx-6 sm:px-6">
-            {HOME_PHOTO_STORIES.map((story) => (
-              <article key={story.image} className="film-card min-w-[84vw] snap-center overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_12px_28px_rgba(23,33,43,0.07)] sm:min-w-[31rem]">
-                <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#f4f7f8]">
-                  <img src={story.image} alt={story.alt} className="film-card-image h-full w-full object-cover object-center" />
-                  <span className="absolute left-3 top-3 rounded-full border border-border bg-surface/95 px-3 py-1 text-[11px] font-semibold text-foreground shadow-sm">Báo Khánh Hòa</span>
-                </div>
-                <div className="flex flex-col gap-2 p-4"><h3 className="text-lg font-bold">{story.title}</h3><p className="text-xs text-muted">Tư liệu minh họa cộng đồng: {story.source}. Nội dung này chỉ giúp tạo ngữ cảnh học tập.</p></div>
-              </article>
             ))}
           </div>
         </section>

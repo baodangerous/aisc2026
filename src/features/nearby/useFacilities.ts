@@ -85,15 +85,18 @@ async function loadLiveEmergencyResources(): Promise<CareFacility[]> {
 export type FacilityLoadResult = { facilities: CareFacility[]; liveError: boolean };
 
 async function loadFacilities(): Promise<FacilityLoadResult> {
+  if (useFixtures) {
+    const { FIXTURE_FACILITIES } = await import('../../data/demo/facilities');
+    return { facilities: FIXTURE_FACILITIES, liveError: false };
+  }
+
   const [medical, emergency] = await Promise.allSettled([loadLiveMedicalFacilities(), loadLiveEmergencyResources()]);
   const live = [
     ...(medical.status === 'fulfilled' ? medical.value : []),
     ...(emergency.status === 'fulfilled' ? emergency.value : []),
   ];
   const liveError = medical.status === 'rejected' || emergency.status === 'rejected';
-  if (!useFixtures) return { facilities: live, liveError };
-  const fixtures = (await import('../../data/demo/facilities')).FIXTURE_FACILITIES;
-  return { facilities: [...live, ...fixtures], liveError: liveError && live.length === 0 && fixtures.length === 0 };
+  return { facilities: live, liveError };
 }
 
 export function useFacilities() {
