@@ -170,11 +170,17 @@ export const OrganizationDashboardView: React.FC = () => {
     setMemberCount(count ?? 0);
     const activeOrgId = selectedOrg?.id && orgIds.includes(selectedOrg.id) ? selectedOrg.id : nextOrgs[0]?.id ?? orgIds[0];
     if (activeOrgId) {
-      const { data: sessionRows } = await supabase
-        .from('training_sessions')
-        .select('status,consent_to_organization_analytics,metrics')
-        .eq('organization_id', activeOrgId)
-        .eq('consent_to_organization_analytics', true);
+      const [{ data: sessionRows }, { count: incidentCount }] = await Promise.all([
+        supabase
+          .from('training_sessions')
+          .select('status,consent_to_organization_analytics,metrics')
+          .eq('organization_id', activeOrgId)
+          .eq('consent_to_organization_analytics', true),
+        supabase
+          .from('incidents')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', activeOrgId),
+      ]);
       const completedRows = (sessionRows ?? []).filter((row) => row.status === 'completed');
       const adiValues = completedRows
         .map((row) => Number((row.metrics as Record<string, unknown> | null)?.adi ?? (row.metrics as Record<string, unknown> | null)?.ADI))
@@ -188,7 +194,7 @@ export const OrganizationDashboardView: React.FC = () => {
         consented: sessionRows?.length ?? 0,
         adiMedian: adiValues.length ? adiValues[Math.floor(adiValues.length / 2)] : null,
         mroRate: mroValues.length ? mroValues.filter(Boolean).length / mroValues.length : null,
-        incidents: 0,
+        incidents: incidentCount ?? 0,
         medianRecognitionSeconds: null,
       });
     }
@@ -421,15 +427,19 @@ export const OrganizationDashboardView: React.FC = () => {
       {notice && <p role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{notice}</p>}
 
       {loading ? (
-        <div className="flex min-h-64 items-center justify-center text-muted">Đang tải không gian quản lý…</div>
+        <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-muted">
+          <div className="size-9 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" aria-hidden="true" />
+          <span>Đang tải dữ liệu tổ chức từ Supabase…</span>
+        </div>
       ) : (
         <>
           {/* Top KPI Cards */}
           <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <article className="rounded-2xl border border-border bg-surface p-5 shadow-2xs">
+            <article className="dashboard-kpi rounded-2xl border border-border bg-surface p-5 shadow-2xs">
+              <span className="dashboard-kpi__bar bg-blue-600" aria-hidden="true" />
               <Activity className="size-5 text-primary" />
               <p className="mt-4 text-3xl font-extrabold text-foreground">
-                {dataMode === 'synthetic' ? '2.000' : '40'}
+                {dataMode === 'synthetic' ? analytics.incidents.toLocaleString('vi-VN') : analytics.completed.toLocaleString('vi-VN')}
               </p>
               <p className="mt-1 text-sm text-muted">
                 {dataMode === 'synthetic' ? 'Tổng sự cố mô phỏng (90 ngày)' : 'Phiên thực nghiệm (Phase 3B)'}
@@ -439,7 +449,7 @@ export const OrganizationDashboardView: React.FC = () => {
             <article className="rounded-2xl border border-border bg-surface p-5 shadow-2xs">
               <TrendingDown className="size-5 text-emerald-600" />
               <p className="mt-4 text-3xl font-extrabold text-emerald-700">
-                {dataMode === 'synthetic' ? '65s' : '12.5s'}
+                {analytics.adiMedian == null ? '—' : `${analytics.adiMedian.toFixed(1)}s`}
               </p>
               <p className="mt-1 text-sm text-muted">ADI Trung vị (Độ trễ có thể phòng tránh)</p>
             </article>
@@ -447,7 +457,7 @@ export const OrganizationDashboardView: React.FC = () => {
             <article className="rounded-2xl border border-border bg-surface p-5 shadow-2xs">
               <AlertTriangle className="size-5 text-amber-600" />
               <p className="mt-4 text-3xl font-extrabold text-amber-700">
-                {dataMode === 'synthetic' ? '74.7%' : '2.5%'}
+                {analytics.mroRate == null ? '—' : `${(analytics.mroRate * 100).toFixed(1)}%`}
               </p>
               <p className="mt-1 text-sm text-muted">Tỷ lệ nguy cơ lọt thời gian vàng (MRO)</p>
             </article>
@@ -458,7 +468,7 @@ export const OrganizationDashboardView: React.FC = () => {
                 {dataMode === 'synthetic' ? '17' : '82.8/100'}
               </p>
               <p className="mt-1 text-sm text-muted">
-                {dataMode === 'synthetic' ? 'Phường/Quận trọng điểm TP.HCM' : 'Điểm khả dụng SUS chuẩn (Hạng A)'}
+                {memberCount.toLocaleString('vi-VN')} thành viên có quyền truy cập
               </p>
             </article>
           </section>
