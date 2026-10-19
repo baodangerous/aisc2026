@@ -117,7 +117,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const message = error.message.toLowerCase();
       if (message.includes('already') || message.includes('registered')) throw new Error('Email này đã được đăng ký. Hãy đăng nhập hoặc dùng email khác.');
       if (message.includes('password')) throw new Error('Mật khẩu cần tối thiểu 8 ký tự và đủ an toàn.');
-      throw new Error('Chưa thể tạo tài khoản. Vui lòng thử lại sau.');
+      if (message.includes('email address not authorized')) throw new Error('Email mặc định của Supabase hiện chỉ gửi thư xác nhận đến email thành viên dự án. Hãy cấu hình SMTP riêng trong Authentication > SMTP Settings để gửi đến người dùng khác.');
+      if (message.includes('rate limit') || message.includes('too many requests')) throw new Error('Supabase đang giới hạn email xác nhận. Hãy chờ rồi thử lại, hoặc cấu hình SMTP riêng trong Authentication > SMTP Settings.');
+      if ((message.includes('email provider') && (message.includes('disabled') || message.includes('not enabled'))) || message.includes('signups not allowed')) throw new Error('Đăng ký email đang bị tắt. Hãy bật Email provider và cho phép đăng ký trong Supabase Authentication settings.');
+      throw new Error(`Supabase chưa tạo được tài khoản: ${error.message}`);
     }
     if (!data.session) throw new Error('Tạo tài khoản thành công. Hãy kiểm tra email xác nhận rồi đăng nhập.');
   };
@@ -199,4 +202,3 @@ async function syncGuestSessionsToUser(uid: string) {
     } catch { /* Retry on the next authenticated session. */ }
   }
 }
-
