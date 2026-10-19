@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BookOpen, Search } from 'lucide-react';
 import { searchApprovedResources, getLearningResourceBySlugOrId } from '../../content/curatedLearningCatalog';
@@ -7,7 +7,8 @@ import { LearningResourceCard } from './LearningResourceCard';
 
 export function LibraryView() {
   const [params, setParams] = useSearchParams();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => params.get('q') || '');
+  useEffect(() => { setQuery(params.get('q') || ''); }, [params]);
   const resources = useMemo(() => searchApprovedResources(query), [query]);
   const selected = getLearningResourceBySlugOrId(params.get('lesson') || '') || null;
   return (

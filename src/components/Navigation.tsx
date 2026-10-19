@@ -18,8 +18,10 @@ import {
   Building2,
   ShoppingBag,
   Video,
+  Search,
 } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
+import { GlobalSearch } from './GlobalSearch';
 
 interface NavigationProps {
   onOpenCall115: () => void;
@@ -31,11 +33,19 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
   const navigate = useNavigate();
   const { user, isGuest, logout } = useAuth();
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [logoutError, setLogoutError] = useState('');
   const handleLogout = async () => {
     try { await logout(); setIsMoreMenuOpen(false); setLogoutError(''); }
     catch { setLogoutError('Chưa thể đăng xuất. Vui lòng thử lại.'); }
   };
+  React.useEffect(() => {
+    const onShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setIsSearchOpen(true); }
+    };
+    window.addEventListener('keydown', onShortcut);
+    return () => window.removeEventListener('keydown', onShortcut);
+  }, []);
 
   const mainDesktopLinks = [
     { path: '/', label: 'Trang chủ' },
@@ -99,6 +109,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
 
           {/* Zone 3: Primary Actions (Single primary 115 action + auth trigger) */}
           <div className="flex items-center gap-2 shrink-0">
+            <button type="button" onClick={() => setIsSearchOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-300 bg-white px-2.5 text-sm font-semibold text-slate-800 transition hover:border-blue-800 hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-800 sm:px-3" aria-label="Tìm kiếm toàn ứng dụng"><Search className="size-4 text-blue-900"/><span className="hidden lg:inline">Tìm kiếm</span><kbd className="hidden rounded border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 xl:inline">⌘K</kbd></button>
             {/* Quick 115 Emergency Trigger */}
             <button
               type="button"
@@ -155,6 +166,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
       </header>
 
       {logoutError && <p role="alert" className="bg-surface p-3 text-sm text-primary">{logoutError}</p>}
+      {isSearchOpen && <GlobalSearch onClose={() => setIsSearchOpen(false)} />}
       {/* Mobile Bottom Navigation Bar (5 items, safe-area padded, 44px+ hitboxes) */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 safe-area-pb shadow-[0_-4px_24px_rgba(16,24,40,0.06)]"

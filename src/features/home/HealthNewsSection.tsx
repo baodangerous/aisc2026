@@ -8,7 +8,7 @@ export function HealthNewsSection() {
   const [featured, ...rest] = HEALTH_NEWS;
 
   return (
-    <section aria-labelledby="health-news-title" className="flex flex-col gap-4">
+    <section id="health-news-title" aria-labelledby="health-news-title" className="flex flex-col gap-4">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Hướng dẫn sức khỏe</p>
         <h2 id="health-news-title" className="mt-1 text-2xl font-bold">Kiến thức sơ cứu cần nhớ</h2>

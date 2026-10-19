@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Check, ImagePlus, Package, Plus, Search, ShoppingBag, Store, Trash2, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../services/supabase/client';
 import { useAuth } from '../auth/AuthContext';
 
@@ -16,6 +16,7 @@ const PRODUCT_BUCKET = 'store-products';
 
 export const StoreView: React.FC = () => {
   const { authUser, isAuthenticated } = useAuth();
+  const [searchParams] = useSearchParams();
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [managedProducts, setManagedProducts] = useState<Product[]>([]);
@@ -31,7 +32,7 @@ export const StoreView: React.FC = () => {
   const [brand, setBrand] = useState({ brand_name: '', description: '' });
   const [product, setProduct] = useState({ name: '', sku: '', short_description: '', description: '', category_slug: '', price: '', stock: '', image_alt: '' });
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => searchParams.get('q') || '');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [sort, setSort] = useState('featured');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -81,6 +82,7 @@ export const StoreView: React.FC = () => {
   };
 
   useEffect(() => { void load(); }, [authUser?.id]);
+  useEffect(() => { setQuery(searchParams.get('q') || ''); }, [searchParams]);
   useEffect(() => {
     const current = ownedStores.find((s) => s.organization_id === selectedOrg);
     setBrand({ brand_name: current?.brand_name ?? '', description: current?.description ?? '' });

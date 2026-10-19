@@ -61,6 +61,7 @@ GoldenMinutes was built for AISC 2026 to close that gap. People rehearse short, 
 | **Results and metrics** | Avoidable Delay Index (ADI), per-step timing, and personalised feedback after each session. |
 | **Nearby care** | Map of hospitals and public AED locations. Falls back to an offline directory when no Maps key is set. |
 | **Learning library** | Curated lessons on CPR, bleeding control, AED access, and the FAST stroke check. |
+| **App-wide search** | Search learning resources, practice scenarios, nearby facilities, published products, and community posts from the navigation bar; use `⌘K` / `Ctrl+K` to open it. Library, Nearby, Store, and Community also provide focused search. |
 | **Marketplace** | Organization storefronts, categorized first-aid products and training programs, photo uploads, inventory, carts, and order requests. |
 | **Organization controls** | Only active organization owners/admins can publish storefronts, manage catalog items, upload product photos, and process paid orders. |
 | **Offline-friendly** | Sessions are cached in IndexedDB and synced once the connection returns. |

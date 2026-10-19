@@ -39,11 +39,12 @@ export function NearbyCareView() {
 
   useEffect(() => {
     const province = searchParams.get('province');
-    if (!province) return;
-    const match = findProvince(province);
-    if (!match) return;
-    setOrigin({ coords: { lat: match.lat, lng: match.lng }, source: 'province', label: match.name });
-    setQuery('');
+    const search = searchParams.get('q');
+    if (province) {
+      const match = findProvince(province);
+      if (match) { setOrigin({ coords: { lat: match.lat, lng: match.lng }, source: 'province', label: match.name }); setQuery(''); return; }
+    }
+    if (search) setQuery(search);
   }, [searchParams]);
 
   const requestLocation = () => {
