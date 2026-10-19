@@ -70,7 +70,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
               <Heart className="w-[18px] h-[18px] fill-current" aria-hidden="true" />
             </div>
             <span className="hidden min-[340px]:inline font-extrabold text-base sm:text-lg tracking-tight text-slate-900 whitespace-nowrap truncate">
-              Golden<span className="text-rose-600">Minutes</span>
+              <span className="text-amber-500">Golden</span><span className="text-rose-600">Minutes</span>
             </span>
           </Link>
 
