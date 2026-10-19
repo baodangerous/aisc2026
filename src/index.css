@@ -183,32 +183,41 @@
   .bg-indigo-600, .bg-indigo-700 { background-color: var(--color-primary) !important; }
   .bg-blue-600 { background-color: #155eef !important; }
   .bg-blue-700 { background-color: #0b4acb !important; }
-  .bg-rose-600 { background-color: #c62828 !important; }
-  .bg-rose-700 { background-color: #a61b1b !important; }
+  .bg-rose-600, .bg-red-600 { background-color: #c62828 !important; }
+  .bg-rose-700, .bg-red-700 { background-color: #a61b1b !important; }
   .bg-blue-50 { background-color: #eff6ff !important; }
-  .bg-rose-50 { background-color: #fff1f2 !important; }
+  .bg-rose-50, .bg-red-50 { background-color: #fff1f2 !important; }
   .text-blue-600, .text-blue-700 { color: #155eef !important; }
   .text-blue-800 { color: #123a8c !important; }
-  .text-rose-500, .text-rose-600, .text-rose-700 { color: #b42318 !important; }
-  .text-rose-800, .text-rose-900 { color: #8f1413 !important; }
+  .text-rose-500, .text-rose-600, .text-rose-700,
+  .text-red-500, .text-red-600, .text-red-700 { color: #b42318 !important; }
+  .text-rose-800, .text-rose-900, .text-red-800, .text-red-900 { color: #8f1413 !important; }
   .text-emerald-600, .text-emerald-700 { color: #15803d !important; }
   .border-blue-600, .border-blue-500 { border-color: #155eef !important; }
-  .border-rose-600 { border-color: #c62828 !important; }
+  .border-rose-600, .border-red-600 { border-color: #c62828 !important; }
   .border-blue-200 { border-color: #b8d2ff !important; }
-  .border-rose-200 { border-color: #fecaca !important; }
+  .border-rose-200, .border-red-200 { border-color: #fecaca !important; }
 
   button.bg-blue-600, a.bg-blue-600 {
     background-image: linear-gradient(135deg, #155eef 0%, #0b4acb 100%);
     box-shadow: 0 8px 18px color-mix(in srgb, #155eef 22%, transparent);
   }
-  button.bg-rose-600, a.bg-rose-600 {
-    background-image: linear-gradient(135deg, #c62828 0%, #a61b1b 100%);
-    box-shadow: 0 8px 18px color-mix(in srgb, #c62828 22%, transparent);
+  button.bg-rose-600, a.bg-rose-600, button.bg-red-600, a.bg-red-600 {
+    background-image: linear-gradient(135deg, #d92d20 0%, #b42318 52%, #8f1413 100%);
+    box-shadow: 0 8px 18px color-mix(in srgb, #b42318 22%, transparent);
   }
 }
 
 .brand-gradient {
-  background: linear-gradient(135deg, #c92827 0%, #9f1f20 100%);
+  background: linear-gradient(135deg, #d92d20 0%, #b42318 55%, #8f1413 100%);
+}
+
+.brand-wordmark {
+  background: linear-gradient(105deg, #9a6700 0%, #d49a00 28%, #f4c542 52%, #b77900 78%, #8a5a00 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  text-shadow: 0 1px 10px rgba(212, 154, 0, 0.16);
 }
 
 .editorial-surface {
