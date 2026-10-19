@@ -7,7 +7,7 @@ const authFlags = import.meta.env as ImportMetaEnv & {
   readonly VITE_SUPABASE_PHONE_AUTH_ENABLED?: string;
 };
 const googleAuthEnabled = authFlags.VITE_SUPABASE_GOOGLE_AUTH_ENABLED === 'true';
-const phoneAuthEnabled = authFlags.VITE_SUPABASE_PHONE_AUTH_ENABLED === 'true';
+const phoneAuthEnabled = authFlags.VITE_SUPABASE_PHONE_AUTH_ENABLED !== 'false';
 
 export function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { loginWithGoogle, signInWithPassword, signUpWithPassword, sendPhoneOtp, verifyPhoneOtp, isSupabaseReady } = useAuth();
@@ -43,14 +43,28 @@ export function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
   };
   const requestOtp = async () => {
     setPending(true); setError('');
-    try { await sendPhoneOtp(phone); setOtpSent(true); }
-    catch (error: unknown) { setError(error instanceof Error ? error.message : 'Chưa thể gửi mã xác nhận.'); }
+    try { await sendPhoneOtp(phone); setOtp(''); setOtpSent(true); }
+    catch (error: unknown) {
+      const message = error instanceof Error ? error.message.toLowerCase() : '';
+      if (message.includes('provider') && (message.includes('unsupported') || message.includes('not enabled') || message.includes('disabled'))) {
+        setError('Đăng nhập bằng số điện thoại chưa được bật trong Supabase. Hãy bật Phone provider và cấu hình nhà cung cấp SMS.');
+      } else if (message.includes('rate limit') || message.includes('too many')) {
+        setError('Bạn yêu cầu mã quá nhiều lần. Vui lòng chờ một lúc rồi thử lại.');
+      } else {
+        setError(error instanceof Error ? error.message : 'Chưa thể gửi mã xác nhận.');
+      }
+    }
     finally { setPending(false); }
   };
   const confirmOtp = async () => {
     setPending(true); setError('');
     try { await verifyPhoneOtp(phone, otp); onClose(); }
-    catch (error: unknown) { setError(error instanceof Error ? error.message : 'Mã xác nhận không đúng hoặc đã hết hạn.'); }
+    catch (error: unknown) {
+      const message = error instanceof Error ? error.message.toLowerCase() : '';
+      if (message.includes('expired')) setError('Mã OTP đã hết hạn. Hãy yêu cầu gửi mã mới.');
+      else if (message.includes('rate limit') || message.includes('too many')) setError('Bạn thử quá nhiều lần. Vui lòng chờ một lúc rồi thử lại.');
+      else setError('Mã OTP không đúng hoặc đã hết hạn. Hãy kiểm tra mã SMS rồi thử lại.');
+    }
     finally { setPending(false); }
   };
   return (
@@ -72,9 +86,10 @@ export function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
           <button type="button" onClick={() => { setIsSignUp((value) => !value); setError(''); }} className="text-left text-sm font-semibold text-primary underline underline-offset-4">{isSignUp ? 'Đã có tài khoản? Đăng nhập' : 'Chưa có tài khoản? Tạo tài khoản'}</button>
           {phoneAuthEnabled && <>
             <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-border" />hoặc<span className="h-px flex-1 bg-border" /></div>
+            <div className="flex flex-col gap-1"><h3 className="text-sm font-semibold">Đăng nhập hoặc tạo tài khoản bằng số điện thoại</h3><p className="text-sm leading-relaxed text-muted">Nhập số điện thoại Việt Nam. Nếu chưa có tài khoản, tài khoản sẽ được tạo sau khi xác nhận OTP.</p></div>
             <label className="text-sm font-semibold" htmlFor="phone-login">Số điện thoại</label>
-            <input id="phone-login" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+84…" className="min-h-12 rounded-xl border border-border bg-background px-3 outline-none focus:border-primary" />
-            {!otpSent ? <button type="button" disabled={pending || !phone} onClick={requestOtp} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 font-semibold disabled:opacity-50"><Smartphone className="size-5" aria-hidden="true" />Gửi mã SMS</button> : <><label className="text-sm font-semibold" htmlFor="phone-otp">Mã xác nhận</label><input id="phone-otp" type="text" inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(event) => setOtp(event.target.value)} placeholder="123456" className="min-h-12 rounded-xl border border-border bg-background px-3 outline-none focus:border-primary" /><button type="button" disabled={pending || otp.length < 4} onClick={confirmOtp} className="min-h-12 rounded-xl bg-primary px-4 font-semibold text-primary-foreground disabled:opacity-50">Xác nhận số điện thoại</button></>}
+            <input id="phone-login" type="tel" inputMode="tel" autoComplete="tel" value={phone} disabled={pending || otpSent} onChange={(event) => setPhone(event.target.value)} placeholder="0901234567 hoặc +84901234567" className="min-h-12 rounded-xl border border-border bg-background px-3 outline-none focus:border-primary disabled:opacity-60" />
+            {!otpSent ? <button type="button" disabled={pending || !phone.trim()} onClick={requestOtp} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 font-semibold disabled:opacity-50"><Smartphone className="size-5" aria-hidden="true" />{pending ? 'Đang gửi mã…' : 'Gửi mã OTP qua SMS'}</button> : <><label className="text-sm font-semibold" htmlFor="phone-otp">Mã OTP</label><input id="phone-otp" type="text" inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="Nhập mã 6 chữ số" className="min-h-12 rounded-xl border border-border bg-background px-3 outline-none focus:border-primary" /><button type="button" disabled={pending || otp.length !== 6} onClick={confirmOtp} className="min-h-12 rounded-xl bg-primary px-4 font-semibold text-primary-foreground disabled:opacity-50">{pending ? 'Đang xác nhận…' : 'Xác nhận và tiếp tục'}</button><button type="button" disabled={pending} onClick={() => { setOtpSent(false); setOtp(''); setError(''); }} className="text-left text-sm font-semibold text-primary underline underline-offset-4">Đổi số điện thoại</button></>}
           </>}
         </div> : <p role="status" className="text-sm leading-relaxed text-muted">Dịch vụ tài khoản chưa được kết nối. Bạn vẫn có thể xem học liệu và gọi 115.</p>}
         <p className="text-sm leading-relaxed text-muted">Không cần đăng nhập để mở cuộc gọi khẩn cấp.</p>

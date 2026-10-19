@@ -113,6 +113,8 @@ supabase db push
 
 Alternatively, run the migration SQL in order from `supabase/migrations/` in the Supabase SQL editor. Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` for local development. Do not put the service-role key in a `VITE_` variable or browser code.
 
+Phone sign-in and account creation use Supabase Auth SMS OTP. Enable the Phone provider under Authentication settings and configure an SMS provider in Supabase before requesting real SMS codes. New phone numbers are registered when their OTP is verified. Set `VITE_SUPABASE_PHONE_AUTH_ENABLED=false` only if you want to hide the phone option.
+
 The migration seeds a public `GoldenMinutes Safety` catalog but does not assign organization ownership to an arbitrary auth user. To manage it, an administrator must add the signed-in user to `organization_members` for organization `4f79f7ac-8b92-4e02-98d4-3526c8f66701` with role `owner` or `admin`. Never grant those roles to a public or unverified account. The storefront can create pending order requests; no payment provider, tax invoice, shipping provider, or refund flow is configured in this repository, and pending orders do not collect money.
 
 ### Scripts
