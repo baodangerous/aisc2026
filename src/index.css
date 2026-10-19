@@ -12,12 +12,16 @@
   --color-background: #f4f7f8;
   --color-surface: #ffffff;
   --color-foreground: #17212b;
-  --color-muted: #5f6f7b;
-  --color-primary: #c92827;
+  --color-muted: #475569;
+  --color-primary: #155eef;
   --color-primary-foreground: #ffffff;
-  --color-primary-dark: #b31312;
-  --color-primary-soft: #fff1f0;
-  --color-border: color-mix(in srgb, #667085 22%, #ffffff);
+  --color-primary-dark: #0b4acb;
+  --color-primary-soft: #eff6ff;
+  --color-success: #15803d;
+  --color-success-soft: #f0fdf4;
+  --color-danger: #c62828;
+  --color-danger-soft: #fff1f2;
+  --color-border: color-mix(in srgb, #334155 24%, #ffffff);
   --font-sans: 'DejaVu Sans', Arial, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
@@ -173,23 +177,32 @@
   background: #98A2B3;
 }
 
-/* GoldenMinutes brand layer: one red system across actions, navigation and status UI. */
+/* GoldenMinutes semantic color layer: blue for actions/info, green for success, red for emergencies. */
 @layer utilities {
   .bg-indigo-600, .bg-indigo-700 { background-color: var(--color-primary) !important; }
-  .bg-blue-600, .bg-rose-600 { background-color: #e31917 !important; }
-  [class~="hover:bg-blue-700"]:hover, [class~="hover:bg-rose-700"]:hover { background-color: #b31312 !important; }
-  .bg-blue-50, .bg-rose-50 { background-color: #fff1f0 !important; }
-  [class~="bg-blue-50/60"] { background-color: color-mix(in srgb, #fff1f0 60%, transparent) !important; }
-  .text-blue-600, .text-blue-700, .text-rose-500, .text-rose-600, .text-rose-700 { color: #e31917 !important; }
-  .text-blue-800, .text-rose-800, .text-rose-900 { color: #8f1413 !important; }
-  .border-blue-600, .border-rose-600, .border-blue-500 { border-color: #e31917 !important; }
-  .border-blue-200, .border-rose-200 { border-color: color-mix(in srgb, #e31917 25%, white) !important; }
-  [class~="shadow-blue-600/30"], [class~="shadow-rose-600/30"] { --tw-shadow-color: color-mix(in srgb, #e31917 30%, transparent) !important; }
+  .bg-blue-600 { background-color: #155eef !important; }
+  .bg-blue-700 { background-color: #0b4acb !important; }
+  .bg-rose-600 { background-color: #c62828 !important; }
+  .bg-rose-700 { background-color: #a61b1b !important; }
+  .bg-blue-50 { background-color: #eff6ff !important; }
+  .bg-rose-50 { background-color: #fff1f2 !important; }
+  .text-blue-600, .text-blue-700 { color: #155eef !important; }
+  .text-blue-800 { color: #123a8c !important; }
+  .text-rose-500, .text-rose-600, .text-rose-700 { color: #b42318 !important; }
+  .text-rose-800, .text-rose-900 { color: #8f1413 !important; }
+  .text-emerald-600, .text-emerald-700 { color: #15803d !important; }
+  .border-blue-600, .border-blue-500 { border-color: #155eef !important; }
+  .border-rose-600 { border-color: #c62828 !important; }
+  .border-blue-200 { border-color: #b8d2ff !important; }
+  .border-rose-200 { border-color: #fecaca !important; }
 
-  button.bg-blue-600, button.bg-rose-600,
-  a.bg-blue-600, a.bg-rose-600 {
-    background-image: linear-gradient(135deg, #e31917 0%, #b31312 100%);
-    box-shadow: 0 8px 18px color-mix(in srgb, #e31917 22%, transparent);
+  button.bg-blue-600, a.bg-blue-600 {
+    background-image: linear-gradient(135deg, #155eef 0%, #0b4acb 100%);
+    box-shadow: 0 8px 18px color-mix(in srgb, #155eef 22%, transparent);
+  }
+  button.bg-rose-600, a.bg-rose-600 {
+    background-image: linear-gradient(135deg, #c62828 0%, #a61b1b 100%);
+    box-shadow: 0 8px 18px color-mix(in srgb, #c62828 22%, transparent);
   }
 }
 

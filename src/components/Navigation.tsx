@@ -171,7 +171,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
                 to={item.path}
                 aria-current={isActive ? 'page' : undefined}
                 className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-1 select-none transition-colors active:opacity-70 ${
-                  isActive ? `${activeText} font-bold` : 'text-slate-500 font-medium'
+                  isActive ? `${activeText} font-bold` : 'text-slate-700 font-semibold'
                 }`}
               >
                 <span
