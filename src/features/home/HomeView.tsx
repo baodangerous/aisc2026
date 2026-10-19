@@ -4,6 +4,8 @@ import { REFERENCE_LEARNING_RESOURCES } from '../../content/curatedLearningCatal
 import { RESEARCH_MODULES, RESEARCH_NOTE } from '../../content/researchModules';
 import { HOME_EXERCISES, HOME_HERO, HOME_PHOTO_STORIES } from '../../config/homeContent';
 import { LearningResourceCard } from '../library/LearningResourceCard';
+import { HealthNewsSection } from './HealthNewsSection';
+import { AedOverviewSection } from './AedOverviewSection';
 
 export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
   const navigate = useNavigate();
@@ -55,6 +57,10 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
           </div>
         </section>
 
+        <HealthNewsSection />
+
+        <AedOverviewSection />
+
         {/* Research-inspired modules */}
         <section aria-labelledby="research-modules-title" className="space-y-4">
           <div className="flex items-end justify-between gap-3">
@@ -73,7 +79,7 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
             <ShieldAlert className="size-6 shrink-0 flex-shrink-0" aria-hidden="true" />
             <div className="flex flex-col gap-1">
               <h2 className="text-lg font-bold">Có người cần cấp cứu ngay?</h2>
-              <p className="text-sm leading-relaxed opacity-95">Gọi <strong>115</strong> ngay và làm theo hướng dẫn của tổng đài.</p>
+              <p className="text-sm leading-relaxed opacity-95">Gọi <strong>115</strong> ngay và làm theo hướng dẫn của t��ng đài.</p>
             </div>
           </div>
           <button type="button" onClick={onOpenCall115} className="flex h-14 items-center justify-center gap-2 self-start rounded-xl bg-surface px-6 font-bold text-primary hover:bg-background transition-colors">

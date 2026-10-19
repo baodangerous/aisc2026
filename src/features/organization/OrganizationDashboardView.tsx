@@ -378,7 +378,7 @@ export const OrganizationDashboardView: React.FC = () => {
             <p className="mt-1 leading-relaxed">
               {dataMode === 'synthetic'
                 ? 'Dữ liệu mô phỏng dựa trên phân phối Log-Normal để minh họa luồng ra quyết định can thiệp; không phản ánh ca cấp cứu thực tế ngoài đời.'
-                : 'Dữ liệu thực nghiệm thu thập từ người học tình nguyện có phiếu đồng thuận (Informed Consent theo NĐ 13/2023/NĐ-CP).'}
+                : 'Dữ liệu thực nghiệm thu thập từ ng��ời học tình nguyện có phiếu đồng thuận (Informed Consent theo NĐ 13/2023/NĐ-CP).'}
             </p>
           </div>
         </div>
@@ -476,10 +476,10 @@ export const OrganizationDashboardView: React.FC = () => {
             <article className="rounded-2xl border border-border bg-surface p-5 shadow-2xs">
               <ShieldCheck className="size-5 text-blue-600" />
               <p className="mt-4 text-3xl font-extrabold text-blue-700">
-                {dataMode === 'synthetic' ? '17' : '82.8/100'}
+                {activeSites.toLocaleString('vi-VN')}
               </p>
               <p className="mt-1 text-sm text-muted">
-                {memberCount.toLocaleString('vi-VN')} thành viên có quyền truy cập
+                Điểm an toàn đang hoạt động · {memberCount.toLocaleString('vi-VN')} thành viên
               </p>
             </article>
           </section>
