@@ -23,8 +23,8 @@ import { useAuth } from '../auth/AuthContext';
 import { supabase } from '../../services/supabase/client';
 
 type Organization = { id: string; name: string; organization_type: string; plan: string; status: string };
-type Site = { id: string; organization_id: string; name: string; site_type: string; address: string | null; province: string | null; status: string };
-type Partnership = { id: string; name: string; partnership_type: string; status: string };
+type Site = { id: string; organization_id: string; name: string; address: string | null; is_active: boolean };
+type Partnership = { id: string; name: string; agreement_type: string; status: string };
 
 interface RegionMetric {
   region_id: string;
@@ -90,6 +90,8 @@ export const OrganizationDashboardView: React.FC = () => {
   // Data view mode: Synthetic simulation vs Real pilot study
   const [dataMode, setDataMode] = useState<'synthetic' | 'pilot'>('synthetic');
   const [regionalMetrics, setRegionalMetrics] = useState<RegionMetric[]>([]);
+  const [regionalLoading, setRegionalLoading] = useState(true);
+  const [regionalError, setRegionalError] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('all');
 
   const [interventionForm, setInterventionForm] = useState({
@@ -134,7 +136,7 @@ export const OrganizationDashboardView: React.FC = () => {
   });
 
   const canManage = role === 'owner' || role === 'admin' || role === 'site_manager';
-  const activeSites = sites.filter((site) => site.status === 'active').length;
+  const activeSites = sites.filter((site) => site.is_active).length;
   const activePartnerships = partnerships.filter((item) => item.status === 'active').length;
 
   const loadData = async () => {
@@ -159,14 +161,19 @@ export const OrganizationDashboardView: React.FC = () => {
     }
     const [{ data: orgs }, { data: siteRows }, { data: partnershipRows }, { count }] = await Promise.all([
       supabase.from('organizations').select('id,name,organization_type,plan,status').in('id', orgIds).order('created_at'),
-      supabase.from('sites').select('id,organization_id,name,site_type,address,province,status').in('organization_id', orgIds).order('name'),
-      supabase.from('data_partnerships').select('id,name,partnership_type,status').in('organization_id', orgIds).order('created_at', { ascending: false }),
+      supabase.from('sites').select('id,organization_id,name,address,is_active').in('organization_id', orgIds).order('name'),
+      supabase.from('data_partnerships').select('id,partner_name,agreement_type,status').in('organization_id', orgIds).order('created_at', { ascending: false }),
       supabase.from('organization_members').select('user_id', { count: 'exact', head: true }).in('organization_id', orgIds),
     ]);
     const nextOrgs = (orgs ?? []) as Organization[];
     setOrganizations(nextOrgs);
     setSites((siteRows ?? []) as Site[]);
-    setPartnerships((partnershipRows ?? []) as Partnership[]);
+    setPartnerships((partnershipRows ?? []).map((item) => ({
+      id: item.id,
+      name: item.partner_name,
+      agreement_type: item.agreement_type,
+      status: item.status,
+    })) as Partnership[]);
     setMemberCount(count ?? 0);
     const activeOrgId = selectedOrg?.id && orgIds.includes(selectedOrg.id) ? selectedOrg.id : nextOrgs[0]?.id ?? orgIds[0];
     if (activeOrgId) {
@@ -210,14 +217,18 @@ export const OrganizationDashboardView: React.FC = () => {
   // Load Regional ADI Metrics
   useEffect(() => {
     const fetchRegional = async () => {
+      setRegionalLoading(true);
+      setRegionalError('');
       try {
         const res = await fetch('/api/analytics/regional-adi');
-        if (res.ok) {
-          const json = await res.json();
-          setRegionalMetrics(json.regions || []);
-        }
+        if (!res.ok) throw new Error(`regional analytics ${res.status}`);
+        const json = await res.json();
+        setRegionalMetrics(Array.isArray(json.regions) ? json.regions : []);
       } catch (err) {
         console.warn('Error fetching regional ADI:', err);
+        setRegionalError('Chưa thể tải phân tích theo khu vực. Vui lòng thử lại.');
+      } finally {
+        setRegionalLoading(false);
       }
     };
     void fetchRegional();
@@ -502,6 +513,13 @@ export const OrganizationDashboardView: React.FC = () => {
               </div>
             </div>
 
+            {regionalError && <p role="alert" className="border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-700">{regionalError}</p>}
+            {regionalLoading ? (
+              <div className="flex min-h-48 items-center justify-center gap-3 text-sm text-muted">
+                <div className="size-7 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" aria-hidden="true" />
+                Đang tải dữ liệu khu vực…
+              </div>
+            ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 border-b border-border text-xs uppercase font-bold text-muted">
@@ -546,7 +564,9 @@ export const OrganizationDashboardView: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+              {!filteredRegions.length && <p className="px-5 py-8 text-center text-sm text-muted">Chưa có dữ liệu khu vực đủ điều kiện hiển thị.</p>}
             </div>
+            )}
           </section>
 
           {/* Decision -> Action -> Measure Closed Loop (Interventions) */}
@@ -624,10 +644,10 @@ export const OrganizationDashboardView: React.FC = () => {
                     <div key={site.id} className="flex items-center justify-between gap-4 rounded-2xl border border-border p-4">
                       <div className="min-w-0">
                         <p className="font-bold">{site.name}</p>
-                        <p className="mt-1 truncate text-sm text-muted">{site.address || site.province || 'Chưa cập nhật địa chỉ'}</p>
+                        <p className="mt-1 truncate text-sm text-muted">{site.address || 'Chưa cập nhật địa chỉ'}</p>
                       </div>
-                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${site.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                        {site.status === 'active' ? 'Đang hoạt động' : 'Tạm dừng'}
+                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${site.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                        {site.is_active ? 'Đang hoạt động' : 'Tạm dừng'}
                       </span>
                     </div>
                   ))
