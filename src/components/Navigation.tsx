@@ -18,10 +18,8 @@ import {
   Building2,
   ShoppingBag,
   Video,
-  Search,
 } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
-import { GlobalSearch } from './GlobalSearch';
 
 interface NavigationProps {
   onOpenCall115: () => void;
@@ -33,29 +31,21 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
   const navigate = useNavigate();
   const { user, isGuest, logout } = useAuth();
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [logoutError, setLogoutError] = useState('');
   const handleLogout = async () => {
     try { await logout(); setIsMoreMenuOpen(false); setLogoutError(''); }
     catch { setLogoutError('Chưa thể đăng xuất. Vui lòng thử lại.'); }
   };
-  React.useEffect(() => {
-    const onShortcut = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setIsSearchOpen(true); }
-    };
-    window.addEventListener('keydown', onShortcut);
-    return () => window.removeEventListener('keydown', onShortcut);
-  }, []);
 
   const mainDesktopLinks = [
-    { path: '/', label: 'Trang chủ' },
-    { path: '/emergency', label: 'Tình huống thật' },
-    { path: '/training', label: 'Luyện 3 phút' },
-    { path: '/nearby', label: 'Gần bạn' },
-    { path: '/library', label: 'Thư viện' },
-    { path: '/community', label: 'Cộng đồng' },
-    { path: '/store', label: 'Cửa hàng' },
-    { path: '/dashboard', label: 'Tổ chức' },
+    { path: '/', label: 'Trang chủ', icon: Heart },
+    { path: '/emergency', label: 'Tình huống thật', icon: ShieldAlert },
+    { path: '/training', label: 'Luyện 3 phút', icon: Zap },
+    { path: '/nearby', label: 'Gần bạn', icon: MapPin },
+    { path: '/library', label: 'Thư viện', icon: BookOpen },
+    { path: '/community', label: 'Cộng đồng', icon: Users },
+    { path: '/store', label: 'Cửa hàng', icon: ShoppingBag },
+    { path: '/dashboard', label: 'Tổ chức', icon: Building2 },
   ];
 
   const bottomNavItems = [
@@ -64,6 +54,9 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
     { path: '/training', label: 'Luyện tập', icon: Zap },
     { path: '/nearby', label: 'Gần bạn', icon: MapPin },
     { path: '/library', label: 'Thư viện', icon: BookOpen },
+    { path: '/community', label: 'Cộng đồng', icon: Users },
+    { path: '/store', label: 'Cửa hàng', icon: ShoppingBag },
+    { path: '/dashboard', label: 'Tổ chức', icon: Building2 },
   ];
 
   const handleNavigateFromSheet = (path: string) => {
@@ -74,21 +67,21 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
   return (
     <>
       {/* Top Header Bar — Strict 3-zone contract, h-14 (56px) */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 text-slate-800 safe-area-pt">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-3 md:gap-8">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 text-slate-800 safe-area-pt">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-2 sm:gap-4">
           
           {/* Zone 1: Brand Title (Single text element wordmark, whitespace-nowrap shrink-0) */}
-          <Link to="/" className="flex items-center gap-2 min-w-0 group" aria-label="GoldenMinutes - Trang chủ">
+          <Link to="/" className="flex items-center gap-2 shrink-0 group" aria-label="GoldenMinutes - Trang chủ">
             <div className="brand-gradient w-9 h-9 rounded-xl text-white flex items-center justify-center shadow-sm shadow-rose-600/30 shrink-0 group-active:scale-95 transition-transform">
               <Heart className="w-[18px] h-[18px] fill-current" aria-hidden="true" />
             </div>
-            <span className="hidden min-[340px]:inline font-extrabold text-base sm:text-lg tracking-tight text-slate-900 whitespace-nowrap truncate">
+            <span className="hidden min-[340px]:inline font-extrabold text-[14px] min-[400px]:text-base sm:text-lg tracking-tight text-slate-900 whitespace-nowrap">
               <span className="brand-wordmark">GoldenMinutes</span>
             </span>
           </Link>
 
-          {/* Zone 2: Navigation Links (4-5 single-line links, whitespace-nowrap shrink-0) */}
-          <nav className="hidden md:flex items-center gap-6" aria-label="Điều hướng chính">
+          {/* Full navigation appears inline only when the viewport can fit it comfortably. */}
+          <nav className="hidden 2xl:flex items-center gap-4" aria-label="Điều hướng chính">
             {mainDesktopLinks.map((link) => {
               const isActive = location.pathname === link.path;
               return (
@@ -107,14 +100,13 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
             })}
           </nav>
 
-          {/* Zone 3: Primary Actions (Single primary 115 action + auth trigger) */}
+          {/* Keep only compact, high-priority actions in the header. */}
           <div className="flex items-center gap-2 shrink-0">
-            <button type="button" onClick={() => setIsSearchOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-300 bg-white px-2.5 text-sm font-semibold text-slate-800 transition hover:border-blue-800 hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-800 sm:px-3" aria-label="Tìm kiếm toàn ứng dụng"><Search className="size-4 text-blue-900"/><span className="hidden lg:inline">Tìm kiếm</span><kbd className="hidden rounded border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 xl:inline">⌘K</kbd></button>
             {/* Quick 115 Emergency Trigger */}
             <button
               type="button"
               onClick={onOpenCall115}
-              className="h-10 px-3 sm:px-4 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-[13px] font-bold rounded-full flex items-center gap-1.5 shadow-sm shadow-rose-600/30 transition-all cursor-pointer whitespace-nowrap shrink-0"
+              className="h-10 px-3 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-[13px] font-bold rounded-full flex items-center gap-1.5 shadow-sm shadow-rose-600/30 transition-all cursor-pointer whitespace-nowrap shrink-0"
               aria-label="Gọi cấp cứu 115 khẩn cấp"
             >
               <PhoneCall className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -163,16 +155,30 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
             </button>
           </div>
         </div>
+        {/* Tablet and compact desktop navigation: scroll horizontally instead of squeezing the brand. */}
+        <nav className="hidden md:flex 2xl:hidden max-w-7xl mx-auto px-4 sm:px-6 overflow-x-auto scrollbar-none border-t border-slate-100" aria-label="Điều hướng chính, cuộn ngang">
+          <div className="flex min-w-max items-center gap-1 py-1.5">
+            {mainDesktopLinks.map((link) => {
+              const Icon = link.icon;
+              const isActive = location.pathname === link.path;
+              return (
+                <Link key={link.path} to={link.path} aria-current={isActive ? 'page' : undefined}
+                  className={`flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-semibold whitespace-nowrap transition-colors ${isActive ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                  <Icon className="size-4" aria-hidden="true" />{link.label}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
       </header>
 
       {logoutError && <p role="alert" className="bg-surface p-3 text-sm text-primary">{logoutError}</p>}
-      {isSearchOpen && <GlobalSearch onClose={() => setIsSearchOpen(false)} />}
       {/* Mobile Bottom Navigation Bar (5 items, safe-area padded, 44px+ hitboxes) */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 safe-area-pb shadow-[0_-4px_24px_rgba(16,24,40,0.06)]"
-        aria-label="Điều hướng di động"
+        aria-label="Điều hướng di động, cuộn ngang để xem thêm"
       >
-        <div className="flex items-stretch justify-around h-16 px-0.5">
+        <div className="flex h-16 w-full items-stretch justify-start overflow-x-auto overscroll-x-contain scrollbar-none px-1">
           {bottomNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -185,7 +191,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
                 key={item.path}
                 to={item.path}
                 aria-current={isActive ? 'page' : undefined}
-                className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-1 select-none transition-colors active:opacity-70 ${
+                className={`min-w-[76px] shrink-0 flex flex-col items-center justify-center gap-1 px-1 select-none transition-colors active:opacity-70 ${
                   isActive ? `${activeText} font-bold` : 'text-slate-700 font-semibold'
                 }`}
               >
