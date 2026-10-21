@@ -38,15 +38,43 @@ export const ResultsView: React.FC = () => {
   const { data: session = null, isLoading: loading } = useSWR(
     !authLoading && sessionIdParam ? ['training-result', user?.uid || 'guest', sessionIdParam] : null,
     async () => {
+      // Demo/offline mode must be able to show the session saved by the training flow.
+      // Try the API for authenticated users first, then fall back to IndexedDB for every role.
       if (user) {
-        const { data: sessionData } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
-        const accessToken = sessionData.session?.access_token;
-        const response = await fetch(`/api/sessions/${encodeURIComponent(sessionIdParam!)}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
-        if (!response.ok) throw new Error('Không thể tải kết quả.');
-        return (await response.json()).session as TrainingSession;
+        try {
+          const { data: sessionData } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+          const accessToken = sessionData.session?.access_token;
+          const response = await fetch(`/api/sessions/${encodeURIComponent(sessionIdParam!)}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+          if (response.ok) {
+            const payload = await response.json();
+            if (payload?.session) return payload.session as TrainingSession;
+          }
+        } catch {
+          // Local session is the expected source in a standalone demo.
+        }
       }
-      const sessions = await getLocalSessions();
-      return sessions.find((item) => !item.ownerUid && (item.clientSessionId === sessionIdParam || item.sessionId === sessionIdParam)) || null;
+      // Prefer IndexedDB, then use the localStorage demo fallback written by TrainingSessionView.
+      try {
+        const sessions = await getLocalSessions();
+        const localMatch = sessions.find((item) =>
+          item.clientSessionId === sessionIdParam || item.sessionId === sessionIdParam
+        );
+        if (localMatch) return localMatch;
+      } catch {
+        // Continue to the demo fallback below.
+      }
+      try {
+        const stored = JSON.parse(localStorage.getItem('goldenminutes.demo.trainingSessions.v1') || '[]');
+        if (Array.isArray(stored)) {
+          const demoMatch = stored.find((item: TrainingSession) =>
+            item?.clientSessionId === sessionIdParam || item?.sessionId === sessionIdParam
+          );
+          if (demoMatch) return demoMatch as TrainingSession;
+        }
+      } catch {
+        // Corrupt or unavailable local demo storage should not crash the results route.
+      }
+      return null;
     }, { shouldRetryOnError: false }
   );
   const [activeLessonModal, setActiveLessonModal] = useState<MedicalLearningResource | null>(null);

@@ -286,8 +286,24 @@ export const TrainingSessionView: React.FC = () => {
       updatedAt: new Date().toISOString(),
     };
 
-    // 1. Save locally in IndexedDB first (Guarantee zero data loss offline)
-    await saveLocalSession(sessionData);
+    // 1. Persist locally before navigating. localStorage is a demo-safe fallback
+    // when IndexedDB is unavailable or blocked by the browser.
+    try {
+      await saveLocalSession(sessionData);
+    } catch (err) {
+      console.warn('IndexedDB unavailable; keeping the demo result in localStorage.', err);
+    }
+    try {
+      const storageKey = 'goldenminutes.demo.trainingSessions.v1';
+      const previous = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const savedSessions = Array.isArray(previous) ? previous : [];
+      const withoutCurrent = savedSessions.filter((item: TrainingSession) =>
+        item?.clientSessionId !== sessionData.clientSessionId && item?.sessionId !== sessionData.sessionId
+      );
+      localStorage.setItem(storageKey, JSON.stringify([...withoutCurrent, sessionData]));
+    } catch (err) {
+      console.warn('Could not persist demo training result in localStorage.', err);
+    }
 
     // 2. Try background sync to server
     try {
