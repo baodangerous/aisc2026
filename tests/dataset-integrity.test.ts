@@ -60,7 +60,10 @@ describe('Dataset v1 integrity and leakage gates', () => {
     for (const split of splits) {
       for (const row of split.rows) {
         const previousSplit = seenGroups.get(row.scenario_group_id);
-        expect(previousSplit, `Scenario group ${row.scenario_group_id} leaks between ${previousSplit} and ${split.name}`).toBeUndefined();
+        expect(
+          previousSplit === undefined || previousSplit === split.name,
+          `Scenario group ${row.scenario_group_id} leaks between ${previousSplit} and ${split.name}`,
+        ).toBe(true);
         seenGroups.set(row.scenario_group_id, split.name);
         expect(row.split).toBe(split.name);
       }
