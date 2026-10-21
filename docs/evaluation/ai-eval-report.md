@@ -1,6 +1,6 @@
 # Dataset Integrity & Evaluation Readiness
 
-**Generated:** 2026-10-21T13:25:00.000Z
+**Generated:** 2026-10-21T13:30:00.000Z
 **Dataset version:** v1.1.0
 **Holdout rows:** 10
 **Independent scenario groups:** 5
@@ -20,6 +20,10 @@
 - Scenario-group overlap by split: {"train":0,"validation":0,"test":0}
 - Exact-input leakage detected: false
 - Scenario-group overlap detected: false
+
+## Train/validation/test overlap (must be zero)
+- Pairwise overlap: {"train_vs_validation":{"exactInputRows":0,"scenarioGroupRows":0},"train_vs_test":{"exactInputRows":0,"scenarioGroupRows":0},"validation_vs_test":{"exactInputRows":0,"scenarioGroupRows":0}}
+- Training split leakage detected: false
 
 ## Why benchmark readiness is not granted
 - Holdout has fewer than 30 examples; this is a project guardrail, not a statistical guarantee.
