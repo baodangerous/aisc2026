@@ -26,7 +26,7 @@ External QA is **candidate data**, not approved medical knowledge. Importing it 
 
 ## Current dataset v1.1.0 split status
 
-The existing synthetic dataset has been repartitioned to remove overlap. The holdout currently contains 10 rows across 5 scenario groups; the train/validation/test corpus contains 172 rows across 21 groups. This fixes the known overlap for this version, but **the holdout is intentionally marked not ready for model performance claims** because it is small and all rows still require qualified review. Add newly authored or licensed independent scenario groups before expanding the holdout; do not copy or relabel existing train examples.
+The existing synthetic dataset has been repartitioned to remove overlap. The holdout currently contains 10 rows across 5 scenario groups; the train/validation/test corpus contains 172 rows across 21 groups (106 train, 33 validation, 33 test). This fixes the known overlap for this version, but **the holdout is intentionally marked not ready for model performance claims** because it is small and all rows still require qualified review. The 50 prior overlapping rows are preserved in `data/v1/excluded_leakage_samples.jsonl` for traceability only; they must never be fed into training, validation, test, or benchmark runs. Add newly authored or licensed independent scenario groups before expanding the holdout; do not copy or relabel existing train examples.
 
 ## Import behavior and limitations
 
