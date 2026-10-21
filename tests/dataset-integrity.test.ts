@@ -30,6 +30,7 @@ describe('Dataset v1 integrity and leakage gates', () => {
   const holdoutPath = path.join(dataDir, 'holdout_eval.jsonl');
   const allPath = path.join(dataDir, 'goldenminutes_v1_all.jsonl');
   const manifestPath = path.join(dataDir, 'manifest.json');
+  const excludedArchivePath = path.join(dataDir, 'excluded_leakage_samples.jsonl');
 
   it('all split files contain valid JSONL records with required identifiers', () => {
     for (const filePath of [trainPath, valPath, testPath, holdoutPath, allPath]) {
@@ -92,6 +93,8 @@ describe('Dataset v1 integrity and leakage gates', () => {
       checksumSha256: string;
       scenarioGroupsCount: number;
       holdoutScenarioGroupsCount: number;
+      excludedOverlapArchiveCount: number;
+      excludedOverlapArchivePath: string;
     };
     const train = readRows(trainPath);
     const validation = readRows(valPath);
@@ -107,6 +110,23 @@ describe('Dataset v1 integrity and leakage gates', () => {
     expect(manifest.checksumSha256).toBe(createHash('sha256').update(allText).digest('hex'));
     expect(manifest.scenarioGroupsCount).toBe(new Set(all.map((row) => row.scenario_group_id)).size);
     expect(manifest.holdoutScenarioGroupsCount).toBe(new Set(holdout.map((row) => row.scenario_group_id)).size);
+    expect(manifest.excludedOverlapArchivePath).toBe('data/v1/excluded_leakage_samples.jsonl');
+    expect(manifest.excludedOverlapArchiveCount).toBe(readRows(excludedArchivePath).length);
+  });
+
+
+  it('preserves removed overlapping records in a non-training archive', () => {
+    const archive = readRows(excludedArchivePath);
+    const holdout = readRows(holdoutPath);
+    const modelRows = [...readRows(trainPath), ...readRows(valPath), ...readRows(testPath)];
+    const modelIds = new Set(modelRows.map((row) => row.external_id));
+    const holdoutGroups = new Set(holdout.map((row) => row.scenario_group_id));
+
+    expect(archive).toHaveLength(50);
+    expect(archive.every((row) => row.split === 'excluded_leakage_archive')).toBe(true);
+    expect(archive.every((row) => row.exclusion_reason === 'scenario_group_reserved_for_holdout_v1_1_0')).toBe(true);
+    expect(archive.every((row) => holdoutGroups.has(row.scenario_group_id))).toBe(true);
+    expect(archive.every((row) => !modelIds.has(row.external_id))).toBe(true);
   });
 
   it('keeps the current holdout explicitly unreviewed and makes no performance claim', () => {
