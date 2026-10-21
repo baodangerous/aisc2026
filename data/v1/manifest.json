@@ -3,11 +3,11 @@
   "totalRecords": 172,
   "holdoutEvalCount": 10,
   "splits": {
-    "train": 123,
-    "validation": 25,
-    "test": 24
+    "train": 106,
+    "validation": 33,
+    "test": 33
   },
-  "checksumSha256": "fa817b39eb49935b3af756f40cbdb01402ef7be365a1fb4593c6403c5f39812b",
+  "checksumSha256": "fe2c66e15b2679b8ea511c51b2badc7483ab8157d6c5038d4dd2ee8943aa5c9e",
   "created_at": "2026-10-21T13:00:00.000Z",
   "scenarioGroupsCount": 21,
   "holdoutScenarioGroupsCount": 5,
