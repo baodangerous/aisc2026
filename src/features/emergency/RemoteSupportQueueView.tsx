@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, LoaderCircle, PhoneCall, Video } from 'lucide-react';
-import { supabase } from '../../services/supabase/client';
+import { isDemoMode, supabase } from '../../services/supabase/client';
 import { useAuth } from '../auth/AuthContext';
 
 type SupportRequest = { id: string; emergency_type: string; status: string; latitude: number | null; longitude: number | null; location_shared: boolean; created_at: string };
@@ -24,6 +24,10 @@ export const RemoteSupportQueueView: React.FC = () => {
 
   const refresh = useCallback(async () => {
     if (!supabase || !isAuthenticated) return;
+    if (isDemoMode) {
+      setRequests((current) => current.length ? current : Array.from({ length: 5 }, (_, i) => ({ id: `demo-support-${i + 1}`, emergency_type: ['ohca','stroke','bleeding','choking','other'][i], status: i === 4 ? 'accepted' : 'queued', latitude: 10.77 + i * 0.004, longitude: 106.69 + i * 0.003, location_shared: true, created_at: new Date(Date.now() - i * 6 * 60000).toISOString() })));
+      setError(''); return;
+    }
     try { const result = await api('/remote-assistance/queue'); setRequests(result.requests ?? []); setError(''); }
     catch (e) { setError(e instanceof Error ? e.message : 'Bạn cần quyền người hướng dẫn đã được cấp để xem hàng chờ.'); }
   }, [isAuthenticated]);
@@ -32,14 +36,22 @@ export const RemoteSupportQueueView: React.FC = () => {
 
   const accept = async (request: SupportRequest) => {
     setBusy(true); setError('');
-    try { const result = await api(`/remote-assistance/${request.id}/accept`, 'POST'); setRoom({ id: request.id, roomUrl: result.roomUrl, token: result.token }); await refresh(); }
+    try {
+      if (isDemoMode) {
+        setRequests((current) => current.map((item) => item.id === request.id ? { ...item, status: 'accepted' } : item));
+        setRoom({ id: request.id, roomUrl: `https://meet.jit.si/goldenminutes-preview-${request.id}`, token: 'demo-session' });
+        return;
+      }
+      const result = await api(`/remote-assistance/${request.id}/accept`, 'POST'); setRoom({ id: request.id, roomUrl: result.roomUrl, token: result.token }); await refresh(); }
     catch (e) { setError(e instanceof Error ? e.message : 'Chưa thể nhận hỗ trợ.'); }
     finally { setBusy(false); }
   };
 
   const complete = async () => {
     if (!room) return;
-    try { await api(`/remote-assistance/${room.id}/complete`, 'POST'); setRoom(null); await refresh(); }
+    try {
+      if (isDemoMode) { setRoom(null); setRequests((current) => current.filter((item) => item.id !== room.id)); return; }
+      await api(`/remote-assistance/${room.id}/complete`, 'POST'); setRoom(null); await refresh(); }
     catch { setError('Chưa thể kết thúc phiên hỗ trợ.'); }
   };
 
