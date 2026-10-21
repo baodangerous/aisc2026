@@ -3,13 +3,32 @@ import { createClient } from '@supabase/supabase-js';
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
-const prefix = process.env.DEMO_EMAIL_DOMAIN?.trim().toLowerCase();
+const emailDomain = process.env.DEMO_EMAIL_DOMAIN?.trim().toLowerCase();
+const expectedProjectRef = process.env.DEMO_EXPECTED_PROJECT_REF?.trim();
+const stagingConfirmation = process.env.DEMO_STAGING_CONFIRMATION;
 const passwordLength = 24;
 
 if (!url || !serviceKey) {
   throw new Error('Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the local environment. Never use the service role key in VITE_* variables.');
 }
-if (!prefix || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(prefix)) {
+if (stagingConfirmation !== 'I_CONFIRM_THIS_IS_STAGING') {
+  throw new Error('Safety stop: set DEMO_STAGING_CONFIRMATION=I_CONFIRM_THIS_IS_STAGING only after confirming this is a dedicated staging/demo project.');
+}
+if (!expectedProjectRef || !/^[a-z0-9]{15,30}$/.test(expectedProjectRef)) {
+  throw new Error('Set DEMO_EXPECTED_PROJECT_REF to the project ref shown in Supabase project settings.');
+}
+let projectHost: string;
+try {
+  const parsed = new URL(url);
+  projectHost = parsed.hostname;
+  if (parsed.protocol !== 'https:') throw new Error('HTTPS is required.');
+} catch {
+  throw new Error('SUPABASE_URL must be a valid HTTPS URL for the dedicated staging project.');
+}
+if (projectHost !== `${expectedProjectRef}.supabase.co`) {
+  throw new Error('Safety stop: SUPABASE_URL host does not match DEMO_EXPECTED_PROJECT_REF. Check that you are targeting the intended staging project.');
+}
+if (!emailDomain || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(emailDomain)) {
   throw new Error('Set DEMO_EMAIL_DOMAIN to a domain you control, e.g. example.com. Demo users will be created as demo-<role>@that-domain.');
 }
 
@@ -26,58 +45,54 @@ const accounts = [
 ] as const;
 
 function generatePassword() {
-  // URL-safe, high-entropy one-time password. Printed only to this terminal.
+  // High-entropy, URL-safe password. Printed only to this terminal.
   return randomBytes(passwordLength).toString('base64url');
 }
 
 async function main() {
+  // Load the Auth user list once. Existing accounts are never modified or elevated.
+  const { data, error: lookupError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (lookupError) throw new Error(`Cannot list Auth users: ${lookupError.message}`);
+  const existingEmails = new Set(data.users.map((user) => user.email?.toLowerCase()).filter(Boolean));
+
   const output: Array<{ email: string; role: string; password: string; action: string }> = [];
 
   for (const account of accounts) {
-    const email = `demo-${account.role.replace(/_/g, '-') }@${prefix}`;
-    const password = generatePassword();
-    const { data: existing, error: lookupError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    if (lookupError) throw new Error(`Cannot list Auth users: ${lookupError.message}`);
-    const found = existing.users.find((user) => user.email?.toLowerCase() === email);
+    const email = `demo-${account.role.replace(/_/g, '-')}@${emailDomain}`;
+    if (existingEmails.has(email.toLowerCase())) {
+      output.push({ email, role: account.role, password: '(not shown)', action: 'skipped — account already exists; verify manually' });
+      continue;
+    }
 
-    let userId: string;
-    let action: string;
-    if (found) {
-      // Never reset an existing account's password or elevate it silently.
-      const { error } = await supabase.auth.admin.updateUserById(found.id, {
-        app_metadata: { ...found.app_metadata, role: account.role, demo_account: true },
-        user_metadata: { ...found.user_metadata, display_name: `GoldenMinutes Demo — ${account.label}` },
-      });
-      if (error) throw new Error(`Cannot update role for ${email}: ${error.message}`);
-      userId = found.id;
-      action = 'role-updated; password unchanged';
-    } else {
-      const { data, error } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        app_metadata: { role: account.role, demo_account: true },
-        user_metadata: { display_name: `GoldenMinutes Demo — ${account.label}` },
-      });
-      if (error || !data.user) throw new Error(`Cannot create ${email}: ${error?.message ?? 'no user returned'}`);
-      userId = data.user.id;
-      action = 'created';
+    const password = generatePassword();
+    const { data: created, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      app_metadata: { role: account.role, demo_account: true },
+      user_metadata: { display_name: `GoldenMinutes Demo — ${account.label}` },
+    });
+    if (error || !created.user) {
+      throw new Error(`Cannot create ${email}: ${error?.message ?? 'no user returned'}`);
     }
 
     const { error: profileError } = await supabase.from('profiles').upsert({
-      id: userId,
+      id: created.user.id,
       display_name: `GoldenMinutes Demo — ${account.label}`,
       role: account.profileRole,
       preferred_language: 'vi',
     }, { onConflict: 'id' });
-    if (profileError) throw new Error(`Auth user ${email} exists but profile sync failed: ${profileError.message}`);
+    if (profileError) {
+      throw new Error(`Auth user ${email} was created but profile sync failed. Review it in Supabase before rerunning: ${profileError.message}`);
+    }
 
-    output.push({ email, role: account.role, password: found ? '(unchanged — retrieve/reset securely in Supabase)' : password, action });
+    existingEmails.add(email.toLowerCase());
+    output.push({ email, role: account.role, password, action: 'created' });
   }
 
-  console.log('\nGoldenMinutes demo accounts (credentials are shown once for newly created users):\n');
+  console.log('\nGoldenMinutes staging demo accounts (passwords shown only for newly created accounts):\n');
   console.table(output);
-  console.log('\nIMPORTANT: app_metadata is the trusted role source. Never let clients edit it. Store these credentials in a password manager; do not commit this output. org_admin still needs an active organization_members row to access an actual organization dashboard.');
+  console.log('\nSECURITY: app_metadata is the intended trusted role claim; never let clients edit it. Store new passwords in a password manager and do not commit this output. Existing accounts were not changed. org_admin still needs an explicitly approved active organization_members membership. Verify server authorization and RLS before demoing privileged actions.');
 }
 
 main().catch((error) => {
