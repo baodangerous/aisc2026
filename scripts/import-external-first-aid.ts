@@ -127,6 +127,8 @@ export function normalizeExternalDataset(rows: JsonRecord[], source: SourceConfi
   let sourceUrl: URL;
   try { sourceUrl = new URL(source.url); } catch { throw new Error('Source URL must be a valid HTTPS URL.'); }
   if (sourceUrl.protocol !== 'https:') throw new Error('Source URL must use HTTPS.');
+  if (sourceUrl.username || sourceUrl.password) throw new Error('Source URL must not contain embedded credentials.');
+  if (!source.name.trim() || !source.attribution.trim()) throw new Error('Source name and attribution are required for provenance.');
   if (!source.license.trim()) throw new Error('Source license is required for provenance; use "unknown" if not verified.');
 
   const seenContent = new Set<string>();
