@@ -4,7 +4,13 @@ type Row = Record<string, any>;
 const now = new Date().toISOString();
 const id = (prefix: string, n: number) => `${prefix}-${String(n).padStart(3, '0')}`;
 const seed: Record<string, Row[]> = {
-  profiles: [],
+  profiles: [
+    { id: 'citizen-001', display_name: 'Người dân Demo', role: 'user', preferred_language: 'vi', onboarding_completed: true, created_at: now, updated_at: now },
+    { id: 'volunteer-001', display_name: 'Tình nguyện viên Demo', role: 'volunteer', preferred_language: 'vi', onboarding_completed: true, created_at: now, updated_at: now },
+    { id: 'staff-001', display_name: 'Nhân viên cơ sở Demo', role: 'site_manager', preferred_language: 'vi', onboarding_completed: true, created_at: now, updated_at: now },
+    { id: 'manager-001', display_name: 'Quản lý Demo', role: 'admin', preferred_language: 'vi', onboarding_completed: true, created_at: now, updated_at: now },
+    { id: 'admin-001', display_name: 'Quản trị viên Demo', role: 'owner', preferred_language: 'vi', onboarding_completed: true, created_at: now, updated_at: now },
+  ],
   medical_facilities: [],
   forum_posts: Array.from({ length: 15 }, (_, i) => ({ id: id('post', i + 1), author_uid: ['citizen-001','volunteer-001','staff-001'][i % 3], title: ['Hướng dẫn chuẩn bị túi sơ cứu gia đình','Chia sẻ lớp học CPR cuối tuần','Tìm tình nguyện viên cho sự kiện cộng đồng','Nhắc nhở kiểm tra vị trí AED','Kinh nghiệm sơ cứu khi đi du lịch'][i % 5] + (i > 4 ? ` — ${i + 1}` : ''), body: 'Cùng chia sẻ kiến thức sơ cứu cơ bản, cách chuẩn bị an toàn và hỗ trợ cộng đồng khi cần thiết.', content: 'Cùng chia sẻ kiến thức sơ cứu cơ bản, cách chuẩn bị an toàn và hỗ trợ cộng đồng khi cần thiết.', category: ['general','training','event','aed','safety'][i % 5], status: 'published', media: [], created_at: new Date(Date.now() - i * 3600000).toISOString() })),
   community_alerts: Array.from({ length: 10 }, (_, i) => ({ id: id('alert', i + 1), title: ['Buổi tập huấn sơ cứu cộng đồng','Điểm hỗ trợ sự kiện cuối tuần','Chương trình hiến máu tình nguyện'][i % 3], description: 'Thông tin hoạt động cộng đồng để người dân tham khảo.', kind: 'other', radius_m: 5000, latitude: 10.77 + i * 0.002, longitude: 106.69 + i * 0.002, created_at: new Date(Date.now() - i * 7200000).toISOString() })),
