@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, LockKeyhole, AlertCircle, LogIn, LoaderCircle, Smartphone, Mail } from 'lucide-react';
 import { useAuth } from './AuthContext';
+import { isDemoMode } from '../../services/supabase/client';
 
 const authFlags = import.meta.env as ImportMetaEnv & {
   readonly VITE_SUPABASE_GOOGLE_AUTH_ENABLED?: string;
@@ -41,6 +42,13 @@ export function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
     } catch (error: unknown) { setError(error instanceof Error ? error.message : 'Chưa thể xác thực tài khoản.'); }
     finally { setPending(false); }
   };
+  const loginDemoAccount = async (account: { email: string; password: string }) => {
+    if (pending) return;
+    setPending(true); setError('');
+    try { await signInWithPassword(account.email, account.password); onClose(); }
+    catch (error: unknown) { setError(error instanceof Error ? error.message : 'Không thể đăng nhập tài khoản mẫu.'); }
+    finally { setPending(false); }
+  };
   const requestOtp = async () => {
     setPending(true); setError('');
     try { await sendPhoneOtp(phone); setOtp(''); setOtpSent(true); }
@@ -73,7 +81,17 @@ export function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         <div className="flex items-center justify-between"><LockKeyhole className="size-8 text-primary" aria-hidden="true" /><button type="button" onClick={onClose} aria-label="Đóng cửa sổ" className="flex size-11 items-center justify-center rounded-full bg-background text-foreground"><X className="size-5" aria-hidden="true" /></button></div>
         <div className="flex flex-col gap-2"><h2 id="login-title" className="text-2xl font-bold">{isSignUp ? 'Tạo tài khoản GoldenMinutes' : 'Chào mừng trở lại'}</h2><p className="text-base leading-relaxed text-muted">{isSignUp ? 'Tạo tài khoản để lưu kết quả luyện tập.' : 'Đăng nhập để lưu kết quả luyện tập.'}</p></div>
         {error && <p role="alert" className="flex items-start gap-2 text-sm text-primary"><AlertCircle className="size-5 shrink-0" aria-hidden="true" />{error}</p>}
-        {isSupabaseReady ? <div className="flex flex-col gap-3">
+        {isDemoMode ? <div className="flex flex-col gap-3">
+          <p className="text-sm leading-relaxed text-muted">Chọn tài khoản để trải nghiệm từng vai trò. Mật khẩu chung cho tài khoản mẫu: <strong>demo1234</strong>.</p>
+          {[
+            { email: 'citizen.demo@example.test', password: 'demo1234', title: 'Người dân', detail: 'Học sơ cứu, tìm điểm hỗ trợ, tham gia cộng đồng' },
+            { email: 'volunteer.demo@example.test', password: 'demo1234', title: 'Tình nguyện viên', detail: 'Tham gia hoạt động cộng đồng' },
+            { email: 'staff.demo@example.test', password: 'demo1234', title: 'Nhân viên cơ sở', detail: 'Theo dõi cơ sở và hoạt động' },
+            { email: 'manager.demo@example.test', password: 'demo1234', title: 'Quản lý', detail: 'Quản lý dữ liệu tổ chức' },
+            { email: 'admin.demo@example.test', password: 'demo1234', title: 'Quản trị viên', detail: 'Trải nghiệm quyền quản trị demo' },
+          ].map((account) => <button key={account.email} type="button" disabled={pending} onClick={() => void loginDemoAccount(account)} className="flex min-h-14 flex-col items-start gap-1 rounded-xl border border-border bg-surface px-4 py-3 text-left hover:border-primary disabled:opacity-60"><span className="font-semibold">{account.title}</span><span className="text-xs leading-relaxed text-muted">{account.detail}</span><span className="text-xs text-muted">{account.email}</span></button>)}
+          {pending && <p role="status" className="text-sm text-muted">Đang mở tài khoản demo…</p>}
+        </div> : isSupabaseReady ? <div className="flex flex-col gap-3">
           {phoneAuthEnabled && <>
             <div className="flex flex-col gap-1"><h3 className="text-sm font-semibold">{otpSent ? 'Xác nhận số điện thoại' : 'Đăng nhập hoặc tạo tài khoản bằng số điện thoại'}</h3><p className="text-sm leading-relaxed text-muted">Nhập số di động Việt Nam bắt đầu bằng 0, ví dụ 0912345678. Tài khoản mới được tạo sau khi xác nhận OTP.</p></div>
             <label className="text-sm font-semibold" htmlFor="phone-login">Số điện thoại</label>
