@@ -145,9 +145,11 @@ export function CommunityView() {
   };
 
   const respondToAlert = async (alertId: string) => {
-    if (!supabase || !authUser) return;
+    if (!supabase || !authUser) { setError('Vui lòng đăng nhập để ghi nhận phản hồi.'); return; }
+    setError('');
     const { error: responseError } = await supabase.from(COMMUNITY_TABLES.responses).insert({ alert_id: alertId, responder_uid: authUser.id, response_type: 'called_115' });
-    if (responseError && responseError.code !== '23505') setError(responseError.message);
+    if (responseError && responseError.code !== '23505') setError('Chưa ghi nhận được phản hồi. Vui lòng thử lại.');
+    else setNotice('Đã ghi nhận phản hồi của bạn. Nếu có tình huống khẩn cấp, hãy gọi 115 trực tiếp.');
   };
 
   const createAlert = async () => {
