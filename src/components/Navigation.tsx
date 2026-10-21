@@ -18,6 +18,7 @@ import {
   Building2,
   ShoppingBag,
   Video,
+  Handshake,
 } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
 
@@ -46,6 +47,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
     { path: '/community', label: 'Cộng đồng', icon: Users },
     { path: '/store', label: 'Cửa hàng', icon: ShoppingBag },
     { path: '/dashboard', label: 'Tổ chức', icon: Building2 },
+    { path: '/partners', label: 'Đối tác', icon: Handshake },
   ];
 
   const bottomNavItems = [
@@ -56,6 +58,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onOpenCall115, onOpenLog
     { path: '/library', label: 'Thư viện', icon: BookOpen },
     { path: '/community', label: 'Cộng đồng', icon: Users },
     { path: '/store', label: 'Cửa hàng', icon: ShoppingBag },
+    { path: '/partners', label: 'Đối tác', icon: Handshake },
     { path: '/dashboard', label: 'Tổ chức', icon: Building2 },
   ];
 
