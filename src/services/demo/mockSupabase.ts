@@ -6,7 +6,7 @@ const id = (prefix: string, n: number) => `${prefix}-${String(n).padStart(3, '0'
 const seed: Record<string, Row[]> = {
   profiles: [],
   medical_facilities: [],
-  community_posts: Array.from({ length: 15 }, (_, i) => ({ id: id('post', i + 1), author_uid: ['citizen-001','volunteer-001','staff-001'][i % 3], title: ['Hướng dẫn chuẩn bị túi sơ cứu gia đình','Chia sẻ lớp học CPR cuối tuần','Tìm tình nguyện viên cho sự kiện cộng đồng','Nhắc nhở kiểm tra vị trí AED','Kinh nghiệm sơ cứu khi đi du lịch'][i % 5] + (i > 4 ? ` — ${i + 1}` : ''), body: 'Cùng chia sẻ kiến thức sơ cứu cơ bản, cách chuẩn bị an toàn và hỗ trợ cộng đồng khi cần thiết.', content: 'Cùng chia sẻ kiến thức sơ cứu cơ bản, cách chuẩn bị an toàn và hỗ trợ cộng đồng khi cần thiết.', category: ['general','training','event','aed','safety'][i % 5], status: 'published', media: [], created_at: new Date(Date.now() - i * 3600000).toISOString() })),
+  forum_posts: Array.from({ length: 15 }, (_, i) => ({ id: id('post', i + 1), author_uid: ['citizen-001','volunteer-001','staff-001'][i % 3], title: ['Hướng dẫn chuẩn bị túi sơ cứu gia đình','Chia sẻ lớp học CPR cuối tuần','Tìm tình nguyện viên cho sự kiện cộng đồng','Nhắc nhở kiểm tra vị trí AED','Kinh nghiệm sơ cứu khi đi du lịch'][i % 5] + (i > 4 ? ` — ${i + 1}` : ''), body: 'Cùng chia sẻ kiến thức sơ cứu cơ bản, cách chuẩn bị an toàn và hỗ trợ cộng đồng khi cần thiết.', content: 'Cùng chia sẻ kiến thức sơ cứu cơ bản, cách chuẩn bị an toàn và hỗ trợ cộng đồng khi cần thiết.', category: ['general','training','event','aed','safety'][i % 5], status: 'published', media: [], created_at: new Date(Date.now() - i * 3600000).toISOString() })),
   community_alerts: Array.from({ length: 10 }, (_, i) => ({ id: id('alert', i + 1), title: ['Buổi tập huấn sơ cứu cộng đồng','Điểm hỗ trợ sự kiện cuối tuần','Chương trình hiến máu tình nguyện'][i % 3], description: 'Thông tin hoạt động cộng đồng để người dân tham khảo.', kind: 'other', radius_m: 5000, latitude: 10.77 + i * 0.002, longitude: 106.69 + i * 0.002, created_at: new Date(Date.now() - i * 7200000).toISOString() })),
   post_reactions: Array.from({ length: 20 }, (_, i) => ({ id: id('reaction', i + 1), post_id: id('post', (i % 15) + 1), user_id: id('citizen', (i % 10) + 1), reaction_type: 'like' })),
   forum_comments: Array.from({ length: 12 }, (_, i) => ({ id: id('comment', i + 1), post_id: id('post', (i % 15) + 1), author_uid: id('citizen', (i % 10) + 1), content: ['Cảm ơn thông tin hữu ích!','Mình sẽ lưu lại để tham khảo.','Có lịch tổ chức tiếp theo không ạ?'][i % 3], status: 'published', created_at: new Date(Date.now() - i * 1800000).toISOString() })),
@@ -38,7 +38,15 @@ function queryBuilder(table: string) {
   let payload: Row | Row[] = {};
   const api: any = {
     select: () => api, eq: (k: string,v: any) => { filters.push(r => r[k] === v); return api; },
-    neq: (k: string,v: any) => { filters.push(r => r[k] !== v); return api; }, in: (k: string,vs: any[]) => { filters.push(r => vs.includes(r[k])); return api; },
+    neq: (k: string,v: any) => { filters.push(r => r[k] !== v); return api; },
+    gt: (k: string,v: any) => { filters.push(r => r[k] > v); return api; },
+    gte: (k: string,v: any) => { filters.push(r => r[k] >= v); return api; },
+    lt: (k: string,v: any) => { filters.push(r => r[k] < v); return api; },
+    lte: (k: string,v: any) => { filters.push(r => r[k] <= v); return api; },
+    contains: (k: string,v: any) => { filters.push(r => Array.isArray(r[k]) ? v.every((x:any)=>r[k].includes(x)) : Object.entries(v).every(([x,y])=>r[k]?.[x]===y)); return api; },
+    overlaps: (k: string,v: any[]) => { filters.push(r => Array.isArray(r[k]) && r[k].some((x:any)=>v.includes(x))); return api; },
+    filter: (k: string,op: string,v: any) => { filters.push(r => op==='eq' ? r[k]===v : op==='neq' ? r[k]!==v : true); return api; },
+    textSearch: () => api, in: (k: string,vs: any[]) => { filters.push(r => vs.includes(r[k])); return api; },
     is: (k: string,v: any) => { filters.push(r => r[k] === v); return api; }, not: (k: string,op: string,v: any) => { filters.push(r => r[k] !== v); return api; },
     ilike: (k: string,v: string) => { const q=v.replace(/%/g,'').toLowerCase(); filters.push(r => String(r[k] ?? '').toLowerCase().includes(q)); return api; },
     or: () => api, match: (obj: Row) => { for(const [k,v] of Object.entries(obj)) filters.push(r => r[k] === v); return api; },
@@ -71,7 +79,15 @@ function queryBuilder(table: string) {
 export function createDemoSupabase(): SupabaseClient {
   const authUser = (email: string) => ({ id: email.split('@')[0], aud:'authenticated', role:'authenticated', email, phone:'', app_metadata:{provider:'email',providers:['email']}, user_metadata:{display_name:email.split('@')[0], full_name:email.split('@')[0]}, identities:[], created_at:now }) as any;
   const auth: any = { getSession: async()=>({data:{session:null},error:null}), onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}), signOut:async()=>({error:null}), signInWithPassword:async({email}:any)=>({data:{user:authUser(email),session:{user:authUser(email)}},error:null}), signUp:async({email}:any)=>({data:{user:authUser(email),session:{user:authUser(email)}},error:null}), signInWithOAuth:async()=>({data:{url:null},error:null}), signInWithOtp:async()=>({error:null}), verifyOtp:async()=>({error:null}) };
-  const storage:any={from:()=>({upload:async(path:string)=>({data:{path},error:null}),getPublicUrl:(path:string)=>({data:{publicUrl:`/demo-media/${path}`}})})};
-  const client:any={auth,storage,from:(table:string)=>queryBuilder(table),channel:()=>({on(){return this},subscribe(){return this}}),removeChannel:async()=>({error:null}),rpc:async()=>({data:[],error:null})};
+  const storage:any={from:()=>({upload:async(path:string)=>({data:{path},error:null}),remove:async()=>({data:[],error:null}),getPublicUrl:(path:string)=>({data:{publicUrl:`/demo-media/${path}`}})})};
+  const client:any={auth,storage,from:(table:string)=>queryBuilder(table),channel:()=>({on(){return this},subscribe(){return this}}),removeChannel:async()=>({error:null}),rpc:async(name:string,args:any)=> {
+    if(name==='place_store_order') {
+      const orderId=`demo-order-${Date.now()}`;
+      const total=(args?.p_items||[]).reduce((sum:number,item:any)=>sum+(tables.store_products.find(p=>p.id===item.product_id)?.price_vnd||0)*Number(item.quantity||1),0);
+      const row={id:orderId,store_id:args?.p_store_id,buyer_id:'citizen-001',buyer_name:args?.p_buyer_name||'Khách demo',buyer_phone:args?.p_buyer_phone||'',shipping_address:args?.p_shipping_address||'',status:'pending',total_vnd:total,created_at:new Date().toISOString()};
+      (tables.store_orders ||= []).unshift(row); persist(); return {data:orderId,error:null};
+    }
+    return {data:null,error:null};
+  }};
   return client as SupabaseClient;
 }
