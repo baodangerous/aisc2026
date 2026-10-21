@@ -196,8 +196,8 @@ export function NearbyCareView() {
             <MapPin className="size-5" aria-hidden="true" />
             {locationState === 'loading' ? 'Đang định vị…' : locationState === 'ready' ? 'Đã cập nhật vị trí' : 'Dùng vị trí của tôi'}
           </button>
-          <button type="button" onClick={() => setShowSubmitModal(true)} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-emerald-500/40 bg-emerald-50 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-200 px-4 font-bold shadow-sm transition hover:-translate-y-0.5 cursor-pointer">
-            <Plus className="size-5 text-emerald-600" />
+          <button type="button" onClick={() => setShowSubmitModal(true)} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary px-4 font-bold text-primary-foreground shadow-lg shadow-primary/20 transition hover:-translate-y-0.5 hover:bg-primary/90 cursor-pointer">
+            <Plus className="size-5" />
             Đóng góp điểm AED mới
           </button>
         </div>
