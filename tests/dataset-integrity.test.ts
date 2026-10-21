@@ -122,13 +122,18 @@ describe('Dataset v1 integrity and leakage gates', () => {
     const holdout = readRows(holdoutPath);
     const modelRows = [...readRows(trainPath), ...readRows(valPath), ...readRows(testPath)];
     const modelIds = new Set(modelRows.map((row) => row.external_id));
+    const holdoutIds = new Set(holdout.map((row) => row.external_id));
     const holdoutGroups = new Set(holdout.map((row) => row.scenario_group_id));
+    const reservedGroupArchive = archive.filter((row) => row.exclusion_reason === 'scenario_group_reserved_for_holdout_v1_1_0');
+    const nonReservedHoldoutArchive = archive.filter((row) => row.exclusion_reason === 'scenario_group_not_reserved_for_holdout_v1_1_0');
 
-    expect(archive).toHaveLength(50);
+    expect(archive).toHaveLength(92);
     expect(archive.every((row) => row.split === 'excluded_leakage_archive')).toBe(true);
-    expect(archive.every((row) => row.exclusion_reason === 'scenario_group_reserved_for_holdout_v1_1_0')).toBe(true);
-    expect(archive.every((row) => holdoutGroups.has(row.scenario_group_id))).toBe(true);
-    expect(archive.every((row) => !modelIds.has(row.external_id))).toBe(true);
+    expect(reservedGroupArchive).toHaveLength(50);
+    expect(nonReservedHoldoutArchive).toHaveLength(42);
+    expect(reservedGroupArchive.every((row) => holdoutGroups.has(row.scenario_group_id))).toBe(true);
+    expect(nonReservedHoldoutArchive.every((row) => !holdoutGroups.has(row.scenario_group_id))).toBe(true);
+    expect(archive.every((row) => !modelIds.has(row.external_id) && !holdoutIds.has(row.external_id))).toBe(true);
   });
 
   it('keeps the current holdout explicitly unreviewed and makes no performance claim', () => {
