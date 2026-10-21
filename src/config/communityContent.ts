@@ -50,6 +50,7 @@ export type CommunityAlert = {
   latitude: number;
   longitude: number;
   created_at: string;
+  media?: CommunityMedia[];
 };
 
 export function distanceInMeters(from: GeolocationCoordinates, latitude: number, longitude: number) {
