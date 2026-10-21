@@ -77,7 +77,7 @@ export function EmergencySceneReport() {
       }
       const { error: insertError } = await supabase.from('community_alerts').insert({
         reporter_uid: authUser.id,
-        kind: 'medical_emergency',
+        kind: 'accident',
         title: 'Cảnh báo khẩn cấp cộng đồng',
         description: description.trim(),
         latitude: coords.latitude,
