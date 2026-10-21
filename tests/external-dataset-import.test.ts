@@ -61,7 +61,9 @@ describe('external first-aid dataset normalization', () => {
     expect(result.examples[0].scenario_group_id).toBe(result.examples[1].scenario_group_id);
   });
 
-  it('requires source provenance before processing', () => {
-    expect(() => normalizeExternalDataset([], { ...source, license: '' })).toThrow(/Source id, URL and license/);
+  it('rejects unsafe source identifiers and non-HTTPS provenance URLs', () => {
+    expect(() => normalizeExternalDataset([], { ...source, id: '../escape' })).toThrow(/safe slug/);
+    expect(() => normalizeExternalDataset([], { ...source, url: 'http://example.org/dataset' })).toThrow(/HTTPS/);
+    expect(() => normalizeExternalDataset([], { ...source, license: '' })).toThrow(/Source license is required/);
   });
 });
