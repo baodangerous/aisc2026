@@ -34,6 +34,14 @@ describe('external first-aid dataset normalization', () => {
     expect(result.examples[0].citations).toContain(source.url);
   });
 
+  it('recognizes source fields regardless of capitalization', () => {
+    const result = normalizeExternalDataset([
+      { Question: 'What should I do after a minor burn?', Answer: 'Cool the affected area with cool running water.' },
+    ], source);
+    expect(result.examples).toHaveLength(1);
+    expect(result.examples[0].input).toContain('minor burn');
+  });
+
   it('rejects missing or short questions/answers instead of silently creating empty examples', () => {
     const result = normalizeExternalDataset([
       { question: 'short', answer: 'also short' },
