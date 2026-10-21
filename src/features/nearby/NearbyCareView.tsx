@@ -188,7 +188,7 @@ export function NearbyCareView() {
 
         {/* Action Row: Call 115, GPS, Submit AED */}
         <div className="grid gap-3 sm:grid-cols-3">
-          <a href="tel:115" className="group flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 to-red-500 px-4 font-bold text-white shadow-lg shadow-rose-500/20 transition hover:-translate-y-0.5 hover:shadow-xl">
+          <a href="tel:115" className="group flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-red-700 via-red-600 to-red-500 px-4 font-bold text-white shadow-lg shadow-red-600/25 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-red-600/35">
             <PhoneCall className="size-5 transition group-hover:scale-110" aria-hidden="true" />
             Khẩn cấp: gọi 115
           </a>
