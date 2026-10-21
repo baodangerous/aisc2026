@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, PhoneCall, MapPin, BookOpen, ShieldAlert, Users, CircleCheck, PlayCircle, Timer, LibraryBig, Navigation, Activity, ChevronRight, Handshake, Building2 } from 'lucide-react';
+import { ArrowRight, PhoneCall, MapPin, BookOpen, ShieldAlert, Users, CircleCheck, PlayCircle, Timer, LibraryBig, Navigation, Activity, ChevronRight, Handshake } from 'lucide-react';
 import { REFERENCE_LEARNING_RESOURCES } from '../../content/curatedLearningCatalog';
 import { RESEARCH_MODULES, RESEARCH_NOTE } from '../../content/researchModules';
 import { HOME_EXERCISES } from '../../config/homeContent';
