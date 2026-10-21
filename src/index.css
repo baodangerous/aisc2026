@@ -55,7 +55,7 @@
   }
 
   body {
-    font-family: 'DejaVu Sans', Arial, sans-serif;
+    font-family: var(--font-sans);
     letter-spacing: normal;
     width: 100%;
     min-height: 100%;
@@ -186,7 +186,9 @@
   .bg-rose-600, .bg-red-600 { background-color: #c62828 !important; }
   .bg-rose-700, .bg-red-700 { background-color: #a61b1b !important; }
   .bg-blue-50 { background-color: #eff6ff !important; }
-  .bg-rose-50, .bg-red-50 { background-color: #fff1f2 !important; }
+  .bg-rose-50, .bg-red-50 { background-color: #fff5f5 !important; }
+  .bg-emerald-50, .bg-green-50 { background-color: #f0fdf4 !important; }
+  .bg-slate-50, .bg-gray-50, .bg-zinc-50 { background-color: #f8fafc !important; }
   .text-blue-600, .text-blue-700 { color: #155eef !important; }
   .text-blue-800 { color: #123a8c !important; }
   .text-rose-500, .text-rose-600, .text-rose-700,
@@ -206,7 +208,19 @@
     background-image: linear-gradient(135deg, #d92d20 0%, #b42318 52%, #8f1413 100%);
     box-shadow: 0 8px 18px color-mix(in srgb, #b42318 22%, transparent);
   }
+  button.bg-slate-50, button.bg-slate-100, button.bg-gray-50, button.bg-gray-100 {
+    background-color: #ffffff !important;
+    color: #123a8c !important;
+    border-color: #b8d2ff !important;
+  }
+  button.bg-slate-50:hover, button.bg-slate-100:hover, button.bg-gray-50:hover, button.bg-gray-100:hover {
+    background-color: #eff6ff !important;
+  }
+  .text-emerald-600, .text-emerald-700 { color: #15803d !important; }
+  .text-emerald-800, .text-emerald-900 { color: #166534 !important; }
+  .border-emerald-200, .border-emerald-300 { border-color: #bbf7d0 !important; }
 }
+
 
 .brand-gradient {
   background: linear-gradient(135deg, #d92d20 0%, #b42318 55%, #8f1413 100%);
