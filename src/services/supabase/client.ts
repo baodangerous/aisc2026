@@ -1,13 +1,19 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
+import { createDemoSupabase } from '../demo/mockSupabase';
 
 const env = import.meta.env as Record<string, string | undefined>;
 const url = env.VITE_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
 const key = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+const host = typeof window !== 'undefined' ? window.location.hostname : '';
+const queryDemo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === '1';
+export const isDemoMode = queryDemo || (import.meta.env.PROD && host.endsWith('.vercel.app'));
 export const isSupabaseConfigured = Boolean(url && key);
-export const supabase: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(url!, key!, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
-  : null;
+export const supabase: SupabaseClient | null = isDemoMode
+  ? createDemoSupabase()
+  : isSupabaseConfigured
+    ? createClient(url!, key!, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
+    : null;
 
 export type SupabaseUser = User;
 
