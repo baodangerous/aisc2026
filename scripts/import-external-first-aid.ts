@@ -34,6 +34,8 @@ export interface CandidateExample {
     source_record_id: string;
     source_dataset: string;
     source_license: string;
+    source_language: 'vi' | 'en' | 'unknown';
+    license_reviewed: false;
     source_url: string;
     attribution: string;
     content_sha256: string;
@@ -83,11 +85,22 @@ function hash(value: string): string {
 }
 
 function extractRows(parsed: unknown): JsonRecord[] {
-  if (Array.isArray(parsed)) return parsed.filter((row): row is JsonRecord => Boolean(row) && typeof row === 'object' && !Array.isArray(row));
+  if (Array.isArray(parsed)) {
+    if (parsed.some((row) => !row || typeof row !== 'object' || Array.isArray(row))) {
+      throw new Error('Unsupported input format: every array item must be a JSON object.');
+    }
+    return parsed as JsonRecord[];
+  }
   if (parsed && typeof parsed === 'object') {
     const object = parsed as JsonRecord;
     for (const key of ['data', 'records', 'examples', 'rows', 'train']) {
-      if (Array.isArray(object[key])) return (object[key] as unknown[]).filter((row): row is JsonRecord => Boolean(row) && typeof row === 'object' && !Array.isArray(row));
+      if (Array.isArray(object[key])) {
+        const rows = object[key] as unknown[];
+        if (rows.some((row) => !row || typeof row !== 'object' || Array.isArray(row))) {
+          throw new Error('Unsupported input format: every row in ' + key + ' must be a JSON object.');
+        }
+        return rows as JsonRecord[];
+      }
     }
     if (getString(object, QUESTION_KEYS) && getString(object, ANSWER_KEYS)) return [object];
   }
@@ -106,9 +119,13 @@ export function normalizeExternalDataset(rows: JsonRecord[], source: SourceConfi
   rejected: Array<{ row: number; reason: string }>;
   duplicatesRemoved: number;
 } {
-  if (!source.id.trim() || !source.url.trim() || !source.license.trim()) {
-    throw new Error('Source id, URL and license are required for provenance.');
+  if (!/^[a-z0-9][a-z0-9._-]{0,79}$/.test(source.id)) {
+    throw new Error('Source id must be a safe slug containing lowercase letters, digits, dots, underscores, or hyphens.');
   }
+  let sourceUrl: URL;
+  try { sourceUrl = new URL(source.url); } catch { throw new Error('Source URL must be a valid HTTPS URL.'); }
+  if (sourceUrl.protocol !== 'https:') throw new Error('Source URL must use HTTPS.');
+  if (!source.license.trim()) throw new Error('Source license is required for provenance; use "unknown" if not verified.');
 
   const seenContent = new Set<string>();
   const rejected: Array<{ row: number; reason: string }> = [];
@@ -155,6 +172,8 @@ export function normalizeExternalDataset(rows: JsonRecord[], source: SourceConfi
       source_record_id: item.sourceRecordId,
       source_dataset: source.name,
       source_license: source.license,
+      source_language: source.language,
+      license_reviewed: false,
       source_url: source.url,
       attribution: source.attribution,
       content_sha256: item.contentHash,
