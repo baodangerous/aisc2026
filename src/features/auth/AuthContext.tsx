@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { apiClient } from '../../services/api/client';
 import { getLocalSessions, saveLocalSession } from '../../services/indexedDb';
 import { UserProfile, AuthStatus } from '../../domain/schemas';
-import { isSupabaseConfigured, mapProfile, supabase, type SupabaseUser, getSupabaseProfile } from '../../services/supabase/client';
+import { isDemoMode, isSupabaseConfigured, mapProfile, supabase, type SupabaseUser, getSupabaseProfile } from '../../services/supabase/client';
 interface ProfileUpdateResult { status: 'synced' | 'offline' | 'failed'; profile: UserProfile }
 
 interface AuthContextType {
@@ -43,6 +43,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    if (isDemoMode) {
+      try {
+        const saved = localStorage.getItem('goldenminutes.demo.account.v1');
+        if (saved) {
+          const account = JSON.parse(saved) as { email: string; id: string; name: string; role: string };
+          const demoUser = makeDemoAuthUser(account);
+          setAuthUser(demoUser);
+          setUser({ uid: account.id, displayName: account.name, role: account.role, preferredLanguage: 'vi', onboardingCompleted: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as UserProfile);
+          setAuthStatus('authenticated_synced');
+        } else setAuthStatus('guest');
+      } catch { setAuthStatus('guest'); }
+      return;
+    }
     if (!supabase || !isSupabaseConfigured) {
       setAuthStatus('guest');
       return;
@@ -66,6 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loginWithGoogle = async () => {
+    if (isDemoMode) throw new Error('Chọn một tài khoản mẫu để đăng nhập bản Demo.');
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
     const redirectTo = import.meta.env.VITE_SUPABASE_REDIRECT_URL || import.meta.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}${window.location.pathname}`;
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -89,6 +103,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithPassword = async (email: string, password: string) => {
+    if (isDemoMode) {
+      const account = DEMO_ACCOUNTS.find((item) => item.email === email.trim().toLowerCase() && item.password === password);
+      if (!account) throw new Error('Thông tin tài khoản demo không hợp lệ. Hãy chọn một tài khoản mẫu bên dưới.');
+      const demoUser = makeDemoAuthUser(account);
+      setAuthUser(demoUser);
+      setUser({ uid: account.id, displayName: account.name, role: account.role, preferredLanguage: 'vi', onboardingCompleted: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as UserProfile);
+      setAuthStatus('authenticated_synced');
+      localStorage.setItem('goldenminutes.demo.account.v1', JSON.stringify(account));
+      return;
+    }
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
     const normalizedEmail = email.trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(normalizedEmail) || password.length < 8) throw new Error('Nhập email hợp lệ và mật khẩu tối thiểu 8 ký tự.');
@@ -102,6 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signUpWithPassword = async (email: string, password: string) => {
+    if (isDemoMode) throw new Error('Bản Demo dùng tài khoản mẫu có sẵn.');
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
     const normalizedEmail = email.trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(normalizedEmail) || password.length < 8) throw new Error('Nhập email hợp lệ và mật khẩu tối thiểu 8 ký tự.');
@@ -126,6 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const sendPhoneOtp = async (phone: string) => {
+    if (isDemoMode) throw new Error('Đăng nhập bằng OTP không dùng trong bản Demo.');
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
     const normalized = normalizeVietnamesePhone(phone);
     if (!normalized) throw new Error('Nhập số điện thoại Việt Nam hợp lệ, ví dụ 0901234567 hoặc +84901234567.');
@@ -134,6 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const verifyPhoneOtp = async (phone: string, token: string) => {
+    if (isDemoMode) throw new Error('Đăng nhập bằng OTP không dùng trong bản Demo.');
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
     const normalized = normalizeVietnamesePhone(phone);
     if (!normalized || !/^\d{6}$/.test(token.trim())) throw new Error('Số điện thoại hoặc mã OTP không hợp lệ.');
@@ -142,7 +169,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    if (supabase) {
+    if (isDemoMode) localStorage.removeItem('goldenminutes.demo.account.v1');
+    if (supabase && !isDemoMode) {
       const { error } = await supabase.auth.signOut();
       if (error) throw new Error('Chưa thể đăng xuất. Vui lòng thử lại.');
     }
@@ -179,6 +207,17 @@ export const useAuth = () => {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 };
+
+const DEMO_ACCOUNTS = [
+  { email: 'citizen.demo@example.test', password: 'demo1234', id: 'citizen-001', name: 'Người dân Demo', role: 'user' },
+  { email: 'volunteer.demo@example.test', password: 'demo1234', id: 'volunteer-001', name: 'Tình nguyện viên Demo', role: 'volunteer' },
+  { email: 'staff.demo@example.test', password: 'demo1234', id: 'staff-001', name: 'Nhân viên cơ sở Demo', role: 'site_manager' },
+  { email: 'manager.demo@example.test', password: 'demo1234', id: 'manager-001', name: 'Quản lý Demo', role: 'admin' },
+  { email: 'admin.demo@example.test', password: 'demo1234', id: 'admin-001', name: 'Quản trị viên Demo', role: 'owner' },
+];
+function makeDemoAuthUser(account: { email: string; id: string; name: string; role: string }) {
+  return { id: account.id, aud: 'authenticated', role: 'authenticated', email: account.email, phone: '', app_metadata: { provider: 'demo', providers: ['demo'] }, user_metadata: { display_name: account.name, full_name: account.name, role: account.role }, identities: [], created_at: new Date().toISOString() } as unknown as SupabaseUser;
+}
 
 function normalizeVietnamesePhone(value: string) {
   const digits = value.trim().replace(/[\s().-]/g, '');
