@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Flag, Heart, ImagePlus, MessageCircle, Search, Send, Users, X } from 'lucide-react';
-import { supabase } from '../../services/supabase/client';
+import { isDemoMode, supabase } from '../../services/supabase/client';
 import { useAuth } from '../auth/AuthContext';
 import { ALERT_KINDS, ALERT_RADII, COMMUNITY_COPY, COMMUNITY_TABLES, POST_CATEGORIES, CommunityAlert, CommunityMedia, CommunityPost, distanceInMeters } from '../../config/communityContent';
 import { defaultLocationOptions, getCurrentPosition } from '../../services/location/geolocation';
@@ -88,7 +88,7 @@ export function CommunityView() {
         const { data } = supabase.storage.from('community-media').getPublicUrl(path);
         media.push({ url: data.publicUrl, type: file.type.startsWith('video/') ? 'video' : 'image', name: file.name });
       }
-      const { error: insertError } = await supabase.from(COMMUNITY_TABLES.posts).insert({ author_uid: authUser.id, author_id: authUser.id, title: title.trim(), content: body.trim(), body: body.trim(), category, media });
+      const { error: insertError } = await supabase.from(COMMUNITY_TABLES.posts).insert({ author_uid: authUser.id, author_id: authUser.id, title: title.trim(), content: body.trim(), body: body.trim(), category, media, status: 'published' });
       if (insertError) throw insertError;
       setTitle(''); setBody(''); setMediaFiles([]); setNotice('Bài viết đã được đăng.'); await load();
     } catch (uploadError) { setError(uploadError instanceof Error ? uploadError.message : 'Không thể đăng bài lúc này. Vui lòng thử lại.'); } finally { setIsUploading(false); }
@@ -152,15 +152,17 @@ export function CommunityView() {
 
   const createAlert = async () => {
     if (!supabase || !authUser || alertTitle.trim().length < 5) return;
-    if (!navigator.geolocation) { setError('Thiết bị không hỗ trợ vị trí. Hãy gọi 115 thay vì gửi cảnh báo cộng đồng.'); return; }
+    if (!navigator.geolocation && !isDemoMode) { setError('Thiết bị không hỗ trợ vị trí. Hãy gọi 115 thay vì gửi cảnh báo cộng đồng.'); return; }
     setError('');
     const radius = Number(alertRadius);
     if (!Number.isInteger(radius) || radius < 100 || radius > 10000) { setError('Bán kính phải từ 100 đến 10.000 mét.'); return; }
     if (alertDescription.trim().length > 1000) { setError('Mô tả không được dài quá 1.000 ký tự.'); return; }
-    void getCurrentPosition(defaultLocationOptions).then(async ({ coords }) => {
-      const { error: insertError } = await supabase.from(COMMUNITY_TABLES.alerts).insert({ reporter_uid: authUser.id, kind: alertKind, title: alertTitle.trim(), description: alertDescription.trim() || 'Hãy gọi 115 trước và mô tả rõ tình huống.', latitude: coords.latitude, longitude: coords.longitude, radius_m: radius });
+    const submitAt = async (latitude: number, longitude: number) => {
+      const { error: insertError } = await supabase.from(COMMUNITY_TABLES.alerts).insert({ reporter_uid: authUser.id, kind: alertKind, title: alertTitle.trim(), description: alertDescription.trim() || 'Hãy gọi 115 trước và mô tả rõ tình huống.', latitude, longitude, radius_m: radius });
       if (insertError) setError(insertError.message); else { setAlertTitle(''); setAlertDescription(''); setNotice('Cảnh báo đã được gửi trong bán kính đã chọn.'); await load(); }
-    }).catch(() => setError('Chưa lấy được vị trí. Hãy cấp quyền vị trí hoặc gọi 115 trực tiếp.'));
+    };
+    if (isDemoMode) { void submitAt(10.7769, 106.7009); return; }
+    void getCurrentPosition(defaultLocationOptions).then(({ coords }) => submitAt(coords.latitude, coords.longitude)).catch(() => setError('Chưa lấy được vị trí. Hãy cấp quyền vị trí hoặc gọi 115 trực tiếp.'));
   };
 
   return <main className="community-shell mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 pb-24">
