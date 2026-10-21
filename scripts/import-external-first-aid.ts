@@ -27,7 +27,7 @@ export interface CandidateExample {
   expected_output: { answer: string; safety: 'unreviewed'; requires_115: false };
   source_document_external_id: string;
   citations: string[];
-  quality_label: 'synthetic';
+  quality_label: 'external_unreviewed';
   review_required: true;
   safety_note: string;
   metadata: {
@@ -148,7 +148,7 @@ export function normalizeExternalDataset(rows: JsonRecord[], source: SourceConfi
     expected_output: { answer: item.answer, safety: 'unreviewed', requires_115: false },
     source_document_external_id: source.id,
     citations: [source.url],
-    quality_label: 'synthetic',
+    quality_label: 'external_unreviewed',
     review_required: true,
     safety_note: 'Nguồn QA bên ngoài chưa được chuyên gia sơ cứu rà soát. Không dùng trực tiếp để tư vấn người dùng hoặc làm dữ liệu huấn luyện đã duyệt.',
     metadata: {
