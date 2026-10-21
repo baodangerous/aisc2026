@@ -1,13 +1,16 @@
 {
-  "version": "v1.0.0",
-  "totalRecords": 222,
-  "holdoutEvalCount": 52,
+  "version": "v1.1.0",
+  "totalRecords": 172,
+  "holdoutEvalCount": 10,
   "splits": {
-    "train": 152,
-    "validation": 35,
-    "test": 35
+    "train": 123,
+    "validation": 25,
+    "test": 24
   },
-  "scenarioGroupsCount": 26,
-  "checksumSha256": "7bb28eaa4cb902dfe355d9a21c29a7236633b232a726e2fdd32878476b16cd1d",
-  "created_at": "2026-10-17T19:04:42.474Z"
+  "checksumSha256": "3394bd6cafea3803371759dfbc083159007618d152b1f9fb03c44e88406623c5",
+  "created_at": "2026-10-21T13:00:00.000Z",
+  "scenarioGroupsCount": 21,
+  "holdoutScenarioGroupsCount": 5,
+  "splitStrategy": "scenario_group_disjoint",
+  "holdoutStatus": "synthetic_unreviewed; too small for standalone performance claims"
 }
