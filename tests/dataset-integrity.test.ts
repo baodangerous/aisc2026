@@ -12,6 +12,8 @@ type DatasetRow = {
   review_required?: boolean;
   quality_label?: string;
   split?: string;
+  exclusion_reason?: string;
+  previous_split?: string;
 };
 
 function readRows(filePath: string): DatasetRow[] {
