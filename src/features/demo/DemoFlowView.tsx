@@ -67,6 +67,10 @@ export const DemoFlowView: React.FC<{ onOpenLogin: () => void }> = ({ onOpenLogi
       'goldenminutes.demo.trainingSessions.v1',
       'goldenminutes.demo.account.v1',
     ].forEach((key) => localStorage.removeItem(key));
+    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+      const key = localStorage.key(index);
+      if (key?.startsWith('goldenminutes.demo.media.')) localStorage.removeItem(key);
+    }
     window.location.assign('/?demo=1');
   };
 
