@@ -1,0 +1,96 @@
+{
+  "registry_version": "2026-10-21.v1",
+  "policy": "Candidate inventory only. A source is not automatically approved for ingestion, clinical use, model training, or redistribution. Confirm the exact artifact license and provenance before downloading or processing.",
+  "sources": [
+    {
+      "id": "i-am-mushfiq-firstaidqa",
+      "name": "FirstAidQA",
+      "url": "https://huggingface.co/datasets/i-am-mushfiq/FirstAidQA",
+      "license": "CC-BY-4.0 (verify current dataset card and artifact metadata before each release)",
+      "language": "en",
+      "intended_use": "candidate QA pairs for retrieval experiments after safety review",
+      "status": "candidate",
+      "requires": ["license_attribution", "medical_safety_review", "PII_review", "deduplication", "heldout_leakage_check"]
+    },
+    {
+      "id": "alexxxmf-firstaid-qa",
+      "name": "firstaid_qa",
+      "url": "https://huggingface.co/datasets/alexxxmf/firstaid_qa",
+      "license": "unverified",
+      "language": "en",
+      "intended_use": "evaluate only after license, schema, provenance, and content review",
+      "status": "blocked_pending_review",
+      "requires": ["license_verification", "medical_safety_review", "PII_review", "deduplication", "heldout_leakage_check"]
+    },
+    {
+      "id": "belvisk-first-aid-dataset",
+      "name": "First-Aid-Dataset",
+      "url": "https://huggingface.co/datasets/belvisk/First-Aid-Dataset",
+      "license": "MIT (verify current dataset card and artifact metadata before each release)",
+      "language": "en",
+      "intended_use": "candidate QA pairs only; observed dataset card row count may differ from secondary descriptions",
+      "status": "candidate",
+      "requires": ["license_attribution", "medical_safety_review", "PII_review", "deduplication", "heldout_leakage_check"]
+    },
+    {
+      "id": "badri55-first-aid-dataset",
+      "name": "First_aid__dataset",
+      "url": "https://huggingface.co/datasets/badri55/First_aid__dataset",
+      "license": "CC0-1.0 (verify current dataset card and artifact metadata before each release)",
+      "language": "en",
+      "intended_use": "low-trust candidate; inspect every answer for unsupported or unsafe advice",
+      "status": "blocked_pending_medical_review",
+      "requires": ["license_verification", "medical_safety_review", "PII_review", "deduplication", "heldout_leakage_check"]
+    },
+    {
+      "id": "medlineplus-web-service",
+      "name": "MedlinePlus Web Service",
+      "url": "https://medlineplus.gov/about/developers/",
+      "license": "review official terms, attribution, and content-level rights before caching",
+      "language": "en",
+      "intended_use": "metadata and public health information connector; retain canonical URLs and retrieval dates",
+      "status": "connector_not_implemented",
+      "requires": ["terms_review", "rate_limit_policy", "provenance", "content_expiry_policy"]
+    },
+    {
+      "id": "first-aid-intents-dataset",
+      "name": "First Aid Intents Dataset",
+      "url": "https://huggingface.co/datasets/mahmoudahmed6/first-aid-intents-dataset",
+      "license": "unverified",
+      "language": "en",
+      "intended_use": "intent classification experiments only, not authoritative medical answers",
+      "status": "blocked_pending_review",
+      "requires": ["license_verification", "label_quality_review", "PII_review", "heldout_leakage_check"]
+    },
+    {
+      "id": "chatopera-efaqa-corpus-raw",
+      "name": "eFAQA emotional first-aid corpus",
+      "url": "https://github.com/chatopera/efaqa-corpus-raw",
+      "license": "commercial/redistribution restrictions reported; verify terms with rights holder",
+      "language": "zh",
+      "intended_use": "not in physical first-aid pipeline; emotional-support domain is separate",
+      "status": "excluded_pending_explicit_permission",
+      "requires": ["written_permission", "separate_domain_review"]
+    },
+    {
+      "id": "hcmc-open-data",
+      "name": "Ho Chi Minh City open data",
+      "url": "https://opendata.hochiminhcity.gov.vn/",
+      "license": "dataset-specific license must be checked per resource",
+      "language": "vi",
+      "intended_use": "possible geospatial/public-service enrichment, not medical QA",
+      "status": "source_discovery_required",
+      "requires": ["dataset_level_license", "freshness_check", "geospatial_validation", "provenance"]
+    },
+    {
+      "id": "goldenminutes-incident-timeline",
+      "name": "GoldenMinutes incident timeline",
+      "url": "https://github.com/baodangerous/aisc2026/tree/main/supabase/migrations",
+      "license": "first-party project data; apply consent, minimization, retention and access controls",
+      "language": "vi",
+      "intended_use": "separate operational analytics dataset; synthetic and real pilot records must never be mixed without explicit origin labels",
+      "status": "schema_exists_real_pilot_not_confirmed",
+      "requires": ["consent_or_lawful_basis", "PII_minimization", "access_controls", "retention_policy", "origin_labeling"]
+    }
+  ]
+}
