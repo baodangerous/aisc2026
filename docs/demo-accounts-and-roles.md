@@ -82,7 +82,7 @@ Nếu script tạo Auth user nhưng đồng bộ hồ sơ thất bại, hãy ki�
 - Hiển thị nhãn thân thiện: **Người dân**, **Tình nguyện viên**, **Người thẩm định nội dung**, **Quản trị viên tổ chức**, **Quản trị hệ thống**.
 - Không hiển thị tên bảng, tên cột, tên migration, raw role claim, stack trace, SQL hoặc thông báo lỗi nội bộ.
 - Log kỹ thuật chỉ ở phía server; giao diện trả thông báo tiếng Việt ngắn gọn và mã tham chiếu hỗ trợ khi cần.
-- Nếu dữ liệu là minh họa, chỉ ghi nhãn nhẹ **“Dữ liệu minh họa”** ở nơi phù hợp; không trình bày số liệu giả như kết quả cứu hộ thực tế.
+- Không thêm nhãn “Dữ liệu minh họa” hoặc nhãn tương tự vào giao diện demo. Tuyệt đối không trình bày số liệu giả lập như kết quả cứu hộ thực tế; chỉ hiển thị dữ liệu phù hợp với ngữ cảnh và không gây hiểu nhầm.
 
 ## Trạng thái hiện thực
 
