@@ -90,6 +90,20 @@ export function runEvaluation() {
 
   const exactInputLeakageDetected = Object.values(exactInputOverlap).some((count) => count > 0);
   const scenarioGroupOverlapDetected = Object.values(scenarioGroupOverlap).some((count) => count > 0);
+  const splitPairOverlap: Record<string, { exactInputRows: number; scenarioGroupRows: number }> = {};
+  for (let leftIndex = 0; leftIndex < availableSplits.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < availableSplits.length; rightIndex += 1) {
+      const left = availableSplits[leftIndex];
+      const right = availableSplits[rightIndex];
+      const rightInputs = new Set(right.rows.map((row) => normalizeInput(row.input)));
+      const rightGroups = new Set(right.rows.map((row) => row.scenario_group_id).filter(Boolean));
+      splitPairOverlap[left.split + '_vs_' + right.split] = {
+        exactInputRows: left.rows.filter((row) => rightInputs.has(normalizeInput(row.input))).length,
+        scenarioGroupRows: left.rows.filter((row) => Boolean(row.scenario_group_id) && rightGroups.has(row.scenario_group_id)).length,
+      };
+    }
+  }
+  const trainingSplitLeakageDetected = Object.values(splitPairOverlap).some((overlap) => overlap.exactInputRows > 0 || overlap.scenarioGroupRows > 0);
   const unreviewedRows = examples.filter((example) => example.review_required !== false || example.quality_label !== 'reviewed').length;
   const taskDistribution = countBy(examples.map((example) => example.task));
   const riskDistribution = countBy(examples.map((example) => example.risk_label));
@@ -101,6 +115,7 @@ export function runEvaluation() {
   if (duplicates.length) readinessReasons.push('Holdout contains duplicate normalized inputs.');
   if (exactInputLeakageDetected) readinessReasons.push('Holdout inputs overlap with train, validation, or test.');
   if (scenarioGroupOverlapDetected) readinessReasons.push('Holdout scenario groups overlap with train, validation, or test.');
+  if (trainingSplitLeakageDetected) readinessReasons.push('Train, validation, and test contain overlapping inputs or scenario groups.');
   if (examples.length < MIN_HOLDOUT_ROWS) readinessReasons.push('Holdout has fewer than ' + MIN_HOLDOUT_ROWS + ' examples; this is a project guardrail, not a statistical guarantee.');
   if (uniqueScenarioGroups < MIN_HOLDOUT_GROUPS) readinessReasons.push('Holdout has fewer than ' + MIN_HOLDOUT_GROUPS + ' independent scenario groups.');
   if (unreviewedRows > 0) readinessReasons.push(unreviewedRows + ' holdout rows are not marked reviewed with review_required=false.');
@@ -129,6 +144,10 @@ export function runEvaluation() {
       scenarioGroupOverlap,
       exactInputLeakageDetected,
       scenarioGroupOverlapDetected,
+    },
+    trainingSplitIntegrityCheck: {
+      pairwiseOverlap: splitPairOverlap,
+      leakageDetected: trainingSplitLeakageDetected,
     },
     benchmarkReadiness: {
       status: readinessReasons.length === 0 ? 'ready_for_reviewed_model_evaluation' : 'not_ready',
@@ -183,6 +202,10 @@ export function runEvaluation() {
     '## Why benchmark readiness is not granted',
     ...(readinessReasons.length ? readinessReasons.map((reason) => '- ' + reason) : ['- Integrity gates passed; reviewed labels and a real model run are still required.']),
     '',
+    '## Train/validation/test overlap (must be zero)',
+    '- Pairwise overlap: ' + JSON.stringify(splitPairOverlap),
+    '- Training split leakage detected: ' + trainingSplitLeakageDetected,
+    '',
     '## Model evaluation status',
     '- Rule-engine triage: NOT EVALUATED — no predictions are produced by this integrity audit.',
     '- Gemini fact extraction: NOT EVALUATED — must run on raw inputs without gold-label-derived features.',
@@ -197,6 +220,9 @@ export function runEvaluation() {
   ].join('\n');
   fs.writeFileSync(path.join(outDir, 'ai-eval-report.md'), markdown);
   console.log('Dataset integrity report generated at docs/evaluation/ai-eval-report.md and .json');
+  if (issues.length || duplicates.length || exactInputLeakageDetected || scenarioGroupOverlapDetected || trainingSplitLeakageDetected) {
+    process.exitCode = 1;
+  }
   return report;
 }
 
