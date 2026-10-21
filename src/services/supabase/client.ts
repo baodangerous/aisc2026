@@ -7,7 +7,14 @@ const key = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || e
 
 const host = typeof window !== 'undefined' ? window.location.hostname : '';
 const queryDemo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === '1';
-export const isDemoMode = queryDemo || (import.meta.env.PROD && host.endsWith('.vercel.app'));
+const storedDemo = (() => {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (queryDemo) localStorage.setItem('goldenminutes.demo.enabled.v1', '1');
+    return localStorage.getItem('goldenminutes.demo.enabled.v1') === '1';
+  } catch { return false; }
+})();
+export const isDemoMode = queryDemo || storedDemo || (import.meta.env.PROD && host.endsWith('.vercel.app'));
 export const isSupabaseConfigured = Boolean(url && key);
 export const supabase: SupabaseClient | null = isDemoMode
   ? createDemoSupabase()
