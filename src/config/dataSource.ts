@@ -8,7 +8,9 @@ const env = import.meta.env as Record<string, string | undefined>;
 
 export type DataSourceMode = 'fixture' | 'live';
 
-export const DATA_SOURCE: DataSourceMode = env.VITE_DATA_SOURCE === 'fixture'
+const demoHost = typeof window !== 'undefined' && window.location.hostname.endsWith('.vercel.app');
+const demoQuery = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === '1';
+export const DATA_SOURCE: DataSourceMode = demoHost || demoQuery || env.VITE_DATA_SOURCE === 'fixture'
   ? 'fixture'
   : env.VITE_DATA_SOURCE === 'live' || import.meta.env.PROD
     ? 'live'
