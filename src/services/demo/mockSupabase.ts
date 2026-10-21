@@ -85,13 +85,67 @@ function queryBuilder(table: string) {
 export function createDemoSupabase(): SupabaseClient {
   const authUser = (email: string) => ({ id: email.split('@')[0], aud:'authenticated', role:'authenticated', email, phone:'', app_metadata:{provider:'email',providers:['email']}, user_metadata:{display_name:email.split('@')[0], full_name:email.split('@')[0]}, identities:[], created_at:now }) as any;
   const auth: any = { getSession: async()=>({data:{session:null},error:null}), onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}), signOut:async()=>({error:null}), signInWithPassword:async({email}:any)=>({data:{user:authUser(email),session:{user:authUser(email)}},error:null}), signUp:async({email}:any)=>({data:{user:authUser(email),session:{user:authUser(email)}},error:null}), signInWithOAuth:async()=>({data:{url:null},error:null}), signInWithOtp:async()=>({error:null}), verifyOtp:async()=>({error:null}) };
-  const storage:any={from:()=>({upload:async(path:string)=>({data:{path},error:null}),remove:async()=>({data:[],error:null}),getPublicUrl:(path:string)=>({data:{publicUrl:`/demo-media/${path}`}})})};
+  const storage:any={from:(bucket:string)=>({
+    upload:async(path:string,file:any)=>{
+      try {
+        let dataUrl = '';
+        if (typeof File !== 'undefined' && file instanceof File) {
+          dataUrl = await new Promise<string>((resolve,reject)=>{
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ''));
+            reader.onerror = () => reject(reader.error || new Error('Không đọc được ảnh.'));
+            reader.readAsDataURL(file);
+          });
+        }
+        if (dataUrl) localStorage.setItem(`goldenminutes.demo.media.${bucket}/${path}`, dataUrl);
+        return {data:{path},error:null};
+      } catch (error:any) {
+        return {data:null,error:{message:error?.message || 'Không lưu được ảnh demo.'}};
+      }
+    },
+    remove:async(paths:string[])=>{
+      (paths || []).forEach((path)=>localStorage.removeItem(`goldenminutes.demo.media.${bucket}/${path}`));
+      return {data:[],error:null};
+    },
+    getPublicUrl:(path:string)=>{
+      let publicUrl = '';
+      try { publicUrl = localStorage.getItem(`goldenminutes.demo.media.${bucket}/${path}`) || ''; } catch {}
+      return {data:{publicUrl:publicUrl || 'https://images.unsplash.com/photo-1603398938378-e54eab446dde?auto=format&fit=crop&w=900&q=85'}};
+    }
+  })};
   const client:any={auth,storage,from:(table:string)=>queryBuilder(table),channel:()=>({on(){return this},subscribe(){return this}}),removeChannel:async()=>({error:null}),rpc:async(name:string,args:any)=> {
     if(name==='place_store_order') {
+      const items = Array.isArray(args?.p_items) ? args.p_items : [];
+      const account = (() => { try { return JSON.parse(localStorage.getItem('goldenminutes.demo.account.v1') || '{}'); } catch { return {}; } })();
+      const buyerId = account.id || 'citizen-001';
+      const buyerName = String(args?.p_buyer_name || '').trim();
+      const buyerPhone = String(args?.p_buyer_phone || '').trim();
+      const shippingAddress = String(args?.p_shipping_address || '').trim();
+      if (!args?.p_store_id || !items.length || !buyerName || !buyerPhone || !shippingAddress) {
+        return {data:null,error:{message:'DEMO_INVALID_ORDER'}};
+      }
+      const store = tables.organization_stores.find((s)=>s.id===args.p_store_id && s.is_published);
+      if (!store) return {data:null,error:{message:'STORE_UNAVAILABLE'}};
+      let total = 0;
+      const orderItems: Row[] = [];
+      for (const item of items) {
+        const product = tables.store_products.find((p)=>p.id===item.product_id && p.store_id===args.p_store_id && p.is_published);
+        const quantity = Number(item.quantity);
+        if (!product || !Number.isInteger(quantity) || quantity < 1 || product.stock_quantity < quantity) {
+          return {data:null,error:{message:'PRODUCT_UNAVAILABLE'}};
+        }
+        total += Number(product.price_vnd || 0) * quantity;
+        orderItems.push({product_id:product.id,product_name:product.name,quantity,unit_price_vnd:product.price_vnd});
+      }
+      for (const item of orderItems) {
+        const product = tables.store_products.find((p)=>p.id===item.product_id);
+        if (product) product.stock_quantity -= item.quantity;
+      }
       const orderId=`demo-order-${Date.now()}`;
-      const total=(args?.p_items||[]).reduce((sum:number,item:any)=>sum+(tables.store_products.find(p=>p.id===item.product_id)?.price_vnd||0)*Number(item.quantity||1),0);
-      const row={id:orderId,store_id:args?.p_store_id,buyer_id:'citizen-001',buyer_name:args?.p_buyer_name||'Khách demo',buyer_phone:args?.p_buyer_phone||'',shipping_address:args?.p_shipping_address||'',status:'pending',total_vnd:total,created_at:new Date().toISOString()};
-      (tables.store_orders ||= []).unshift(row); persist(); return {data:orderId,error:null};
+      const row={id:orderId,store_id:args.p_store_id,buyer_id:buyerId,buyer_name:buyerName,buyer_phone:buyerPhone,shipping_address:shippingAddress,status:'pending',total_vnd:total,items:orderItems,created_at:new Date().toISOString()};
+      (tables.store_orders ||= []).unshift(row);
+      persist();
+      return {data:orderId,error:null};
     }
     return {data:null,error:null};
   }};
