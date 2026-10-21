@@ -50,8 +50,10 @@ const QUESTION_KEYS = ['question', 'query', 'instruction', 'prompt', 'input', 'u
 const ANSWER_KEYS = ['answer', 'response', 'output', 'completion', 'assistant', 'answer_text', 'accepted_answer', 'chosen'];
 
 function getString(record: JsonRecord, keys: string[]): string {
+  const availableKeys = Object.keys(record);
   for (const key of keys) {
-    const value = record[key];
+    const actualKey = availableKeys.find((candidate) => candidate.toLocaleLowerCase('en-US') === key.toLocaleLowerCase('en-US'));
+    const value = record[actualKey ?? key];
     if (typeof value === 'string' && value.trim()) return value;
     if (Array.isArray(value)) {
       const joined = value.filter((part): part is string => typeof part === 'string').join('\n').trim();
