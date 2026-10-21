@@ -5,6 +5,7 @@ import { Navigation } from './components/Navigation';
 import { Call115Modal } from './components/Call115Modal';
 import { LoginModal } from './features/auth/LoginModal';
 import { HomeView } from './features/home/HomeView';
+import { DemoFlowView } from './features/demo/DemoFlowView';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 
@@ -65,6 +66,7 @@ export const App: React.FC = () => {
               <Suspense fallback={<RouteLoadingFallback />}>
                 <Routes>
                   <Route path="/" element={<HomeView onOpenCall115={() => setIsCall115Open(true)} />} />
+                  <Route path="/demo" element={<DemoFlowView onOpenLogin={() => setIsLoginOpen(true)} />} />
                   <Route path="/emergency" element={<RealEmergencyView />} />
                   <Route path="/training" element={<TrainingSessionView />} />
                   <Route path="/results" element={<ResultsView />} />
