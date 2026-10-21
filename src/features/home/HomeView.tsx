@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, PhoneCall, MapPin, BookOpen, ShieldAlert, Users, CircleCheck, PlayCircle, Timer, LibraryBig, Navigation, Activity, ChevronRight } from 'lucide-react';
+import { ArrowRight, PhoneCall, MapPin, BookOpen, ShieldAlert, Users, CircleCheck, PlayCircle, Timer, LibraryBig, Navigation, Activity, ChevronRight, Handshake } from 'lucide-react';
 import { REFERENCE_LEARNING_RESOURCES } from '../../content/curatedLearningCatalog';
 import { RESEARCH_MODULES, RESEARCH_NOTE } from '../../content/researchModules';
 import { HOME_EXERCISES } from '../../config/homeContent';
@@ -64,6 +64,25 @@ export function HomeView({ onOpenCall115 }: { onOpenCall115: () => void }) {
         <AedOverviewSection />
 
         <NationwideCoverageSection />
+
+        {/* Partner ecosystem preview: all named organizations are prospective partners, not confirmed integrations. */}
+        <section aria-labelledby="partner-ecosystem-title" className="gm-card overflow-hidden p-5 sm:p-7">
+          <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
+            <div>
+              <p className="gm-eyebrow">Golden Pulse · Hợp tác cộng đồng</p>
+              <h2 id="partner-ecosystem-title" className="mt-1 text-2xl font-bold">Cùng xây dựng mạng lưới sẵn sàng sơ cứu</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 gm-muted">Đề xuất kết nối đơn vị đào tạo, nền tảng di chuyển, chương trình CSR và cơ sở y tế — với vai trò, quy trình xác minh và chỉ số tác động rõ ràng.</p>
+              <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
+                <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-emerald-800">Đào tạo · 1Life</span>
+                <span className="rounded-full bg-green-50 px-3 py-1.5 text-green-800">Cộng đồng · Grab</span>
+                <span className="rounded-full bg-pink-50 px-3 py-1.5 text-pink-800">CSR · MoMo</span>
+                <span className="rounded-full bg-blue-50 px-3 py-1.5 text-blue-800">Cơ sở y tế</span>
+              </div>
+              <p className="mt-3 text-xs gm-muted">Các tên trên là hướng tiếp cận đề xuất, không hàm ý đã có thỏa thuận.</p>
+            </div>
+            <Link to="/partners" className="gm-button gm-button--primary w-fit"><Handshake className="size-4" /> Xem chiến lược <ArrowRight className="size-4" /></Link>
+          </div>
+        </section>
 
         {/* Research-inspired modules */}
         <section aria-labelledby="research-modules-title" className="space-y-4">

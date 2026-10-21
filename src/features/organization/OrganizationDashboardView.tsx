@@ -555,12 +555,12 @@ export const OrganizationDashboardView: React.FC = () => {
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-7 pb-24 sm:px-6 lg:px-8 font-sans">
-      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950 dark:border-blue-500/30 dark:bg-blue-950/30 dark:text-blue-100">
+      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm !text-slate-800 dark:border-blue-500/40 dark:bg-slate-900 dark:!text-slate-100">
         <div className="flex items-start gap-3">
-          <Layers className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+          <Layers className="mt-0.5 size-5 shrink-0 !text-blue-700 dark:!text-blue-300" aria-hidden="true" />
           <div>
-            <p className="font-bold">Phạm vi dữ liệu tổ chức</p>
-            <p className="mt-1 leading-relaxed">Chỉ số bên dưới được tính từ phiên luyện tập hoàn tất có đồng thuận chia sẻ trong tổ chức; không đại diện cho ca cấp cứu thực tế.</p>
+            <p className="!font-bold !text-blue-950 dark:!text-blue-100">Phạm vi dữ liệu tổ chức</p>
+            <p className="mt-1 !leading-relaxed !text-slate-700 dark:!text-slate-200">Chỉ số bên dưới được tính từ phiên luyện tập hoàn tất có đồng thuận chia sẻ trong tổ chức; không đại diện cho ca cấp cứu thực tế.</p>
           </div>
         </div>
       </div>

@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+# External datasets and unreviewed candidate outputs must not be committed by default.
+data/raw/
+data/candidates/

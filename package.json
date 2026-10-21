@@ -16,7 +16,9 @@
     "data:generate-timeline": "tsx scripts/generate-incident-timeline.ts",
     "data:ingest": "tsx scripts/ingest-ai-dataset.ts",
     "data:ingest-timeline": "tsx scripts/ingest-incident-timeline.ts",
-    "facilities:import-osm": "tsx scripts/import-osm-facilities.ts"
+    "facilities:import-osm": "tsx scripts/import-osm-facilities.ts",
+    "data:import-external": "tsx scripts/import-external-first-aid.ts",
+    "data:evaluate-ai": "tsx scripts/evaluate-ai.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.146",

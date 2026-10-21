@@ -39,6 +39,9 @@ const StoreView = lazyWithRetry(() =>
 const RemoteSupportQueueView = lazyWithRetry(() =>
   import('./features/emergency/RemoteSupportQueueView').then((m) => ({ default: m.RemoteSupportQueueView }))
 );
+const PartnersView = lazyWithRetry(() =>
+  import('./features/partners/PartnersView').then((m) => ({ default: m.PartnersView }))
+);
 
 const RouteLoadingFallback: React.FC = () => (
   <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-3 text-[#667085]">
@@ -72,6 +75,7 @@ export const App: React.FC = () => {
                   <Route path="/community" element={<CommunityView />} />
                   <Route path="/store" element={<StoreView />} />
                   <Route path="/support" element={<RemoteSupportQueueView />} />
+                  <Route path="/partners" element={<PartnersView />} />
                   <Route path="/library" element={<LibraryView />} />
                   <Route path="/volunteer" element={<Navigate to="/" replace />} />
                   <Route path="/volunteers" element={<Navigate to="/" replace />} />

@@ -16,6 +16,7 @@ import { Call115Modal } from '../../components/Call115Modal';
 import { MEDICAL_DISCLAIMER_VI } from '../../content/approvedScenarios';
 import { MetadataRow } from '../../components/common/MetadataSeparators';
 import { EmergencyAIAssistant } from './EmergencyAIAssistant';
+import { EmergencySceneReport } from './EmergencySceneReport';
 import { FirstAidChatbot } from '../ai/FirstAidChatbot';
 import { supabase } from '../../services/supabase/client';
 import { useAuth } from '../auth/AuthContext';
@@ -151,6 +152,7 @@ export const RealEmergencyView: React.FC = () => {
 
       <div className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
         <EmergencyAIAssistant />
+        <EmergencySceneReport />
         <FirstAidChatbot />
 
         <section className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm sm:p-6" aria-labelledby="remote-guide-title">
