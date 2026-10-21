@@ -10,18 +10,23 @@ External QA is **candidate data**, not approved medical knowledge. Importing it 
 2. Download the dataset artifact manually from its canonical source into a local, untracked folder such as `data/raw/`. Do not commit raw datasets unless redistribution rights are explicit.
 3. Run the candidate importer:
    ```bash
-   pnpm data:import-external -- --input data/raw/firstaidqa.json \\
-     --source-id firstaidqa \\
-     --source-name "FirstAidQA" \\
-     --url "https://huggingface.co/datasets/i-am-mushfiq/FirstAidQA" \\
-     --license "CC-BY-4.0" \\
-     --attribution "FirstAidQA dataset; verify author attribution from the dataset card" \\
+   pnpm data:import-external -- --input data/raw/firstaidqa.json \
+     --source-id firstaidqa \
+     --source-name "FirstAidQA" \
+     --url "https://huggingface.co/datasets/i-am-mushfiq/FirstAidQA" \
+     --license "CC-BY-4.0" \
+     --attribution "FirstAidQA dataset; verify author attribution from the dataset card" \
      --language en
    ```
 4. Inspect the report and rejected rows. Output is under `data/candidates/`; every record has `quality_label=external_unreviewed`, `review_required=true`, `pii_checked=false`, and `safety_checked=false`.
 5. Review source licensing/attribution, privacy, duplicate and near-duplicate questions, medical correctness, harmful/unsupported claims, and emergency escalation language. Have a qualified first-aid reviewer approve content before creating a reviewed dataset.
-6. Keep a fixed holdout set out of training and validation. Group near-duplicate paraphrases by scenario before splitting; the importer groups exact normalized question strings, so it is a first pass, not a complete semantic leakage detector.
-7. Only after review, run the independent dataset audit and update version/checksum/manifest. Do not merge candidate rows into `data/v1/holdout_eval.jsonl`.
+6. Split at the **scenario-group** level before training. All paraphrases and task variants of one scenario must stay in one split. Exact input de-duplication alone is insufficient.
+7. Run `pnpm data:evaluate-ai` and `pnpm test` after every split change. The integrity audit must report zero exact-input and scenario-group overlap between holdout and train/validation/test.
+8. Do not promote a dataset to benchmark-ready merely because leakage is zero. The project guardrails currently require at least 30 holdout rows, 10 independent scenario groups, reviewed labels (`quality_label=reviewed` and `review_required=false`), and no leakage. These thresholds are project gates, not a guarantee of statistical power or clinical validity.
+
+## Current dataset v1.1.0 split status
+
+The existing synthetic dataset has been repartitioned to remove overlap. The holdout currently contains 10 rows across 5 scenario groups; the train/validation/test corpus contains 172 rows across 21 groups. This fixes the known overlap for this version, but **the holdout is intentionally marked not ready for model performance claims** because it is small and all rows still require qualified review. Add newly authored or licensed independent scenario groups before expanding the holdout; do not copy or relabel existing train examples.
 
 ## Import behavior and limitations
 
