@@ -12,5 +12,7 @@
   "scenarioGroupsCount": 21,
   "holdoutScenarioGroupsCount": 5,
   "splitStrategy": "scenario_group_disjoint",
-  "holdoutStatus": "synthetic_unreviewed; too small for standalone performance claims"
+  "holdoutStatus": "synthetic_unreviewed; too small for standalone performance claims",
+  "excludedOverlapArchiveCount": 50,
+  "excludedOverlapArchivePath": "data/v1/excluded_leakage_samples.jsonl"
 }
