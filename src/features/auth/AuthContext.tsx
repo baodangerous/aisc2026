@@ -110,7 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthUser(demoUser);
       setUser({ uid: account.id, displayName: account.name, role: account.role, preferredLanguage: 'vi', onboardingCompleted: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as UserProfile);
       setAuthStatus('authenticated_synced');
-      localStorage.setItem('goldenminutes.demo.account.v1', JSON.stringify(account));
+      localStorage.setItem('goldenminutes.demo.account.v1', JSON.stringify({ email: account.email, id: account.id, name: account.name, role: account.role }));
       return;
     }
     if (!supabase || !isSupabaseConfigured) throw new Error('Supabase chưa được kết nối.');
