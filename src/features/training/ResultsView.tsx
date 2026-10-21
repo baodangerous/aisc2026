@@ -53,10 +53,28 @@ export const ResultsView: React.FC = () => {
           // Local session is the expected source in a standalone demo.
         }
       }
-      const sessions = await getLocalSessions();
-      return sessions.find((item) =>
-        item.clientSessionId === sessionIdParam || item.sessionId === sessionIdParam
-      ) || null;
+      // Prefer IndexedDB, then use the localStorage demo fallback written by TrainingSessionView.
+      try {
+        const sessions = await getLocalSessions();
+        const localMatch = sessions.find((item) =>
+          item.clientSessionId === sessionIdParam || item.sessionId === sessionIdParam
+        );
+        if (localMatch) return localMatch;
+      } catch {
+        // Continue to the demo fallback below.
+      }
+      try {
+        const stored = JSON.parse(localStorage.getItem('goldenminutes.demo.trainingSessions.v1') || '[]');
+        if (Array.isArray(stored)) {
+          const demoMatch = stored.find((item: TrainingSession) =>
+            item?.clientSessionId === sessionIdParam || item?.sessionId === sessionIdParam
+          );
+          if (demoMatch) return demoMatch as TrainingSession;
+        }
+      } catch {
+        // Corrupt or unavailable local demo storage should not crash the results route.
+      }
+      return null;
     }, { shouldRetryOnError: false }
   );
   const [activeLessonModal, setActiveLessonModal] = useState<MedicalLearningResource | null>(null);
