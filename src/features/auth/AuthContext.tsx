@@ -199,7 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAuth = authStatus === 'authenticated_synced' || authStatus === 'authenticated_offline';
-  return <AuthContext.Provider value={{ authStatus, user, profile: user, authUser, isLoading: authStatus === 'initializing', isGuest: !isAuth, isAuthenticated: isAuth, isSynced: authStatus === 'authenticated_synced', isSupabaseReady: isSupabaseConfigured, loginWithGoogle, signInWithPassword, signUpWithPassword, logout, updateProfile, requestDeletion, sendPhoneOtp, verifyPhoneOtp }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ authStatus, user, profile: user, authUser, isLoading: authStatus === 'initializing', isGuest: !isAuth, isAuthenticated: isAuth, isSynced: authStatus === 'authenticated_synced', isSupabaseReady: isSupabaseConfigured || isDemoMode, loginWithGoogle, signInWithPassword, signUpWithPassword, logout, updateProfile, requestDeletion, sendPhoneOtp, verifyPhoneOtp }}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
