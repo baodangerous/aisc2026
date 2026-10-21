@@ -1,108 +1,136 @@
-import { describe, it, expect } from 'vitest';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { describe, expect, it } from 'vitest';
 import { evaluateEmergencyRules } from '../src/domain/ruleEngine';
 
-function normalize(str: string): string {
-  return str
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'd')
-    .replace(/[^\w\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+type DatasetRow = {
+  external_id: string;
+  input: string;
+  risk_label: string;
+  scenario_group_id: string;
+  review_required?: boolean;
+  quality_label?: string;
+  split?: string;
+};
+
+function readRows(filePath: string): DatasetRow[] {
+  return fs.readFileSync(filePath, 'utf8').split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line) as DatasetRow);
 }
 
-describe('Dataset v1 Quality & Safety Integrity Benchmark', () => {
-  const trainPath = path.resolve(process.cwd(), 'data/v1/train.jsonl');
-  const valPath = path.resolve(process.cwd(), 'data/v1/validation.jsonl');
-  const testPath = path.resolve(process.cwd(), 'data/v1/test.jsonl');
-  const holdoutPath = path.resolve(process.cwd(), 'data/v1/holdout_eval.jsonl');
+function normalize(input: string): string {
+  return input.normalize('NFKC').toLocaleLowerCase('vi-VN').replace(/\s+/g, ' ').trim();
+}
 
-  it('all v1 dataset files exist and contain valid JSONL lines', () => {
-    for (const p of [trainPath, valPath, testPath, holdoutPath]) {
-      expect(fs.existsSync(p), `Missing file: ${p}`).toBe(true);
-      const lines = fs.readFileSync(p, 'utf-8').trim().split('\n').filter(Boolean);
-      expect(lines.length).toBeGreaterThan(0);
-      for (const line of lines) {
-        const parsed = JSON.parse(line);
-        expect(parsed.external_id).toBeDefined();
-        expect(parsed.input).toBeDefined();
-        expect(parsed.risk_label).toBeDefined();
+describe('Dataset v1 integrity and leakage gates', () => {
+  const dataDir = path.resolve(process.cwd(), 'data/v1');
+  const trainPath = path.join(dataDir, 'train.jsonl');
+  const valPath = path.join(dataDir, 'validation.jsonl');
+  const testPath = path.join(dataDir, 'test.jsonl');
+  const holdoutPath = path.join(dataDir, 'holdout_eval.jsonl');
+  const allPath = path.join(dataDir, 'goldenminutes_v1_all.jsonl');
+  const manifestPath = path.join(dataDir, 'manifest.json');
+
+  it('all split files contain valid JSONL records with required identifiers', () => {
+    for (const filePath of [trainPath, valPath, testPath, holdoutPath, allPath]) {
+      expect(fs.existsSync(filePath), `Missing file: ${filePath}`).toBe(true);
+      const rows = readRows(filePath);
+      expect(rows.length, `Empty dataset: ${filePath}`).toBeGreaterThan(0);
+      for (const row of rows) {
+        expect(row.external_id).toBeTruthy();
+        expect(row.input).toBeTruthy();
+        expect(row.risk_label).toBeTruthy();
+        expect(row.scenario_group_id).toBeTruthy();
       }
     }
   });
 
-  it('zero data leakage between train, validation, and test splits', () => {
-    const trainLines = fs.readFileSync(trainPath, 'utf-8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
-    const valLines = fs.readFileSync(valPath, 'utf-8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
-    const testLines = fs.readFileSync(testPath, 'utf-8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  it('keeps scenario groups disjoint across train, validation, test, and holdout', () => {
+    const splits = [
+      { name: 'train', rows: readRows(trainPath) },
+      { name: 'validation', rows: readRows(valPath) },
+      { name: 'test', rows: readRows(testPath) },
+      { name: 'holdout_eval', rows: readRows(holdoutPath) },
+    ];
+    const seenGroups = new Map<string, string>();
 
-    const trainGroups = new Set(trainLines.map((r) => r.scenario_group_id));
-    const trainInputs = new Set(trainLines.map((r) => normalize(r.input)));
-
-    // Ensure no group leakage
-    for (const v of valLines) {
-      expect(trainGroups.has(v.scenario_group_id)).toBe(false);
-      expect(trainInputs.has(normalize(v.input))).toBe(false);
-    }
-
-    for (const t of testLines) {
-      expect(trainGroups.has(t.scenario_group_id)).toBe(false);
-      expect(trainInputs.has(normalize(t.input))).toBe(false);
-    }
-  });
-
-  it('zero exact duplicates in holdout_eval dataset', () => {
-    const holdoutLines = fs.readFileSync(holdoutPath, 'utf-8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
-    const seen = new Set<string>();
-
-    for (const row of holdoutLines) {
-      const norm = normalize(row.input);
-      expect(seen.has(norm), `Duplicate input in holdout: ${row.input}`).toBe(false);
-      seen.add(norm);
+    for (const split of splits) {
+      for (const row of split.rows) {
+        const previousSplit = seenGroups.get(row.scenario_group_id);
+        expect(previousSplit, `Scenario group ${row.scenario_group_id} leaks between ${previousSplit} and ${split.name}`).toBeUndefined();
+        seenGroups.set(row.scenario_group_id, split.name);
+        expect(row.split).toBe(split.name);
+      }
     }
   });
 
-  it('no boilerplate demo text remains in inputs', () => {
-    const allPath = path.resolve(process.cwd(), 'data/v1/goldenminutes_v1_all.jsonl');
-    const allLines = fs.readFileSync(allPath, 'utf-8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  it('keeps exact normalized inputs disjoint across all model splits', () => {
+    const splits = [
+      { name: 'train', rows: readRows(trainPath) },
+      { name: 'validation', rows: readRows(valPath) },
+      { name: 'test', rows: readRows(testPath) },
+      { name: 'holdout_eval', rows: readRows(holdoutPath) },
+    ];
+    const seenInputs = new Map<string, { id: string; split: string }>();
 
-    for (const row of allLines) {
+    for (const split of splits) {
+      for (const row of split.rows) {
+        const normalized = normalize(row.input);
+        const previous = seenInputs.get(normalized);
+        expect(previous, `Input overlap between ${previous?.split}:${previous?.id} and ${split.name}:${row.external_id}`).toBeUndefined();
+        seenInputs.set(normalized, { id: row.external_id, split: split.name });
+      }
+    }
+  });
+
+  it('matches the manifest row counts and SHA-256 checksum', () => {
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
+      version: string;
+      totalRecords: number;
+      holdoutEvalCount: number;
+      splits: Record<string, number>;
+      checksumSha256: string;
+      scenarioGroupsCount: number;
+      holdoutScenarioGroupsCount: number;
+    };
+    const train = readRows(trainPath);
+    const validation = readRows(valPath);
+    const test = readRows(testPath);
+    const holdout = readRows(holdoutPath);
+    const allText = fs.readFileSync(allPath, 'utf8');
+    const all = readRows(allPath);
+
+    expect(manifest.version).toBe('v1.1.0');
+    expect(manifest.totalRecords).toBe(all.length);
+    expect(manifest.holdoutEvalCount).toBe(holdout.length);
+    expect(manifest.splits).toEqual({ train: train.length, validation: validation.length, test: test.length });
+    expect(manifest.checksumSha256).toBe(createHash('sha256').update(allText).digest('hex'));
+    expect(manifest.scenarioGroupsCount).toBe(new Set(all.map((row) => row.scenario_group_id)).size);
+    expect(manifest.holdoutScenarioGroupsCount).toBe(new Set(holdout.map((row) => row.scenario_group_id)).size);
+  });
+
+  it('keeps the current holdout explicitly unreviewed and makes no performance claim', () => {
+    const holdout = readRows(holdoutPath);
+    expect(holdout.length).toBe(10);
+    expect(new Set(holdout.map((row) => row.scenario_group_id)).size).toBe(5);
+    expect(holdout.every((row) => row.review_required === true)).toBe(true);
+    expect(holdout.every((row) => row.quality_label === 'synthetic')).toBe(true);
+  });
+
+  it('contains no boilerplate demo text in the training corpus', () => {
+    const allRows = readRows(allPath);
+    for (const row of allRows) {
       expect(row.input.toLowerCase()).not.toContain('đây là mẫu dữ liệu demo');
       expect(row.input.toLowerCase()).not.toContain('bối cảnh:');
     }
   });
 
-  it('critical recall achieved on holdout eval is >= 0.90', () => {
-    const holdoutLines = fs.readFileSync(holdoutPath, 'utf-8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
-
-    let criticalTotal = 0;
-    let criticalDetected = 0;
-    const failedCases: string[] = [];
-
-    for (const row of holdoutLines) {
-      if (row.risk_label === 'critical') {
-        criticalTotal++;
-        // Rule engine check
-        const facts = {
-          consciousness: 'unresponsive' as const,
-          breathing: 'abnormal' as const,
-          severeBleeding: row.scenario_label === 'chay_mau_nghiem_trong',
-        };
-        const result = evaluateEmergencyRules(facts);
-        if (result.triagePriority === 'critical') {
-          criticalDetected++;
-        } else {
-          failedCases.push(`${row.external_id}: ${row.input}`);
-        }
-      }
-    }
-
-    expect(criticalTotal).toBeGreaterThan(0);
-    const recall = criticalDetected / criticalTotal;
-    expect(recall, `Critical recall ${recall} below 0.90. Failures: ${failedCases.join('; ')}`).toBeGreaterThanOrEqual(0.90);
+  it('rule engine handles an independently specified emergency fixture without reading dataset labels', () => {
+    const result = evaluateEmergencyRules({
+      consciousness: 'unresponsive',
+      breathing: 'abnormal',
+      severeBleeding: false,
+    });
+    expect(result.triagePriority).toBe('critical');
   });
 });
